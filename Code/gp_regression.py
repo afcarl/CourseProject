@@ -2,11 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize as op
 from sklearn import svm
+import time
 
 from covariance_functions import delta, covariance_mat
 # from gp_reg_data import x_g, y_g, plot_data, x_test, y_test
 from reg_parameters import model_params, common_params
-from optimization import full_gradient_descent, Problem
+# from optimization import full_gradient_descent, Problem
 from real_reg_data import x_g, y_g, x_test, y_test
 
 
@@ -52,15 +53,18 @@ def grad(w):
     return grad
 
 
-prb = Problem(oracle_fun, covariance_obj.get_params())
-point_v, time_v, loss_v = full_gradient_descent(prb, grad_eps=1e-2, max_iter=1000,  max_time=np.inf, freq=10)
-optimal_params = point_v[len(point_v) - 1]
-print(optimal_params)
+# prb = Problem(oracle_fun, covariance_obj.get_params())
+# point_v, time_v, loss_v = full_gradient_descent(prb, grad_eps=1e-2, max_iter=200,  max_time=np.inf, freq=50)
+# optimal_params = point_v[len(point_v) - 1]
+# print(optimal_params)
 
-# bnds = ((1e-2, None), (1e-2, None), (1e-2, None))
-# res = op.minimize(fun, covariance_obj.get_params(), args=(), method='L-BFGS-B', jac=grad, bounds=bnds,
-#             options={'gtol':1e-4})
-# optimal_params = res.x
+bnds = ((1e-2, None), (1e-2, None), (1e-2, None))
+start = time.clock()
+res = op.minimize(fun, covariance_obj.get_params(), args=(), method='L-BFGS-B', jac=grad, bounds=bnds,
+            options={'ftol':1e-3, 'disp':False})
+optimal_params = res.x
+timing = time.clock() - start
+print(timing)
 
 covariance_obj.set_params(optimal_params)
 K = covariance_obj.covariance_function

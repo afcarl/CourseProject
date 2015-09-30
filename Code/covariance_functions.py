@@ -9,7 +9,7 @@ from abc import ABCMeta, abstractmethod
 
 def delta(x, y):
     """Delta-function"""
-    return (x == y).all()
+    return np.sum(x == y, axis=0)
 
 
 def gaussian_noise_term(noise_variance, x, y):
@@ -28,7 +28,7 @@ def covariance_mat(covariance_func, x, y):
     for i in range(0, x.shape[1]):
         for j in range(0, y.shape[1]):
             mat[i, j] = covariance_func(x[:, i], y[:, j])
-    return mat
+    return covariance_func(x[:, :, None], y[:, None, :])
 
 # Specific covariance functions
 
@@ -127,7 +127,7 @@ class SquaredExponential(CovarianceFamily):
             sigma_f = w[0]
             l = w[1]
             sigma_l = w[2]
-        r = np.linalg.norm(x - y)
+        r = np.linalg.norm(x - y, axis=0)
         return np.exp(-np.square(r) / (2*(l**2))) * sigma_f**2 + gaussian_noise_term(sigma_l, x, y)
 
     def oracle(self, X, y, w=np.NaN):
@@ -146,11 +146,11 @@ class SquaredExponential(CovarianceFamily):
         ml = se._get_ml(y, k_inv)
 
         def d_se_dl(x, y):
-            r = np.linalg.norm(x - y)
+            r = np.linalg.norm(x - y, axis=0)
             return (np.exp(-np.square(r) / (2*(l**2))) * sigma_f**2) * (r / (l ** 3))
 
         def d_se_dsigmaf(x, y):
-            r = np.linalg.norm(x - y)
+            r = np.linalg.norm(x - y, axis=0)
             return 2 * sigma_f * np.exp(-np.square(r) / (2*(l**2)))
 
         dk_dl_mat = covariance_mat(d_se_dl, X, X)
@@ -188,7 +188,7 @@ class GammaExponential(CovarianceFamily):
             l = w[1]
             gamma = w[2]
             sigma_l = w[3]
-        r = np.linalg.norm(x - y)
+        r = np.linalg.norm(x - y, axis=0)
         return np.exp(-(r / l)**gamma) * sigma_f**2 + gaussian_noise_term(sigma_l, x, y)
 
     def oracle(self, X, y, w=np.NaN):
@@ -209,15 +209,15 @@ class GammaExponential(CovarianceFamily):
         ml = ge._get_ml(y, k_inv)
 
         def d_ge_dl(x, y):
-            r = np.linalg.norm(x - y)
+            r = np.linalg.norm(x - y, axis=0)
             return sigma_f**2 * (r / l)**gamma * np.exp(-(r/l)**gamma) / l
 
         def d_ge_dsigmaf(x, y):
-            r = np.linalg.norm(x - y)
+            r = np.linalg.norm(x - y, axis=0)
             return sigma_f * 2 * np.exp(-(r / l)**gamma)
 
         def d_ge_dgamma(x, y):
-            r = np.linalg.norm(x - y)
+            r = np.linalg.norm(x - y, axis=0)
             if r == 0:
                 return 0
             return - sigma_f**2 * (r/l)**gamma * np.exp(-(r/l)**gamma) * np.log(r/l)
@@ -264,17 +264,17 @@ if __name__ == '__main__':
     l = 0.2
     gamma = 0.8
 
-    w0 = np.array([sigma_f, l, gamma, sigma_l])
-    ge = GammaExponential(sigma_f, l, gamma, sigma_l)
+    w0 = np.array([sigma_f, l, sigma_l])
+    se = SquaredExponential(sigma_f, l, sigma_l)
     x = np.array([[1., 2., 3.]])
     y = np.array([0., 1., 0.])
-
+    # print (covariance_mat(ge.covariance_function, x, x))
     def func(w):
-        loss, gradient = ge.oracle(x, y, w)
+        loss, gradient = se.oracle(x, y, w)
         return loss
 
     def grad(w):
-        loss, gradient = ge.oracle(x, y, w)
+        loss, gradient = se.oracle(x, y, w)
         return gradient
 
-    # print(check_grad(func, grad, w0))
+    print(check_grad(func, grad, w0))
