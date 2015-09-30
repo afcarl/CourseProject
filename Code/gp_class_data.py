@@ -1,8 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from covariance_functions import delta, squared_exponential_cov, covariance_mat, gamma_exponential_cov
-from class_parameters import data_params, common_params
-
+from covariance_functions import covariance_mat
+from reg_parameters import data_params, common_params
 
 def plot_data(x, y, color1, color2):
     loc_y = y.reshape((y.shape[0],))
@@ -13,8 +12,9 @@ def plot_data(x, y, color1, color2):
 def sample(mean_func, cov_func, x):
     """returns a sample of a gaussian process for given mean and covariance at given points"""
     cov_mat = covariance_mat(cov_func, x, x)
-    m_v = np.array([mean_func(column) for column in (x.T).tolist()])
+    m_v = mean_func(x)
     mean_vector = m_v.reshape((m_v.size,))
+    np.random.seed(data_params.data_seed)
     y = np.random.multivariate_normal(mean_vector, cov_mat)
     return y
 
@@ -23,17 +23,24 @@ def sigmoid(x):
     return 1.0 / (1.0 + np.exp(- x))
 
 #Reassigning the parameters
-density = common_params.density
-x0, x1 = common_params.x0, common_params.x1
 d, n = common_params.d, common_params.n
-m = (lambda x: 0)
-K = data_params.cov_func
+m = lambda x: np.zeros(x.shape[1])
+covariance_obj = data_params.cov_obj
+K = (covariance_obj).covariance_function
 
 #Producing data
-x_g = x0 + np.random.rand(d, n)*(x1 - x0)
+np.random.seed(data_params.data_seed)
+x_g = np.random.rand(d, n)
 y_g = sample(m, K, x_g)
+y_g = y_g.reshape((y_g.size, 1))
 y_g = sigmoid(y_g.reshape((y_g.size, 1)))
 y_g = np.sign(y_g - np.ones(y_g.shape) * 0.5)
+
+x_test = np.random.rand(d, n)
+y_test = sample(m, K, x_test)
+y_test = sigmoid(y_g.reshape((y_g.size, 1)))
+y_test = np.sign(y_g - np.ones(y_g.shape) * 0.5)
+
 
 if __name__ == "__main__":
     plot_data(x_g, y_g, 'bx', 'ro')

@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from covariance_functions import delta, squared_exponential_cov, covariance_mat
-from gp_class_data import x_g, y_g, sample, plot_data, sigmoid
+from covariance_functions import covariance_mat
+from gp_class_data import x_g, y_g, plot_data, x_test, y_test, sigmoid
 from class_parameters import model_params, common_params
 import scipy.optimize as opt
 
@@ -24,20 +24,11 @@ def logistic_grad(f, y):
 
 
 #Reassigning the parameters
-sigma_l = model_params.noise_var
-density = common_params.density
-x0, x1 = common_params.x0, common_params.x1
-d, n = common_params.d, common_params.n
+d, n = x_g.shape
 m = np.vectorize(lambda x: 0)
-K = model_params.cov_func
-
-#Generating Grid
-x1_grid = np.linspace(x0, x1, density) #.reshape((1, density))
-x2_grid = np.linspace(x0, x1, density) #.reshape((1, density))
-x1_test, x2_test = np.meshgrid(x1_grid, x2_grid)
-x1_test = x1_test.reshape((x1_test.size,))
-x2_test = x2_test.reshape((x2_test.size,))
-x_test = np.array(list(zip(x1_test, x2_test))).T
+covariance_obj = model_params.cov_obj
+K = covariance_obj.covariance_function
+ml = covariance_obj.oracle
 
 #Initializing covariance matrices
 K_x = covariance_mat(K, x_g, x_g)
@@ -54,9 +45,6 @@ f_opt = res['x']
 #Calculating the classification results on the grid
 f_test = np.dot(np.dot(K_test_x, np.linalg.inv(K_x)), f_opt)
 y_test = sigmoid(f_test.reshape((f_test.size, 1)))
-y_test = np.sign(y_test - np.ones(y_test.shape) * 0.5)
+app_y_test = np.sign(y_test - np.ones(y_test.shape) * 0.5)
 
-#Vizualisation
-plot_data(x_g, y_g, 'bo', 'ro')
-plt.contour(x1_grid, x2_grid, y_test.reshape((20, 20)), levels = [0.0])
-plt.show()
+print(np.linalg.norm(app_y_test - y_test))

@@ -21,7 +21,6 @@ def sample(mean_func, cov_func, x):
 
 
 #Reassigning the parameters
-density = common_params.density
 d, n = common_params.d, common_params.n
 m = lambda x: np.zeros(x.shape[1])
 covariance_obj = data_params.cov_obj
