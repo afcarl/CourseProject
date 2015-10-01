@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from covariance_functions import covariance_mat
-from reg_parameters import data_params, common_params
+from class_parameters import data_params, common_params
 
 def plot_data(x, y, color1, color2):
     loc_y = y.reshape((y.shape[0],))
@@ -23,7 +23,7 @@ def sigmoid(x):
     return 1.0 / (1.0 + np.exp(- x))
 
 #Reassigning the parameters
-d, n = common_params.d, common_params.n
+d, n, t = common_params.d, common_params.n, common_params.t
 m = lambda x: np.zeros(x.shape[1])
 covariance_obj = data_params.cov_obj
 K = (covariance_obj).covariance_function
@@ -36,10 +36,10 @@ y_g = y_g.reshape((y_g.size, 1))
 y_g = sigmoid(y_g.reshape((y_g.size, 1)))
 y_g = np.sign(y_g - np.ones(y_g.shape) * 0.5)
 
-x_test = np.random.rand(d, n)
+x_test = np.random.rand(d, t)
 y_test = sample(m, K, x_test)
-y_test = sigmoid(y_g.reshape((y_g.size, 1)))
-y_test = np.sign(y_g - np.ones(y_g.shape) * 0.5)
+y_test = sigmoid(y_test.reshape((y_test.size, 1)))
+y_test = np.sign(y_test - np.ones(y_test.shape) * 0.5)
 
 
 if __name__ == "__main__":

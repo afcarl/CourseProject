@@ -37,12 +37,15 @@ K_x = covariance_mat(K, x_g, x_g)
 I = np.eye(K_x.shape[0])
 anc_mat = np.linalg.inv(K_x)
 
+
 def fun(w):
     loss, grad = ml(x_g, y_g, w)
     return loss
 
+
 def oracle_fun(w):
     return ml(x_g, y_g, w)
+
 
 def grad(w):
     loss, grad = ml(x_g, y_g, w)
