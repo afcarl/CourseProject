@@ -4,6 +4,7 @@ from covariance_functions import covariance_mat
 from gp_class_data import x_g, y_g, plot_data, x_test, y_test, sigmoid
 from class_parameters import model_params, common_params
 import scipy.optimize as opt
+from scipy.optimize import check_grad
 
 
 def logistic_loss(f, y):
@@ -40,17 +41,29 @@ K_test = covariance_mat(K, x_test, x_test)
 
 #Optimization
 f_0 = np.zeros(y_g.shape)
-print(logistic_loss(f_0, y_g))
 res = opt.minimize(fun=(lambda f: logistic_loss(f, y_g)), x0=f_0.reshape((f_0.size,)), method='Newton-CG',
-                   jac=lambda f: logistic_grad(f, y_g).reshape((f_0.size,)), hess=logistic_likelyhood_hessian, options={'disp':True})
+                   jac=lambda f: logistic_grad(f, y_g).reshape((f_0.size,)), hess=logistic_likelyhood_hessian, options={'disp':False})
 f_opt = res['x']
-print(logistic_loss(f_opt, y_g))
-# f_opt = f_0
+
+
+def func(w):
+    loss, gradient = covariance_obj.oracle(x_g, y_g, w)
+    return loss
+
+def grad(w):
+    loss, gradient = covariance_obj.oracle(x_g, y_g, w)
+    return gradient
+
+# w0 = covariance_obj.get_params() + np.array([0.5, 0.5, 0.5])
+# loss_1 = func(w0)
+# grad_1 = grad(w0)
+# loss_eps = func(w0 + np.array([1e-6, 0, 0]))
+# print((loss_eps - loss_1)*1e6, grad_1)
+# print(check_grad(func, grad, w0))
 
 #Calculating the classification results on the grid
 f_test = np.dot(np.dot(K_test_x, np.linalg.inv(K_x)), f_opt)
 app_y_test = sigmoid(f_test.reshape((f_test.size, 1)))
 app_y_test = np.sign(app_y_test - np.ones(y_test.shape) * 0.5)
-print(np.linalg.norm(app_y_test - y_test))
-# print(app_y_test - y_test)
+# print(np.linalg.norm(app_y_test - y_test))
 

@@ -19,6 +19,6 @@ noise_variance = 0.2
 oracle1 = SquaredExponential(sigma_f=1.0, l=0.4, noise=noise_variance)
 oracle2 = SquaredExponential(sigma_f=2.0, l=0.7, noise=noise_variance)
 # oracle3 = GammaExponential(sigma_f=2.5, l=0.3, gamma=2.1, noise=0.3)
-common_params = CommonParameters(num_of_examples=74, dim=27)
+common_params = CommonParameters(num_of_examples=20, dim=10)
 data_params = ModelParameters(oracle1, data_seed=5)
 model_params = ModelParameters(oracle2)

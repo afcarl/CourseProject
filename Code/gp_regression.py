@@ -3,12 +3,13 @@ import matplotlib.pyplot as plt
 import scipy.optimize as op
 from sklearn import svm
 import time
+import scipy as sp
 
 from covariance_functions import delta, covariance_mat
-# from gp_reg_data import x_g, y_g, plot_data, x_test, y_test
+from gp_reg_data import x_g, y_g, plot_data, x_test, y_test
 from reg_parameters import model_params, common_params
 # from optimization import full_gradient_descent, Problem
-from real_reg_data import x_g, y_g, x_test, y_test
+# from real_reg_data import x_g, y_g, x_test, y_test
 
 
 def sample_for_matrices(mean_vec, cov_mat):
@@ -58,6 +59,14 @@ def grad(w):
 # print(optimal_params)
 
 bnds = ((1e-2, None), (1e-2, None), (1e-2, None))
+
+# w0 = covariance_obj.get_params()
+# loss_1 = fun(w0)
+# grad_1 = grad(w0)
+# loss_eps = fun(w0 + np.array([0, 0, 1e-8]))
+# print((loss_eps - loss_1)*1e8, grad_1)
+# print(sp.optimize.check_grad(fun, grad, w0))
+
 start = time.clock()
 res = op.minimize(fun, covariance_obj.get_params(), args=(), method='L-BFGS-B', jac=grad, bounds=bnds,
             options={'ftol':1e-3, 'disp':False})

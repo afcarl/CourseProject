@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from covariance_functions import covariance_mat
+from covariance_functions import covariance_mat, sigmoid
 from class_parameters import data_params, common_params
 
 def plot_data(x, y, color1, color2):
@@ -18,9 +18,6 @@ def sample(mean_func, cov_func, x):
     y = np.random.multivariate_normal(mean_vector, cov_mat)
     return y
 
-
-def sigmoid(x):
-    return 1.0 / (1.0 + np.exp(- x))
 
 #Reassigning the parameters
 d, n, t = common_params.d, common_params.n, common_params.t
