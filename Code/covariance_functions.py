@@ -1,9 +1,7 @@
 import numpy as np
-import math
 from scipy.optimize import check_grad
 from scipy.special import gamma, kv
 from abc import ABCMeta, abstractmethod
-import scipy as sp
 
 # General functions
 
@@ -14,7 +12,9 @@ def sigmoid(x):
 
 def delta(x, y):
     """Delta-function"""
-    return np.sign(np.sum(x == y, axis=0))
+    if np.all(x[:, :, 0] == y[:, 0, :]):
+        return np.eye(x.shape[1])
+    return np.zeros((x.shape[1], y.shape[1]))
 
 
 def gaussian_noise_term(noise_variance, x, y):

@@ -57,24 +57,22 @@ class GaussianProcess:
         self.mean_fun = mean_function
         self.type = class_reg
 
-    def generate_data(self, dim, num, seed=None):
+    def generate_data(self, tr_points, test_points, seed=None):
         """
         :param dim: dimensions of the generated data
-        :param num: number of generated data pointts
-        :return: tuple (data_points, labels or target values)
+        :param tr_points: training data points
+        :param test_points: testing data points
+        :return: tuple (training data points, training labels or target values, test data points, test labels or target
+        values)
         """
-        if dim <= 0:
-            raise ValueError("dim must be greater then 0")
-        if num <= 0:
-            raise ValueError("num must be greater then 0")
 
         if not (seed is None):
             np.random.seed(seed)
-        points = np.random.rand(dim, num)
-        targets = self.sample(self.mean_fun, self.covariance_fun, points, seed)
+        targets = self.sample(self.mean_fun, self.covariance_fun, np.hstack((tr_points, test_points)), seed)
         if self.type == "class":
             targets = np.sign(targets)
-        return points, targets.reshape((targets.size, 1))
+        targets = targets.reshape((targets.size, 1))
+        return targets[:tr_points.shape[1], :], targets[tr_points.shape[1]:, :]
 
     @staticmethod
     def sample(mean_func, cov_func, points, seed=None):
@@ -189,7 +187,7 @@ class GaussianProcess:
 
         bnds = ((1e-2, None), (1e-2, None), (1e-5, None))
         res = op.minimize(loc_fun, self.covariance_obj.get_params(), args=(), method='L-BFGS-B', jac=loc_grad,
-                          bounds=bnds, options={'gtol': 1e-5, 'disp': True})
+                          bounds=bnds, options={'gtol': 1e-5, 'disp': False})
         optimal_params = res.x
         self.covariance_obj.set_params(optimal_params)
 
@@ -345,13 +343,12 @@ class GaussianProcess:
             points_l = np.linalg.cholesky(points_cov)
             points_l_inv = np.linalg.inv(points_l)
             points_cov_inv = points_l_inv.T.dot(points_l_inv)
-            det_k = 2 * np.sum(np.log(np.diag(points_l)))
 
             f_opt, hess_opt = self._get_laplace_approximation(labels, points_cov_inv, points_l)
             w_res = op.minimize(func, w0, args=(), method='L-BFGS-B', jac=grad, bounds=bnds,
                                 options={'ftol': 1e-5, 'disp': False, 'maxiter': 1})
             w0 = w_res['x']
-            if not(i%10):
+            if not(i % 1):
                 print("Iteration ", i)
                 print("Hyper-parameters at iteration ", i, ": ", w0)
             cov_obj.set_params(w0)
@@ -391,7 +388,7 @@ class GaussianProcess:
         anc_diag = np.diag(ancillary_mat)
         f_exp = np.exp(f_opt)
         dw_df = f_exp * (f_exp - 1) / (f_exp + 1)**3
-        dq_df = -(anc_diag * (dw_df)) / 2
+        dq_df = -(anc_diag * dw_df) / 2
 
         # Now we compute the derivative of f_opt wrt theta_j
 
@@ -414,7 +411,7 @@ class GaussianProcess:
         derivative_matrix_list = self.covariance_obj.get_derivative_function_list(params)
         noise_derivative = 2 * params[-1] * np.eye(points.shape[1])
         return np.array([self._class_get_implicit_ml_partial_derivative(f_opt, cov_inv, anc_mat,
-                                                               covariance_mat(func, points, points), labels) +
+                                                                        covariance_mat(func, points, points), labels) +
                          self._class_get_ml_partial_derivative(f_opt, cov_inv, anc_mat,
                                                                covariance_mat(func, points, points))
                          for func in derivative_matrix_list] +
@@ -490,8 +487,24 @@ class GaussianProcess:
             w_res = op.minimize(func, w0, args=(), method='L-BFGS-B', jac=grad, bounds=bnds,
                                 options={'ftol': 1e-5, 'disp': False, 'maxiter': 1})
             w0 = w_res['x']
-            if not(i%10):
+            if not(i % 10):
                 print("Iteration ", i, ": ", func(w0), np.linalg.norm(grad(w0)))
                 print("Hyper-parameters at iteration ", i, ": ", w0)
             cov_obj.set_params(w0)
         self.covariance_obj = copy.deepcopy(cov_obj)
+
+    def find_hyper_parameters(self, *args, **kwargs):
+        if self.type == "class":
+            return self._class_find_hyper_parameters(*args, **kwargs)
+        elif self.type == "reg":
+            return self._reg_find_hyper_parameters(*args, **kwargs)
+        else:
+            raise ValueError("GP type should be either 'class' or 'reg'")
+
+    def predict(self, *args, **kwargs):
+        if self.type == "class":
+            return self._class_predict(*args, **kwargs)
+        elif self.type == "reg":
+            return self._reg_predict(*args, **kwargs)
+        else:
+            raise ValueError("GP type should be either 'class' or 'reg'")
