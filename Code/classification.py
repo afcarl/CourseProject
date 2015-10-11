@@ -29,13 +29,12 @@ model_covariance_obj = SquaredExponential(model_params)
 new_gp = GaussianProcess(model_covariance_obj, lambda x: 0, 'class')
 
 start_time = time.time()
-new_gp._class_find_hyper_parameters(x_tr, y_tr, max_iter=100)
+new_gp._class_alternative_find_hyper_parameters(x_tr, y_tr, max_iter=100)
 timing = time.time() - start_time
 print(timing)
 
 print(new_gp.covariance_obj.get_params())
 predicted_y_test = new_gp._class_predict(x_test, x_tr, y_tr)
-print(new_gp.covariance_obj.get_params())
 gp_plot_class_data(x_tr, y_tr, 'bo', 'ro')
 gp_plot_class_data(x_test, predicted_y_test, 'bx', 'rx')
 mistake_lst = [i for i in range(len(y_test)) if predicted_y_test[i] != y_test[i]]

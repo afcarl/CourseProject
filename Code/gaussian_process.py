@@ -187,10 +187,6 @@ class GaussianProcess:
             loss, grad = self._reg_oracle(data_points, target_values, w)
             return -grad
 
-        # print(self.covariance_obj.get_params())
-        # print(loc_grad(self.covariance_obj.get_params()))
-        # print(loc_fun(self.covariance_obj.get_params()))
-        # exit()
         bnds = ((1e-2, None), (1e-2, None), (1e-5, None))
         res = op.minimize(loc_fun, self.covariance_obj.get_params(), args=(), method='L-BFGS-B', jac=loc_grad,
                           bounds=bnds, options={'gtol': 1e-5, 'disp': True})
@@ -267,10 +263,8 @@ class GaussianProcess:
 
         f_0 = np.zeros(labels.shape)
         f_0 = f_0.reshape((f_0.size,))
-        # f_res = op.minimize(fun=loss, x0=f_0, method='Newton-CG',
-        #                     jac=grad, hess=hessian, options={'disp': False, 'maxiter': 100})
         f_res = op.minimize(loss, f_0, args=(), method='L-BFGS-B', jac=grad,
-                            options={'gtol': 1e-5, 'disp': False, 'maxiter': 100})
+                            options={'gtol': 1e-5, 'disp': False, 'maxiter': 1000})
         f_opt = f_res['x']
         return f_opt, hessian(f_opt) - cov_inv
 
@@ -327,6 +321,12 @@ class GaussianProcess:
         return marginal_likelihood, gradient
 
     def _class_find_hyper_parameters(self, points, labels, max_iter=10):
+        """
+        :param points: data points
+        :param labels: class labels at data points
+        :param max_iter: maximim number of iterations
+        :return: optimal hyper-parameters
+        """
         cov_obj = copy.deepcopy(self.covariance_obj)
         cov_fun = cov_obj.covariance_function
         bnds = ((1e-2, None), (1e-2, None), (1e-5, None))
@@ -350,15 +350,20 @@ class GaussianProcess:
             f_opt, hess_opt = self._get_laplace_approximation(labels, points_cov_inv, points_l)
             w_res = op.minimize(func, w0, args=(), method='L-BFGS-B', jac=grad, bounds=bnds,
                                 options={'ftol': 1e-5, 'disp': False, 'maxiter': 1})
-            if (np.linalg.norm(w_res['x'] - w0) < 10e-4):
-                break
-            print("Iteration ", i, ": ", np.linalg.norm(w_res['x'] - w0))
             w0 = w_res['x']
+            if not(i%10):
+                print("Iteration ", i)
+                print("Hyper-parameters at iteration ", i, ": ", w0)
             cov_obj.set_params(w0)
         self.covariance_obj = copy.deepcopy(cov_obj)
 
     def _class_predict(self, test_points, training_points, training_labels):
-
+        """
+        :param test_points: test data points
+        :param training_points: training data points
+        :param training_labels: class labels at training points
+        :return: prediction of class labels at given test points
+        """
         cov_fun = self.covariance_obj.covariance_function
         points_cov = covariance_mat(cov_fun, training_points, training_points)
         points_l = np.linalg.cholesky(points_cov)
@@ -371,3 +376,122 @@ class GaussianProcess:
         loc_y_test = np.sign(f_test.reshape((f_test.size, 1)))
 
         return loc_y_test
+
+    @staticmethod
+    def _class_get_implicit_ml_partial_derivative(f_opt, k_inv, ancillary_mat, dk_dtheta_mat, labels):
+        """
+        :param f_opt: posterior mode
+        :param k_inv: inverse covariance matrix at data points
+        :param ancillary_mat: (W^(-1) + K)^(-1), where W is hess_opt
+        :param dk_dtheta_mat: matrix of partial derivatives of covariance matrix wrt theta
+        :param labels: labels at data points
+        :return: implicit part of the partial derivative of ml wrt theta.
+        """
+        # First we will compute the derivative of q (approx. ml) wrt f_opt.
+        anc_diag = np.diag(ancillary_mat)
+        f_exp = np.exp(f_opt)
+        dw_df = f_exp * (f_exp - 1) / (f_exp + 1)**3
+        dq_df = -(anc_diag * (dw_df)) / 2
+
+        # Now we compute the derivative of f_opt wrt theta_j
+
+        df_opt_dtheta = ((ancillary_mat.dot(k_inv)).dot(dk_dtheta_mat)).dot(
+            labels.reshape(labels.size,) / (1 + np.exp(labels.reshape(labels.size,) * f_opt)))
+
+        # Now we combine everything to get the derivative
+        return np.dot(dq_df, df_opt_dtheta)
+
+    def _class_get_ml_full_grad(self, points, labels, cov_inv, f_opt, anc_mat, params):
+        """
+        :param points: data points array
+        :param labels: labels at training points
+        :param cov_inv: inverse covariance matrix
+        :param params: hyper-parameters vector
+        :param f_opt: posterior mode
+        :param anc_mat: ancillary matrix
+        :return: marginal likelihood gradient with respect to hyper-parameters
+        """
+        derivative_matrix_list = self.covariance_obj.get_derivative_function_list(params)
+        noise_derivative = 2 * params[-1] * np.eye(points.shape[1])
+        return np.array([self._class_get_implicit_ml_partial_derivative(f_opt, cov_inv, anc_mat,
+                                                               covariance_mat(func, points, points), labels) +
+                         self._class_get_ml_partial_derivative(f_opt, cov_inv, anc_mat,
+                                                               covariance_mat(func, points, points))
+                         for func in derivative_matrix_list] +
+                        [self._class_get_implicit_ml_partial_derivative(f_opt, cov_inv, anc_mat,  noise_derivative,
+                                                                        labels) +
+                         self._class_get_ml_partial_derivative(f_opt, cov_inv, anc_mat,  noise_derivative)])
+
+    @staticmethod
+    def _class_get_full_ml(f_opt, b, cov_inv, labels):
+        """
+        :param f_opt: posterior mode
+        :param b: I + W^(1/2) K W^(1/2), where W is minus hessian of the log likelihood at f_opt
+        :param cov_inv: inverse covariance matrix at data points
+        :return: the Laplace estimation of log marginal likelihood
+        """
+        l_b = np.linalg.cholesky(b)
+        return -(((f_opt.T.dot(cov_inv)).dot(f_opt) + 2 * np.sum(np.log(np.diag(l_b))))/2 +
+                 np.sum(np.log(1 + np.exp(-labels * f_opt))))
+
+    def _class_alternative_oracle(self, points, labels, f_opt, hess_opt, params):
+        """
+        :param points: data points array
+        :param labels: labels at data points
+        :param f_opt: posterior mode
+        :param hess_opt: some weird hessian (-\nabla \nabla \log p(y|f_opt))
+        :param params: hyper-parameters vector
+        """
+        cov_obj = copy.deepcopy(self.covariance_obj)
+        cov_obj.set_params(params)
+        cov_fun = cov_obj.covariance_function
+        points_cov = covariance_mat(cov_fun, points, points)
+        points_l = np.linalg.cholesky(points_cov)
+        points_l_inv = np.linalg.inv(points_l)
+        points_cov_inv = points_l_inv.T.dot(points_l_inv)
+
+        b_mat = self._get_b(points_cov, hess_opt)
+        marginal_likelihood = self._class_get_full_ml(f_opt, b_mat, points_cov_inv, labels.reshape(labels.size, ))
+
+        anc_mat = np.linalg.inv(np.linalg.inv(hess_opt) + points_cov)
+        gradient = self._class_get_ml_full_grad(points, labels.reshape(labels.size, ), points_cov_inv,
+                                                f_opt, anc_mat, params)
+
+        return marginal_likelihood, gradient
+
+    def _class_alternative_find_hyper_parameters(self, points, labels, max_iter=10):
+        """
+        :param points: data points
+        :param labels: class labels at data points
+        :param max_iter: maximim number of iterations
+        :return: optimal hyper-parameters
+        """
+        cov_obj = copy.deepcopy(self.covariance_obj)
+        cov_fun = cov_obj.covariance_function
+        bnds = ((1e-2, None), (1e-2, None), (1e-5, None))
+        w0 = self.covariance_obj.get_params()
+
+        def func(w):
+            loss, _ = self._class_alternative_oracle(points, labels, f_opt, hess_opt, w)
+            return -loss
+
+        def grad(w):
+            _, gradient = self._class_alternative_oracle(points, labels, f_opt, hess_opt, w)
+            return -gradient
+
+        for i in range(max_iter):
+            points_cov = covariance_mat(cov_fun, points, points)
+            points_l = np.linalg.cholesky(points_cov)
+            points_l_inv = np.linalg.inv(points_l)
+            points_cov_inv = points_l_inv.T.dot(points_l_inv)
+            # det_k = 2 * np.sum(np.log(np.diag(points_l)))
+
+            f_opt, hess_opt = self._get_laplace_approximation(labels, points_cov_inv, points_l)
+            w_res = op.minimize(func, w0, args=(), method='L-BFGS-B', jac=grad, bounds=bnds,
+                                options={'ftol': 1e-5, 'disp': False, 'maxiter': 1})
+            w0 = w_res['x']
+            if not(i%10):
+                print("Iteration ", i, ": ", func(w0), np.linalg.norm(grad(w0)))
+                print("Hyper-parameters at iteration ", i, ": ", w0)
+            cov_obj.set_params(w0)
+        self.covariance_obj = copy.deepcopy(cov_obj)
