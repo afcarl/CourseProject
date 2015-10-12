@@ -50,9 +50,18 @@ class CovarianceFamily:
         pass
 
     @abstractmethod
-    def get_params(self):
+    def get_bounds(self):
         """
-        :return: The hyper-parameters vector of the CovarianceFamily object
+        :return: The bouns on the hyper-parameters
+        """
+        pass
+
+    @abstractmethod
+    def set_params(self, params):
+        """
+        A setter function for the hyper-parameters
+        :param params: a vector of hyper-parameters
+        :return: CovarianceFamily object
         """
         pass
 
@@ -87,6 +96,10 @@ class SquaredExponential(CovarianceFamily):
 
     def get_params(self):
         return np.array([self.sigma_f, self.l, self.sigma_l])
+
+    @staticmethod
+    def get_bounds():
+        return (1e-2, None), (1e-2, None), (1e-5, None)
 
     def set_params(self, params):
         if params.size > 3:
@@ -124,11 +137,18 @@ class SquaredExponential(CovarianceFamily):
 class GammaExponential(CovarianceFamily):
     """A class, representing the squared-exponential covariance functions family."""
 
-    def __init__(self, sigma_f, l, gamma, noise):
-        self.sigma_f, self.l, self.gamma, self.sigma_l = sigma_f, l, gamma, noise
+    def __init__(self, params):
+        self.sigma_f = params[0]
+        self.l = params[1]
+        self.gamma = params[2]
+        self.sigma_l = params[3]
 
     def get_params(self):
         return np.array([self.sigma_f, self.l, self.gamma, self.sigma_l])
+
+    @staticmethod
+    def get_bounds():
+        return (1e-2, None), (1e-2, None), (1e-2, 2), (1e-5, None)
 
     def set_params(self, params):
         self.sigma_f = params[0]
@@ -136,19 +156,40 @@ class GammaExponential(CovarianceFamily):
         self.gamma = params[2]
         self.sigma_l = params[3]
 
-    def covariance_function(self, x, y, w=np.NaN):
-        if np.all(np.isnan(w)):
+    def covariance_function(self, x, y, w=None):
+        if w is None:
             l = self.l
             sigma_f = self.sigma_f
-            gamma = self.gamma
+            g = self.gamma
             sigma_l = self.sigma_l
         else:
             sigma_f = w[0]
             l = w[1]
-            gamma = w[2]
+            g = w[2]
             sigma_l = w[3]
         r = np.linalg.norm(x - y, axis=0)
-        return np.exp(-(r / l)**gamma) * sigma_f**2 + gaussian_noise_term(sigma_l, x, y)
+        return np.exp(-np.power((r / l), g)) * np.square(sigma_f) + gaussian_noise_term(sigma_l, x, y)
+
+    def _dge_dl(self, x, y):
+        r = np.linalg.norm(x - y, axis=0)
+        return np.exp(-(r/self.l)**self.gamma) * self.sigma_f**2 * (self.gamma * (r/self.l)**self.gamma) / self.l
+
+    def _dge_dsigmaf(self, x, y):
+        r = np.linalg.norm(x - y, axis=0)
+        return 2 * self.sigma_f * np.exp(-(r /self.l)**self.gamma)
+
+    def _dge_dgamma(self, x, y):
+        r = np.linalg.norm(x - y, axis=0)
+        loc_var = r/self.l
+        loc_var_gamma = loc_var ** self.gamma
+        loc_var[loc_var == 0] = 1 # A dirty hack to avoid log(0)
+        res = -self.sigma_f**2 * loc_var_gamma * np.log(loc_var) * np.exp(-loc_var_gamma)
+        return res
+
+    def get_derivative_function_list(self, params):
+        ge = GammaExponential(params)
+        return [ge._dge_dsigmaf, ge._dge_dl, ge._dge_dgamma]
+
 
 
 def matern_cov(nu, l):
@@ -177,23 +218,23 @@ def rational_quadratic_cov(alpha, l):
         return (1 + (np.square(r) / (2 * alpha * np.square(l))))**(-alpha)
     return f
 
-if __name__ == '__main__':
-    sigma_f = 1.2
-    sigma_l = 0.1
-    l = 0.2
-    gamma = 0.8
-
-    w0 = np.array([sigma_f, l, sigma_l])
-    se = SquaredExponential(sigma_f, l, sigma_l)
-    x = np.array([[1., 2., 3.], [4., 5., 6.]])
-    y = np.array([0., 1., 0.])
-    # print (covariance_mat(ge.covariance_function, x, x))
-    def func(w):
-        loss, gradient = se.oracle(x, y, w)
-        return loss
-
-    def grad(w):
-        loss, gradient = se.oracle(x, y, w)
-        return gradient
-
-    print(check_grad(func, grad, w0))
+# if __name__ == '__main__':
+#     sigma_f = 1.2
+#     sigma_l = 0.1
+#     l = 0.2
+#     gamma = 0.8
+#
+#     w0 = np.array([sigma_f, l, sigma_l, gamma])
+#     ge = GammaExponential(w0)
+#     x = np.array([[1., 2., 3.], [4., 5., 6.]])
+#     y = np.array([0., 1., 0.])
+#     # print (covariance_mat(ge.covariance_function, x, x))
+#     def func(w):
+#         loss, gradient = se.oracle(x, y, w)
+#         return loss
+#
+#     def grad(w):
+#         loss, gradient = se.oracle(x, y, w)
+#         return gradient
+#
+#     print(check_grad(func, grad, w0))

@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from sklearn import svm, cross_validation
 
 from gaussian_process import GaussianProcess, gp_plot_reg_data, gp_plot_class_data
-from covariance_functions import CovarianceFamily, SquaredExponential
+from covariance_functions import SquaredExponential, GammaExponential
 
 data_params = np.array([2.0, 0.1, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
@@ -22,7 +22,7 @@ else:
     x_test = np.random.rand(dim, test_num)
 y_tr, y_test = gp.generate_data(x_tr, x_test, seed=seed)
 
-model_params = np.array([1.,  0.1,  0.05])
+model_params = np.array([1., 0.3, 0.4])
 model_covariance_obj = SquaredExponential(model_params)
 new_gp = GaussianProcess(model_covariance_obj, lambda x: 0, 'reg')
 new_gp.find_hyper_parameters(x_tr, y_tr)

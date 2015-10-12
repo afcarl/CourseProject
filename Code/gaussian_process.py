@@ -185,7 +185,7 @@ class GaussianProcess:
             loss, grad = self._reg_oracle(data_points, target_values, w)
             return -grad
 
-        bnds = ((1e-2, None), (1e-2, None), (1e-5, None))
+        bnds = self.covariance_obj.get_bounds()
         res = op.minimize(loc_fun, self.covariance_obj.get_params(), args=(), method='L-BFGS-B', jac=loc_grad,
                           bounds=bnds, options={'gtol': 1e-5, 'disp': False})
         optimal_params = res.x
@@ -327,7 +327,7 @@ class GaussianProcess:
         """
         cov_obj = copy.deepcopy(self.covariance_obj)
         cov_fun = cov_obj.covariance_function
-        bnds = ((1e-2, None), (1e-2, None), (1e-5, None))
+        bnds = self.covariance_obj.get_bounds()
         w0 = self.covariance_obj.get_params()
 
         def func(w):
