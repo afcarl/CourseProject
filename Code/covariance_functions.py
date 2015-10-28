@@ -2,6 +2,7 @@ import numpy as np
 from scipy.optimize import check_grad
 from scipy.special import gamma, kv
 from abc import ABCMeta, abstractmethod
+from scipy import special
 
 # General functions
 
@@ -87,7 +88,7 @@ class SquaredExponential(CovarianceFamily):
     """A class, representing the squared-exponential covariance functions family."""
 
     def __init__(self, params):
-        if params.size > 3:
+        if params.size != 3:
             raise ValueError("Wrong parameters for SquaredExponential")
 
         self.sigma_f = params[0]
@@ -102,7 +103,7 @@ class SquaredExponential(CovarianceFamily):
         return (1e-2, None), (1e-2, None), (1e-5, None)
 
     def set_params(self, params):
-        if params.size > 3:
+        if params.size != 3:
             raise ValueError("Wrong parameters for SquaredExponential")
 
         self.sigma_f = params[0]
@@ -191,50 +192,137 @@ class GammaExponential(CovarianceFamily):
         return [ge._dge_dsigmaf, ge._dge_dl, ge._dge_dgamma]
 
 
+class ScaledSquaredExponential(CovarianceFamily):
+    """A class, representing the squared-exponential covariance functions family."""
 
-def matern_cov(nu, l):
-    """Matern covariance function"""
-    def f(x, y):
-        r = np.linalg.norm(x - y)
-        if r == 0:
-            return 1.0
-        anc_var = np.sqrt(2.0 * np.pi) * r / l
-        return (2.0 ** (1.0 - nu) / gamma(nu)) * (anc_var ** nu) * kv(nu, anc_var)
-    return f
+    def __init__(self, params):
+        if params.size != 3:
+            raise ValueError("Wrong parameters for SquaredExponential")
+
+        self.sigma_f = params[0]
+        self.l = params[1]
+        self.sigma_l = params[2]
+
+    def get_params(self):
+        return np.array([self.sigma_f, self.l, self.sigma_l])
+
+    @staticmethod
+    def get_bounds():
+        return (1e-2, None), (1+1e-2, None), (1e-5, None)
+
+    def set_params(self, params):
+        if params.size > 3:
+            raise ValueError("Wrong parameters for SquaredExponential")
+
+        self.sigma_f = params[0]
+        self.l = params[1]
+        self.sigma_l = params[2]
+
+    def covariance_function(self, x, y, w=np.NaN):
+        if np.all(np.isnan(w)):
+            l = self.l
+            sigma_f = self.sigma_f
+            sigma_l = self.sigma_l
+        else:
+            sigma_f = w[0]
+            l = w[1]
+            sigma_l = w[2]
+        r = np.linalg.norm(x - y, axis=0)
+        return np.exp(-r**2 / (2*(np.log(l)**2))) * sigma_f**2 + gaussian_noise_term(sigma_l, x, y)
+
+    def _dse_dl(self, x, y):
+        r = np.linalg.norm(x - y, axis=0)
+        return (np.exp(-r**2 / (2*(np.log(self.l)**2))) * self.sigma_f**2) * (r**2 / (self.l * (np.log(self.l)**3)))
+
+    def _dse_dsigmaf(self, x, y):
+        r = np.linalg.norm(x - y, axis=0)
+        return 2 * self.sigma_f * np.exp(-r**2 / (2*(np.log(self.l)**2)))
+
+    def get_derivative_function_list(self, params):
+        sse = ScaledSquaredExponential(params)
+        return [sse._dse_dsigmaf, sse._dse_dl]
+
+# def matern_cov(sigma, nu, l):
+#     """Matern covariance function"""
+#     def f(x, y):
+#         r = np.linalg.norm(x - y)
+#         if r == 0:
+#             return 1.0
+#         # print(r)
+#         anc_var = np.sqrt(2.0 * nu) * r / l
+#         # print(anc_var)
+#         return sigma**2 *(2.0 ** (1.0 - nu) / gamma(nu)) * (anc_var ** nu) * kv(nu, anc_var)
+#     return f
 
 
-def gamma_exponential_cov(gamma, l):
-    """Gamma-exponential covariance function, 0 < gamma ≤ 2"""
-    def f(x, y):
-        r = np.linalg.norm(x - y)
-        return np.exp(-(r / l) ** gamma)
-    return f
+class Matern(CovarianceFamily):
+    def __init__(self, params):
+        if params.size != 4:
+            raise ValueError("Wrong parameters for Matern")
+        self.sigma_f = params[0]
+        self.l = params[1]
+        self.nu = params[2]
+        self.sigma_l = params[3]
 
+    def get_params(self):
+        return np.array([self.sigma_f, self.l, self.nu, self.sigma_l])
 
-def rational_quadratic_cov(alpha, l):
-    """Rational-quadratic covariance function"""
-    def f(x, y):
-        r = np.linalg.norm(x - y)
-        return (1 + (np.square(r) / (2 * alpha * np.square(l))))**(-alpha)
-    return f
+    def set_params(self, params):
+        if params.size != 4:
+            raise ValueError("Wrong parameters for Matern")
+        self.sigma_f = params[0]
+        self.l = params[1]
+        self.nu = params[2]
+        self.sigma_l = params[3]
+
+    def covariance_function(self, x, y, w=np.NaN):
+        if np.all(np.isnan(w)):
+            l = self.l
+            nu = self.nu
+            sigma_f = self.sigma_f
+            sigma_l = self.sigma_l
+        else:
+            sigma_f = w[0]
+            l = w[1]
+            nu = w[2]
+            sigma_l = w[3]
+        r = np.linalg.norm(x - y, axis=0)
+        anc_var = np.sqrt(2.0 * nu) * r / l
+        res = sigma_f**2 *(2.0 ** (1.0 - nu) / gamma(nu)) * (anc_var ** nu) * kv(nu, anc_var)
+        res[r == 0] = sigma_f**2
+        res += gaussian_noise_term(sigma_l, x, y)
+        return res
+
+    @staticmethod
+    def get_bounds():
+        return (1e-2, None), (1e-2, None), (1e-2, None), (1e-5, None)
+
+    def _dm_dl(self, x, y):
+        return 1e8 * (self.covariance_function(x, y, w=(self.get_params() + np.array([0, 1e-8, 0, 0]))) -
+                      self.covariance_function(x, y))
+
+    def _dm_dnu(self, x, y):
+        return 1e8 * (self.covariance_function(x, y, w=(self.get_params() + np.array([0, 0, 1e-8, 0]))) -
+                      self.covariance_function(x, y))
+
+    def _dm_dsigmaf(self, x, y):
+        r = np.linalg.norm(x - y, axis=0)
+        anc_var = np.sqrt(2.0 * self.nu) * r / self.l
+        res = 2 * self.sigma_f * (2.0 ** (1.0 - self.nu) / gamma(self.nu)) * (anc_var ** self.nu) * kv(self.nu,
+                                                                                                        anc_var)
+        res[r == 0] = 2 * self.sigma_f
+        return res
+
+    def get_derivative_function_list(self, params):
+        m = Matern(params)
+        return [m._dm_dsigmaf, m._dm_dl, m._dm_dnu]
 
 # if __name__ == '__main__':
-#     sigma_f = 1.2
-#     sigma_l = 0.1
+#     alpha = 3
 #     l = 0.2
-#     gamma = 0.8
-#
-#     w0 = np.array([sigma_f, l, sigma_l, gamma])
-#     ge = GammaExponential(w0)
-#     x = np.array([[1., 2., 3.], [4., 5., 6.]])
-#     y = np.array([0., 1., 0.])
-#     # print (covariance_mat(ge.covariance_function, x, x))
-#     def func(w):
-#         loss, gradient = se.oracle(x, y, w)
-#         return loss
-#
-#     def grad(w):
-#         loss, gradient = se.oracle(x, y, w)
-#         return gradient
-#
-#     print(check_grad(func, grad, w0))
+#     sigma = 2
+#     f = matern_cov(sigma, alpha, l)
+#     x = np.array([[1], [1]])
+#     y = np.array([[0], [0]])
+#     print(np.linalg.norm(x - y))
+#     print(f(x, y))

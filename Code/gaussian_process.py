@@ -4,6 +4,7 @@ import math
 import scipy.optimize as op
 import copy
 import scipy as sp
+import time
 
 from covariance_functions import CovarianceFamily, covariance_mat, sigmoid
 
@@ -36,6 +37,45 @@ def gp_plot_class_data(x, y, color1, color2):
     plt.plot(x[0, loc_y == 1], x[1, loc_y == 1], color1)
     plt.plot(x[0, loc_y == -1], x[1, loc_y == -1], color2)
 
+
+def plot_performance_hyper_parameter(w_list, w_opt, color, lbl, time_list=None):
+    """
+    :param w_list: an iteration-wise list of hyper-parameters
+    :param optimal_w: optimal value of hyper-parameters
+    :return:
+    """
+    plt.ylabel(r"$\log(||w_n - w^*||)$")
+    if time_list is None:
+        plt.xlabel("Iteration number")
+        plt.plot(range(len(w_list)), [np.log(np.linalg.norm(value - w_opt)) for value in w_list], color,
+                 label=lbl)
+    else:
+        plt.xlabel("Time (s)")
+        plt.plot(time_list, [np.log(np.linalg.norm(value - w_opt)) for value in w_list], color,
+                 label=lbl)
+
+
+def plot_performance_errors(w_list, gp, test_points, test_labels, train_points, train_labels, color, lbl,
+                            time_list=None):
+    """
+    Plots the iteration-wise error
+    :param w_list: an iteration-wise list of hyper-parameters
+    :param test_points: test data points
+    :param test_labels: labels at test data-points
+    :return:
+    """
+    plt.ylabel("Number of errors on test set")
+    error_list = []
+    for w in w_list:
+        gp.covariance_obj.set_params(w)
+        predicted_labels = gp.predict(test_points, train_points, train_labels)
+        error_list.append(np.sum(predicted_labels != test_labels) / test_labels.shape[0])
+    if time_list is None:
+        plt.plot(range(len(w_list)), error_list, color, label=lbl)
+        plt.xlabel("Iteration number")
+    else:
+        plt.plot(time_list, error_list, color, label=lbl)
+        plt.xlabel("Time (s)")
 
 class GaussianProcess:
 
@@ -185,10 +225,15 @@ class GaussianProcess:
             loss, grad = self._reg_oracle(data_points, target_values, w)
             return -grad
 
+        w0 = self.covariance_obj.get_params()
+        # print(loc_grad(w0))
+        # print((loc_fun(w0 + np.array([0, 0, 0, 1e-8])) - loc_fun(w0)) * 1e8)
+        # exit(0)
         bnds = self.covariance_obj.get_bounds()
         res = op.minimize(loc_fun, self.covariance_obj.get_params(), args=(), method='L-BFGS-B', jac=loc_grad,
                           bounds=bnds, options={'gtol': 1e-5, 'disp': False})
         optimal_params = res.x
+        print(res)
         self.covariance_obj.set_params(optimal_params)
 
     def _reg_predict(self, test_points, training_points, training_targets):
@@ -201,17 +246,17 @@ class GaussianProcess:
         k_x = covariance_mat(self.covariance_fun, training_points, training_points)
         k_x_inv = np.linalg.inv(k_x)
 
-        k_x_test = covariance_mat(self.covariance_fun, training_points, test_points)
         k_test_x = covariance_mat(self.covariance_fun, test_points, training_points)
         k_test = covariance_mat(self.covariance_fun, test_points, test_points)
 
         new_mean = np.dot(np.dot(k_test_x, k_x_inv), training_targets)
-        new_cov = k_test - np.dot(np.dot(k_test_x, k_x_inv), k_x_test)
+        new_cov = k_test - np.dot(np.dot(k_test_x, k_x_inv), k_test_x.T)
 
         test_targets, up, low = self.sample_for_matrices(new_mean, new_cov)
-        gp_plot_reg_data(test_points, up, 'r')
-        gp_plot_reg_data(test_points, low, 'g')
-        gp_plot_reg_data(test_points, test_targets, 'b')
+        if test_points.shape[0] == 1:
+            gp_plot_reg_data(test_points, up, 'r')
+            gp_plot_reg_data(test_points, low, 'g')
+            gp_plot_reg_data(test_points, test_targets, 'b')
         return test_targets
 
     @staticmethod
@@ -237,10 +282,12 @@ class GaussianProcess:
         return np.eye(b.shape[0]) + b
 
     @staticmethod
-    def _get_laplace_approximation(labels, cov_inv, cov_l):
+    def _get_laplace_approximation(labels, cov_inv, cov_l, max_iter=1000):
         """
         :param labels: label vector
         :param cov_inv: inverse covariance matrix at data points
+        :param cov_l: cholesky decomposition matrix of the covariance matrix
+        :param max_iter: maximum number of iterations for the optimization
         :return: tuple (posterior mode f_opt, unnormalized posterior hessian at f_opt)
         """
         def loss(f):
@@ -262,7 +309,7 @@ class GaussianProcess:
         f_0 = np.zeros(labels.shape)
         f_0 = f_0.reshape((f_0.size,))
         f_res = op.minimize(loss, f_0, args=(), method='L-BFGS-B', jac=grad,
-                            options={'gtol': 1e-5, 'disp': False, 'maxiter': 1000})
+                            options={'gtol': 1e-5, 'disp': False, 'maxiter': max_iter})
         f_opt = f_res['x']
         return f_opt, hessian(f_opt) - cov_inv
 
@@ -318,17 +365,22 @@ class GaussianProcess:
 
         return marginal_likelihood, gradient
 
-    def _class_find_hyper_parameters(self, points, labels, max_iter=10):
+    def _class_find_hyper_parameters(self, points, labels, max_iter=10, alternate=False):
         """
+        optimizes the self.covariance_obj hyper-parameters
         :param points: data points
         :param labels: class labels at data points
         :param max_iter: maximim number of iterations
-        :return: optimal hyper-parameters
+        :return: a list of hyper-parameters values at different iterations and a list of times iteration-wise
         """
+        if alternate:
+            return self._class_alternative_find_hyper_parameters(points, labels, max_iter)
         cov_obj = copy.deepcopy(self.covariance_obj)
         cov_fun = cov_obj.covariance_function
         bnds = self.covariance_obj.get_bounds()
         w0 = self.covariance_obj.get_params()
+        w_list = []
+        time_list = []
 
         def func(w):
             loss, _ = self._class_oracle(points, f_opt, hess_opt, w)
@@ -338,21 +390,26 @@ class GaussianProcess:
             _, gradient = self._class_oracle(points, f_opt, hess_opt, w)
             return -gradient
 
+        start = time.time()
         for i in range(max_iter):
             points_cov = covariance_mat(cov_fun, points, points)
             points_l = np.linalg.cholesky(points_cov)
             points_l_inv = np.linalg.inv(points_l)
             points_cov_inv = points_l_inv.T.dot(points_l_inv)
 
-            f_opt, hess_opt = self._get_laplace_approximation(labels, points_cov_inv, points_l)
+            f_opt, hess_opt = self._get_laplace_approximation(labels, points_cov_inv, points_l, max_iter=20)
             w_res = op.minimize(func, w0, args=(), method='L-BFGS-B', jac=grad, bounds=bnds,
-                                options={'ftol': 1e-5, 'disp': False, 'maxiter': 1})
+                                options={'ftol': 1e-5, 'disp': False, 'maxiter': 20})
             w0 = w_res['x']
-            if not(i % 1):
+            if not(i % 10):
                 print("Iteration ", i)
                 print("Hyper-parameters at iteration ", i, ": ", w0)
+
+            w_list.append(w0)
+            time_list.append(time.time() - start)
             cov_obj.set_params(w0)
         self.covariance_obj = copy.deepcopy(cov_obj)
+        return w_list, time_list
 
     def _class_predict(self, test_points, training_points, training_labels):
         """
@@ -458,15 +515,18 @@ class GaussianProcess:
 
     def _class_alternative_find_hyper_parameters(self, points, labels, max_iter=10):
         """
+        optimizes self.covariance_obj hyper-parameters
         :param points: data points
         :param labels: class labels at data points
         :param max_iter: maximim number of iterations
-        :return: optimal hyper-parameters
+        :return: a list of hyper-parameters values at different iterations and a list of times iteration-wise
         """
         cov_obj = copy.deepcopy(self.covariance_obj)
         cov_fun = cov_obj.covariance_function
         bnds = ((1e-2, None), (1e-2, None), (1e-5, None))
         w0 = self.covariance_obj.get_params()
+        w_list = []
+        time_list = []
 
         def func(w):
             loss, _ = self._class_alternative_oracle(points, labels, f_opt, hess_opt, w)
@@ -476,6 +536,8 @@ class GaussianProcess:
             _, gradient = self._class_alternative_oracle(points, labels, f_opt, hess_opt, w)
             return -gradient
 
+        start = time.time()
+
         for i in range(max_iter):
             points_cov = covariance_mat(cov_fun, points, points)
             points_l = np.linalg.cholesky(points_cov)
@@ -483,15 +545,19 @@ class GaussianProcess:
             points_cov_inv = points_l_inv.T.dot(points_l_inv)
             # det_k = 2 * np.sum(np.log(np.diag(points_l)))
 
-            f_opt, hess_opt = self._get_laplace_approximation(labels, points_cov_inv, points_l)
+            f_opt, hess_opt = self._get_laplace_approximation(labels, points_cov_inv, points_l, max_iter=1000)
+            bnds = self.covariance_obj.get_bounds()
             w_res = op.minimize(func, w0, args=(), method='L-BFGS-B', jac=grad, bounds=bnds,
-                                options={'ftol': 1e-5, 'disp': False, 'maxiter': 1})
+                                options={'ftol': 1e-5, 'disp': False, 'maxiter': 20})
             w0 = w_res['x']
             if not(i % 10):
                 print("Iteration ", i, ": ", func(w0), np.linalg.norm(grad(w0)))
                 print("Hyper-parameters at iteration ", i, ": ", w0)
+            w_list.append(w0)
+            time_list.append(time.time() - start)
             cov_obj.set_params(w0)
         self.covariance_obj = copy.deepcopy(cov_obj)
+        return w_list, time_list
 
     def find_hyper_parameters(self, *args, **kwargs):
         if self.type == "class":
