@@ -4,12 +4,12 @@ import time
 
 from gaussian_process import GaussianProcess, gp_plot_class_data, plot_performance_hyper_parameter, \
     plot_performance_errors
-from covariance_functions import CovarianceFamily, SquaredExponential, GammaExponential, ScaledSquaredExponential
+from covariance_functions import CovarianceFamily, SquaredExponential, GammaExponential, SuperScaledSquaredExponential
 
 data_params = np.array([1.0, 0.25, 0.05])
 data_covariance_obj = SquaredExponential(data_params)
 gp = GaussianProcess(data_covariance_obj, lambda x: 0, 'class')
-num = 200
+num = 50
 test_density = 50
 dim = 2
 seed = 21
@@ -31,8 +31,12 @@ y_tr, y_test = gp.generate_data(x_tr, x_test, seed=seed)
 
 print("Data generated")
 
-model_params = np.array([2.2, np.exp(1.73), 0.2])
-model_covariance_obj = ScaledSquaredExponential(model_params)
+# model_params = np.array([np.exp(2.2), np.exp(1.73), np.exp(0.2)])
+# model_covariance_obj = SuperScaledSquaredExponential(model_params)
+
+model_params = np.array([2.2, 1.73, 0.2])
+model_covariance_obj = SquaredExponential(model_params)
+
 new_gp = GaussianProcess(model_covariance_obj, lambda x: 0, 'class')
 new_gp.find_hyper_parameters(x_tr, y_tr, max_iter=50, alternate=False)
 

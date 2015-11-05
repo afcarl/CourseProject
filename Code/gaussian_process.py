@@ -219,18 +219,14 @@ class GaussianProcess:
 
         def loc_fun(w):
             loss, grad = self._reg_oracle(data_points, target_values, w)
-            return -loss
+            return -loss, -grad
 
-        def loc_grad(w):
-            loss, grad = self._reg_oracle(data_points, target_values, w)
-            return -grad
-
-        w0 = self.covariance_obj.get_params()
+        # w0 = self.covariance_obj.get_params()
         # print(loc_grad(w0))
         # print((loc_fun(w0 + np.array([0, 0, 0, 1e-8])) - loc_fun(w0)) * 1e8)
         # exit(0)
         bnds = self.covariance_obj.get_bounds()
-        res = op.minimize(loc_fun, self.covariance_obj.get_params(), args=(), method='L-BFGS-B', jac=loc_grad,
+        res = op.minimize(loc_fun, self.covariance_obj.get_params(), args=(), method='L-BFGS-B', jac=True,
                           bounds=bnds, options={'gtol': 1e-5, 'disp': False})
         optimal_params = res.x
         print(res)
@@ -328,6 +324,9 @@ class GaussianProcess:
 
     def _class_get_ml_grad(self, points, cov_inv, f_opt, anc_mat, params):
         """
+        !! If the covariance function does not provide a derivative w.r.t. to the noise variance (the last parameter of
+        the covariance function), it is assumed to be equal to 2 * noise variance * I. Else it is assumed to be
+        derivative_matrix_list[-1] * I.
         :param points: data points array
         :param cov_inv: inverse covariance matrix
         :param params: hyper-parameters vector
@@ -336,7 +335,7 @@ class GaussianProcess:
         :return: marginal likelihood gradient with respect to hyper-parameters
         """
         derivative_matrix_list = self.covariance_obj.get_derivative_function_list(params)
-        noise_derivative = 2 * params[-1] * np.eye(points.shape[1])
+        noise_derivative = self.covariance_obj.get_noise_derivative(points.shape[1])
         return np.array([self._class_get_ml_partial_derivative(f_opt, cov_inv, anc_mat,
                                                                covariance_mat(func, points, points))
                          for func in derivative_matrix_list] +
@@ -383,12 +382,12 @@ class GaussianProcess:
         time_list = []
 
         def func(w):
-            loss, _ = self._class_oracle(points, f_opt, hess_opt, w)
-            return -loss
+            loss, grad = self._class_oracle(points, f_opt, hess_opt, w)
+            return -loss, -grad
 
-        def grad(w):
-            _, gradient = self._class_oracle(points, f_opt, hess_opt, w)
-            return -gradient
+        # def grad(w):
+        #     _, gradient = self._class_oracle(points, f_opt, hess_opt, w)
+        #     return -gradient
 
         start = time.time()
         for i in range(max_iter):
@@ -398,7 +397,7 @@ class GaussianProcess:
             points_cov_inv = points_l_inv.T.dot(points_l_inv)
 
             f_opt, hess_opt = self._get_laplace_approximation(labels, points_cov_inv, points_l, max_iter=20)
-            w_res = op.minimize(func, w0, args=(), method='L-BFGS-B', jac=grad, bounds=bnds,
+            w_res = op.minimize(func, w0, args=(), method='L-BFGS-B', jac=True, bounds=bnds,
                                 options={'ftol': 1e-5, 'disp': False, 'maxiter': 20})
             w0 = w_res['x']
             if not(i % 10):
