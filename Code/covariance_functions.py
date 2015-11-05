@@ -341,7 +341,7 @@ class ExpScaledSquaredExponential(CovarianceFamily):
 
     @staticmethod
     def get_bounds():
-        return (None, None), (None, None), (None, None)
+        return (-2, 10), (-2, 10), (-5, 10)
 
     def set_params(self, params):
         if params.size > 3:
@@ -361,7 +361,7 @@ class ExpScaledSquaredExponential(CovarianceFamily):
             l = w[1]
             sigma_l = w[2]
         r = np.linalg.norm(x - y, axis=0)
-        return np.exp(-r**2 / (2*(np.exp(2 * l)))) * np.exp(sigma_f * 2) + gaussian_noise_term(np.exp(sigma_l*2), x, y)
+        return np.exp(-r**2 / (2*(np.exp(2 * l)))) * np.exp(sigma_f * 2) + gaussian_noise_term(np.exp(sigma_l), x, y)
 
     def _dcov_dl(self, x, y):
         r = np.linalg.norm(x - y, axis=0)

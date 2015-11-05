@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 import math
 import scipy.optimize as op
 import copy
@@ -9,73 +8,34 @@ import time
 from covariance_functions import CovarianceFamily, covariance_mat, sigmoid
 
 
-def gp_plot_reg_data(x, y, color):
-    """
-    :param x: points array
-    :param y: target values array
-    :param color: color
-    :return: fugure
-    """
-    if (not isinstance(x, np.ndarray) or
-            not isinstance(y, np.ndarray)):
-        raise TypeError("The first two arguments must be numpy arrays")
+def minimize_wrapper(func, x0, mydisp=False, **kwargs):
 
-    loc_x = x.reshape((x.size, ))
-    loc_y = y.reshape((y.size, ))
-    plt.plot(loc_x, loc_y, color)
+    start = time.time()
+    aux = {'start': time.time(), 'total': 0., 'it': 0}
+    def callback(w):
+        # print(start)
+        # print(total_time)
+        # total_time
+        aux['total'] += time.time() - aux['start']
+        if mydisp:
+            print("Hyper-parameters at iteration", aux['it'], ":", w)
+        fun, _ = func(w)
+        fun_list.append(fun)
+        # total_time += time.time() - start
+        time_list.append(aux['total'])
+        w_list.append(w)
+        aux['it'] += 1
+        aux['start'] = time.time()
+    print(start)
+    w_list = []
+    time_list = []
+    fun_list = []
+    callback(x0)
 
+    out = op.minimize(func, x0, jac=True, callback=callback, **kwargs)
 
-def gp_plot_class_data(x, y, color1, color2):
-    """
-    :param x: points array
-    :param y: target values array
-    :param color1: color for the first class
-    :param color2: color for the second class
-    :return: figure
-    """
-    loc_y = y.reshape((y.shape[0],))
-    plt.plot(x[0, loc_y == 1], x[1, loc_y == 1], color1)
-    plt.plot(x[0, loc_y == -1], x[1, loc_y == -1], color2)
+    return out, w_list, time_list, fun_list
 
-
-def plot_performance_hyper_parameter(w_list, w_opt, color, lbl, time_list=None):
-    """
-    :param w_list: an iteration-wise list of hyper-parameters
-    :param optimal_w: optimal value of hyper-parameters
-    :return:
-    """
-    plt.ylabel(r"$\log(||w_n - w^*||)$")
-    if time_list is None:
-        plt.xlabel("Iteration number")
-        plt.plot(range(len(w_list)), [np.log(np.linalg.norm(value - w_opt)) for value in w_list], color,
-                 label=lbl)
-    else:
-        plt.xlabel("Time (s)")
-        plt.plot(time_list, [np.log(np.linalg.norm(value - w_opt)) for value in w_list], color,
-                 label=lbl)
-
-
-def plot_performance_errors(w_list, gp, test_points, test_labels, train_points, train_labels, color, lbl,
-                            time_list=None):
-    """
-    Plots the iteration-wise error
-    :param w_list: an iteration-wise list of hyper-parameters
-    :param test_points: test data points
-    :param test_labels: labels at test data-points
-    :return:
-    """
-    plt.ylabel("Number of errors on test set")
-    error_list = []
-    for w in w_list:
-        gp.covariance_obj.set_params(w)
-        predicted_labels = gp.predict(test_points, train_points, train_labels)
-        error_list.append(np.sum(predicted_labels != test_labels) / test_labels.shape[0])
-    if time_list is None:
-        plt.plot(range(len(w_list)), error_list, color, label=lbl)
-        plt.xlabel("Iteration number")
-    else:
-        plt.plot(time_list, error_list, color, label=lbl)
-        plt.xlabel("Time (s)")
 
 class GaussianProcess:
 
@@ -182,8 +142,10 @@ class GaussianProcess:
         :param points: data points array
         :return: marginal likelihood gradient with respect to hyperparameters
         """
+
         derivative_matrix_list = self.covariance_obj.get_derivative_function_list(params)
-        noise_derivative = 2 * params[-1] * np.eye(points.shape[1])
+        # noise_derivative = 2 * params[-1] * np.eye(points.shape[1])
+        noise_derivative = self.covariance_obj.get_noise_derivative(points.shape[1])
         return np.array([self._reg_get_ml_partial_derivative(targets, cov_inv, covariance_mat(func, points, points))
                          for func in derivative_matrix_list] +
                         [self._reg_get_ml_partial_derivative(targets, cov_inv, noise_derivative)])
@@ -206,7 +168,7 @@ class GaussianProcess:
         gradient = gradient.reshape(gradient.size, )
         return marginal_likelihood, gradient
 
-    def _reg_find_hyper_parameters(self, data_points, target_values):
+    def _reg_find_hyper_parameters(self, data_points, target_values, max_iter=None):
         """
         Optimizes covariance hyper-parameters
         :param data_points: an array of data points
@@ -222,15 +184,24 @@ class GaussianProcess:
             return -loss, -grad
 
         # w0 = self.covariance_obj.get_params()
-        # print(loc_grad(w0))
-        # print((loc_fun(w0 + np.array([0, 0, 0, 1e-8])) - loc_fun(w0)) * 1e8)
+        # f1, g1 = loc_fun(w0 + np.array([0, 0, 1e-8]))
+        # f2, g2 = loc_fun(w0)
+        # print(g1)
+        # print((f1 - f2) * 1e8)
         # exit(0)
         bnds = self.covariance_obj.get_bounds()
-        res = op.minimize(loc_fun, self.covariance_obj.get_params(), args=(), method='L-BFGS-B', jac=True,
-                          bounds=bnds, options={'gtol': 1e-5, 'disp': False})
+        if max_iter is None:
+            max_iter = np.inf
+        # res = op.minimize(loc_fun, self.covariance_obj.get_params(), args=(), method='L-BFGS-B', jac=True,
+        #                   bounds=bnds, options={'gtol': 1e-5, 'disp': False})
+        res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, self.covariance_obj.get_params(), method='L-BFGS-B',
+                                                  mydisp=True, bounds=bnds, options={'gtol': 1e-8, 'ftol': 0,
+                                                                                     'maxiter': max_iter})
         optimal_params = res.x
-        print(res)
+        # print(res)
         self.covariance_obj.set_params(optimal_params)
+        # print(fun_lst)
+        return w_list, time_list, fun_lst
 
     def _reg_predict(self, test_points, training_points, training_targets):
         """
@@ -249,10 +220,10 @@ class GaussianProcess:
         new_cov = k_test - np.dot(np.dot(k_test_x, k_x_inv), k_test_x.T)
 
         test_targets, up, low = self.sample_for_matrices(new_mean, new_cov)
-        if test_points.shape[0] == 1:
-            gp_plot_reg_data(test_points, up, 'r')
-            gp_plot_reg_data(test_points, low, 'g')
-            gp_plot_reg_data(test_points, test_targets, 'b')
+        # if test_points.shape[0] == 1:
+        #     gp_plot_reg_data(test_points, up, 'r')
+        #     gp_plot_reg_data(test_points, low, 'g')
+        #     gp_plot_reg_data(test_points, test_targets, 'b')
         return test_targets
 
     @staticmethod
@@ -336,6 +307,7 @@ class GaussianProcess:
         """
         derivative_matrix_list = self.covariance_obj.get_derivative_function_list(params)
         noise_derivative = self.covariance_obj.get_noise_derivative(points.shape[1])
+        # print(noise_derivative.shape)
         return np.array([self._class_get_ml_partial_derivative(f_opt, cov_inv, anc_mat,
                                                                covariance_mat(func, points, points))
                          for func in derivative_matrix_list] +
@@ -397,6 +369,14 @@ class GaussianProcess:
             points_cov_inv = points_l_inv.T.dot(points_l_inv)
 
             f_opt, hess_opt = self._get_laplace_approximation(labels, points_cov_inv, points_l, max_iter=20)
+
+            # f1, g1 = func(w0)
+            # f2, g2 = func(w0 + np.array([0, 0, 1e-8]).reshape(w0.shape))
+            # print((f2 - f1) * 1e8)
+            # print(g1)
+            # print(g2)
+            # exit(0)
+
             w_res = op.minimize(func, w0, args=(), method='L-BFGS-B', jac=True, bounds=bnds,
                                 options={'ftol': 1e-5, 'disp': False, 'maxiter': 20})
             w0 = w_res['x']
@@ -544,10 +524,10 @@ class GaussianProcess:
             points_cov_inv = points_l_inv.T.dot(points_l_inv)
             # det_k = 2 * np.sum(np.log(np.diag(points_l)))
 
-            f_opt, hess_opt = self._get_laplace_approximation(labels, points_cov_inv, points_l, max_iter=1000)
+            f_opt, hess_opt = self._get_laplace_approximation(labels, points_cov_inv, points_l, max_iter=np.inf)
             bnds = self.covariance_obj.get_bounds()
             w_res = op.minimize(func, w0, args=(), method='L-BFGS-B', jac=grad, bounds=bnds,
-                                options={'ftol': 1e-5, 'disp': False, 'maxiter': 20})
+                                options={'ftol': 1e-5, 'disp': False, 'maxiter': 50})
             w0 = w_res['x']
             if not(i % 10):
                 print("Iteration ", i, ": ", func(w0), np.linalg.norm(grad(w0)))
