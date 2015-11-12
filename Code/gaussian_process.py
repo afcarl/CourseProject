@@ -4,6 +4,7 @@ import scipy.optimize as op
 import copy
 import scipy as sp
 import time
+import matplotlib.pyplot as plt
 
 from covariance_functions import CovarianceFamily, covariance_mat, sigmoid
 
@@ -192,15 +193,11 @@ class GaussianProcess:
         bnds = self.covariance_obj.get_bounds()
         if max_iter is None:
             max_iter = np.inf
-        # res = op.minimize(loc_fun, self.covariance_obj.get_params(), args=(), method='L-BFGS-B', jac=True,
-        #                   bounds=bnds, options={'gtol': 1e-5, 'disp': False})
         res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, self.covariance_obj.get_params(), method='L-BFGS-B',
                                                   mydisp=True, bounds=bnds, options={'gtol': 1e-8, 'ftol': 0,
                                                                                      'maxiter': max_iter})
         optimal_params = res.x
-        # print(res)
         self.covariance_obj.set_params(optimal_params)
-        # print(fun_lst)
         return w_list, time_list, fun_lst
 
     def _reg_predict(self, test_points, training_points, training_targets):
@@ -224,7 +221,7 @@ class GaussianProcess:
         #     gp_plot_reg_data(test_points, up, 'r')
         #     gp_plot_reg_data(test_points, low, 'g')
         #     gp_plot_reg_data(test_points, test_targets, 'b')
-        return test_targets
+        return test_targets, low, up
 
     @staticmethod
     def _class_get_ml(f_opt, b, cov_inv):
@@ -445,7 +442,9 @@ class GaussianProcess:
         :return: marginal likelihood gradient with respect to hyper-parameters
         """
         derivative_matrix_list = self.covariance_obj.get_derivative_function_list(params)
-        noise_derivative = 2 * params[-1] * np.eye(points.shape[1])
+        # noise_derivative = 2 * params[-1] * np.eye(points.shape[1])
+        noise_derivative = self.covariance_obj.get_noise_derivative(points.shape[1])
+
         return np.array([self._class_get_implicit_ml_partial_derivative(f_opt, cov_inv, anc_mat,
                                                                         covariance_mat(func, points, points), labels) +
                          self._class_get_ml_partial_derivative(f_opt, cov_inv, anc_mat,
@@ -502,8 +501,8 @@ class GaussianProcess:
         """
         cov_obj = copy.deepcopy(self.covariance_obj)
         cov_fun = cov_obj.covariance_function
-        bnds = ((1e-2, None), (1e-2, None), (1e-5, None))
         w0 = self.covariance_obj.get_params()
+        bnds = self.covariance_obj.get_bounds()
         w_list = []
         time_list = []
 
@@ -525,7 +524,6 @@ class GaussianProcess:
             # det_k = 2 * np.sum(np.log(np.diag(points_l)))
 
             f_opt, hess_opt = self._get_laplace_approximation(labels, points_cov_inv, points_l, max_iter=np.inf)
-            bnds = self.covariance_obj.get_bounds()
             w_res = op.minimize(func, w0, args=(), method='L-BFGS-B', jac=grad, bounds=bnds,
                                 options={'ftol': 1e-5, 'disp': False, 'maxiter': 50})
             w0 = w_res['x']
@@ -553,3 +551,182 @@ class GaussianProcess:
             return self._reg_predict(*args, **kwargs)
         else:
             raise ValueError("GP type should be either 'class' or 'reg'")
+
+    # def reg_plot_marginal_likelihood(self, points, targets):
+    #     l_list = np.linspace(0.01, 10, 1000)
+    #     l_list = np.log(l_list)
+    #     fun_lst = []
+    #     params = self.covariance_obj.get_params()
+    #     it = 0
+    #     for l in l_list:
+    #         params[1] = l
+    #         if it % 10:
+    #             print(it)
+    #         self.covariance_obj.set_params(params)
+    #         cov_fun = self.covariance_obj.covariance_function
+    #         points_cov = covariance_mat(cov_fun, points, points)
+    #         points_l = np.linalg.cholesky(points_cov)
+    #         points_l_inv = np.linalg.inv(points_l)
+    #         points_cov_inv = points_l_inv.T.dot(points_l_inv)
+    #         fun_lst.append(self._reg_get_ml(targets, points_cov_inv, points_l).reshape(1))
+    #         it += 1
+    #     plt.plot(l_list, fun_lst)
+    #     plt.show()
+
+    def reg_find_inducing_inputs(self, data_points, target_values, num_inputs, max_iter=None):
+        """
+        Find inducing inputs for gp-regression using variational learning approach
+        :param data_points: data points
+        :param target_values: target values at data points
+        :param num_inputs: number of inducing inputs to be found
+        :param max_iter: maximum number of iterations
+        :return:
+        """
+        if not(isinstance(data_points, np.ndarray) and
+               isinstance(target_values, np.ndarray)):
+            raise TypeError("The operands must be of type numpy array")
+
+        param_len = self.covariance_obj.get_params().size
+        def loc_fun(w):
+            # print("Params:", w[:param_len])
+            ind_points = (w[param_len:])[None, :] # has to be rewritten for multidimensional case
+            loss, grad = self._reg_inducing_points_oracle(data_points, target_values, w[:param_len], ind_points)
+            return -loss, -grad
+
+        bnds = tuple(list(self.covariance_obj.get_bounds()) + [(1e-2, 1)] * num_inputs)
+        if max_iter is None:
+            max_iter = np.inf
+        inputs = data_points[:, :num_inputs].reshape(num_inputs,) + np.random.normal(0, 0.1, (num_inputs,))
+        np.random.seed(15)
+        w0 = np.concatenate((self.covariance_obj.get_params(), inputs))
+        # f2, g2 = loc_fun(w0)
+        # print("Gradient:", g2)
+        # for i in range(w0.size):
+        #     diff = np.zeros(w0.shape)
+        #     diff[i] = 1e-8
+        #     f1, g1 = loc_fun(w0 + diff)
+        #     print("Difference:", (f1 - f2) * 1e8)
+        # exit(0)
+        res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, w0, method='L-BFGS-B',
+                                                  mydisp=False, bounds=bnds, options={'gtol': 1e-8, 'ftol': 0,
+                                                                                     'maxiter': max_iter})
+        optimal_params = res.x[:-num_inputs]
+        # print(optimal_params)
+        inducing_point = res.x[-num_inputs:]
+        inducing_point = inducing_point[None, :]
+        self.covariance_obj.set_params(optimal_params)
+
+        cov_fun = self.covariance_obj.covariance_function
+        sigma = optimal_params[-1]
+        K_mm = covariance_mat(cov_fun, inducing_point, inducing_point)
+        K_mn = covariance_mat(cov_fun, inducing_point, data_points)
+        K_nm = K_mn.T
+        Sigma = np.linalg.inv(K_mm + K_mn.dot(K_nm)/sigma**2)
+        mu = sigma**(-2) * K_mm.dot(Sigma).dot(K_mn).dot(target_values)
+        A = K_mm.dot(Sigma).dot(K_mm)
+        # print(mu)
+        return inducing_point, mu, A, w_list, time_list, fun_lst
+
+    def _reg_inducing_points_oracle(self, points, targets, params, ind_points):
+        """
+        :param points: data points array
+        :param targets: target values vector
+        :param params: hyper-parameters vector
+        :param ind_points: inducing points
+        """
+        sigma = params[-1]
+        cov_obj = copy.deepcopy(self.covariance_obj)
+        cov_obj.set_params(params)
+        cov_fun = cov_obj.covariance_function
+        K_mm = covariance_mat(cov_fun, ind_points, ind_points)
+        K_mm_inv = np.linalg.inv(K_mm) # use cholesky?
+        K_nm = covariance_mat(cov_fun, points, ind_points)
+        K_mn = K_nm.T
+        Q_nn = (K_nm.dot(K_mm_inv)).dot(K_mn)
+        B = Q_nn + np.eye(Q_nn.shape[0]) * sigma**2
+        # print(params)
+        B_l = np.linalg.cholesky(B)
+        B_l_inv = np.linalg.inv(B_l)
+        B_inv = B_l_inv.T.dot(B_l_inv)
+        zero = np.array([[0]])
+        K_nn_diag = cov_fun(zero[:, :, None], zero[:, None, :])
+        F_v = - np.sum(np.log(np.diag(B_l))) - targets.T.dot(B_inv).dot(targets)/2 - \
+              np.sum(K_nn_diag - np.diag(Q_nn)) / (2 * sigma**2)
+
+        # Gradient
+        gradient = []
+        derivative_matrix_list = cov_obj.get_derivative_function_list(params)
+        for func in derivative_matrix_list:
+            dK_nm = covariance_mat(func, points, ind_points)
+            dK_mn = dK_nm.T
+            dK_mm = covariance_mat(func, ind_points, ind_points)
+            dK_mm_inv = - K_mm_inv.dot(dK_mm.dot(K_mm_inv))
+            dB_dtheta = (dK_nm.dot(K_mm_inv) + K_nm.dot(dK_mm_inv)).dot(K_mn) + K_nm.dot(K_mm_inv.dot(dK_mn))
+            dK_nn = func(zero[:, :, None], zero[:, None, :])
+            gradient.append(self._reg_get_lower_bound_partial_derivative(targets, dB_dtheta, dB_dtheta, B_inv, sigma,
+                                                                         dK_nn))
+
+        # sigma derivative
+        dK_mm = cov_obj.get_noise_derivative(K_mm.shape[0])
+        dK_mm_inv = - K_mm_inv.dot(dK_mm.dot(K_mm_inv))
+        dQ_dtheta = K_nm.dot(dK_mm_inv).dot(K_mn)
+        dB_dtheta = dQ_dtheta + 2 * sigma * np.eye(Q_nn.shape[0])
+        # dK_nn = (zero[:, :, None], zero[:, None, :])
+        dK_nn = 2 * sigma
+        gradient.append(self._reg_get_lower_bound_partial_derivative(targets, dB_dtheta, dQ_dtheta, B_inv, sigma,
+                                                                     dK_nn))
+        gradient[-1] += np.sum(K_nn_diag - np.diag(Q_nn)) / sigma**3
+
+        # inducing points derivatives
+        K_mn_derivatives = covariance_mat(cov_obj.covariance_derivative, ind_points, points)
+        K_mm_derivatives = covariance_mat(cov_obj.covariance_derivative, ind_points, ind_points)
+        for i in range(ind_points.shape[1]):
+            dK_mn = np.zeros(K_mn.shape)
+            dK_mn[i, :] = K_mn_derivatives[i, :]
+            dK_nm = dK_mn.T
+            dK_mm = np.zeros(K_mm.shape)
+            dK_mm[i, :] = K_mm_derivatives[i, :]
+            dK_mm[:, i] = K_mm_derivatives[i, :].T
+            dK_mm_inv = - K_mm_inv.dot(dK_mm.dot(K_mm_inv))
+            dB_dtheta = (dK_nm.dot(K_mm_inv) + K_nm.dot(dK_mm_inv)).dot(K_mn) + K_nm.dot(K_mm_inv.dot(dK_mn))
+            dK_nn = 0
+            gradient.append(self._reg_get_lower_bound_partial_derivative(targets, dB_dtheta, dB_dtheta, B_inv, sigma,
+                                                                         dK_nn))
+        return F_v[0, 0], np.array(gradient)
+
+    def _reg_get_lower_bound_partial_derivative(self, y, dB_dtheta_mat, dQ_dtheta_mat, B_inv, sigma, dK_nn_dtheta):
+        """
+        The derivative of the variational lower bound for evidence wrt to theta. Note that if theta is noise variance,
+        the result is incorrect.
+        :param dB_dtheta_mat: B derivative wrt theta
+        :param dQ_dtheta_mat: Q_nn derivative wrt theta
+        :param B_inv: inverse B matrix
+        :param sigma: noise variance
+        :param dK_nn_dtheta: K_nn diagonal elements derivative wrt theta
+        :param y: target values at data points
+        :return: partial derivative of the lower bound F_v wrt theta
+        """
+        return (-np.trace(B_inv.dot(dB_dtheta_mat)) / 2 + y.T.dot(B_inv.dot(dB_dtheta_mat.dot(B_inv.dot(y)))) / 2 -
+                np.sum(dK_nn_dtheta - np.diag(dQ_dtheta_mat)) / (2 * sigma**2))[0, 0]
+
+    def reg_inducing_points_predict(self, ind_points, expectation, covariance, test_points):
+        """
+        Predict new values given inducing points
+        :param ind_points: inducing points
+        :param expectation: expectation at inducing points
+        :param covariance: covariance at inducing points
+        :param test_points: test points
+        :return: predicted values at inducing points
+        """
+        cov_fun = self.covariance_obj.covariance_function
+        K_xm = covariance_mat(cov_fun, test_points, ind_points)
+        K_mx = K_xm.T
+        K_mm = covariance_mat(cov_fun, ind_points, ind_points)
+        K_xx = covariance_mat(cov_fun, test_points, test_points)
+        K_mm_inv = np.linalg.inv(K_mm)
+
+        new_mean = K_xm.dot(K_mm_inv).dot(expectation)
+        new_cov = K_xx - K_xm.dot(K_mm_inv).dot(K_mx) + K_xm.dot(K_mm_inv).dot(covariance).dot(K_mm_inv).dot(K_mx)
+
+        test_targets, up, low = self.sample_for_matrices(new_mean, new_cov)
+        return test_targets, up, low
