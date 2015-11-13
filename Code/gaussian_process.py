@@ -4,6 +4,7 @@ import scipy.optimize as op
 import copy
 import scipy as sp
 import time
+from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 
 from covariance_functions import CovarianceFamily, covariance_mat, sigmoid
@@ -612,7 +613,7 @@ class GaussianProcess:
         #     print("Difference:", (f1 - f2) * 1e8)
         # exit(0)
         res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, w0, method='L-BFGS-B',
-                                                  mydisp=False, bounds=bnds, options={'gtol': 1e-8, 'ftol': 0,
+                                                  mydisp=True, bounds=bnds, options={'gtol': 1e-8, 'ftol': 0,
                                                                                      'maxiter': max_iter})
         optimal_params = res.x[:-num_inputs*dim]
         # print(optimal_params)
@@ -735,3 +736,112 @@ class GaussianProcess:
 
         test_targets, up, low = self.sample_for_matrices(new_mean, new_cov)
         return test_targets, up, low
+
+    def means_reg_find_inducing_inputs(self, data_points, target_values, num_inputs, max_iter=None):
+        """
+        Find inducing inputs for gp-regression using variational learning approach
+        :param data_points: data points
+        :param target_values: target values at data points
+        :param num_inputs: number of inducing inputs to be found
+        :param max_iter: maximum number of iterations
+        :return:
+        """
+        if not(isinstance(data_points, np.ndarray) and
+               isinstance(target_values, np.ndarray)):
+            raise TypeError("The operands must be of type numpy array")
+
+        dim = data_points.shape[0]
+        param_len = self.covariance_obj.get_params().size
+
+        def loc_fun(w):
+            # print("Params:", w[:param_len])
+            loss, grad = self._means_reg_inducing_points_oracle(data_points, target_values, w, inputs)
+            return -loss, -grad
+
+        bnds = self.covariance_obj.get_bounds()
+        if max_iter is None:
+            max_iter = np.inf
+        means = KMeans(n_clusters=num_inputs)
+        means.fit(data_points.T)
+        inputs = means.cluster_centers_.T
+        np.random.seed(15)
+        w0 = self.covariance_obj.get_params()
+        # f2, g2 = loc_fun(w0)
+        # print("Gradient:", g2)
+        # for i in range(w0.size):
+        #     diff = np.zeros(w0.shape)
+        #     diff[i] = 1e-8
+        #     f1, g1 = loc_fun(w0 + diff)
+        #     print("Difference:", (f1 - f2) * 1e8)
+        # exit(0)
+        res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, w0, method='L-BFGS-B',
+                                                  mydisp=True, bounds=bnds, options={'gtol': 1e-8, 'ftol': 0,
+                                                                                     'maxiter': max_iter, 'factr': 0})
+        optimal_params = res.x
+        print(res)
+        print(inputs.shape)
+        # inducing_point = res.x[-num_inputs*dim:]
+        # inducing_point = inducing_point.reshape((dim, num_inputs))
+        self.covariance_obj.set_params(optimal_params)
+
+        cov_fun = self.covariance_obj.covariance_function
+        sigma = optimal_params[-1]
+        K_mm = covariance_mat(cov_fun, inputs, inputs)
+        K_mn = covariance_mat(cov_fun, inputs, data_points)
+        K_nm = K_mn.T
+        Sigma = np.linalg.inv(K_mm + K_mn.dot(K_nm)/sigma**2)
+        mu = sigma**(-2) * K_mm.dot(Sigma).dot(K_mn).dot(target_values)
+        A = K_mm.dot(Sigma).dot(K_mm)
+        # print(mu)
+        return inputs, mu, A, w_list, time_list, fun_lst
+
+    def _means_reg_inducing_points_oracle(self, points, targets, params, ind_points):
+        """
+        :param points: data points array
+        :param targets: target values vector
+        :param params: hyper-parameters vector
+        :param ind_points: inducing points
+        """
+        sigma = params[-1]
+        cov_obj = copy.deepcopy(self.covariance_obj)
+        cov_obj.set_params(params)
+        cov_fun = cov_obj.covariance_function
+        K_mm = covariance_mat(cov_fun, ind_points, ind_points)
+        K_mm_inv = np.linalg.inv(K_mm) # use cholesky?
+        K_nm = covariance_mat(cov_fun, points, ind_points)
+        K_mn = K_nm.T
+        Q_nn = (K_nm.dot(K_mm_inv)).dot(K_mn)
+        B = Q_nn + np.eye(Q_nn.shape[0]) * sigma**2
+        # print(params)
+        B_l = np.linalg.cholesky(B)
+        B_l_inv = np.linalg.inv(B_l)
+        B_inv = B_l_inv.T.dot(B_l_inv)
+        zero = np.array([[0]])
+        K_nn_diag = cov_fun(zero[:, :, None], zero[:, None, :])
+        F_v = - np.sum(np.log(np.diag(B_l))) - targets.T.dot(B_inv).dot(targets)/2 - \
+              np.sum(K_nn_diag - np.diag(Q_nn)) / (2 * sigma**2)
+
+        # Gradient
+        gradient = []
+        derivative_matrix_list = cov_obj.get_derivative_function_list(params)
+        for func in derivative_matrix_list:
+            dK_nm = covariance_mat(func, points, ind_points)
+            dK_mn = dK_nm.T
+            dK_mm = covariance_mat(func, ind_points, ind_points)
+            dK_mm_inv = - K_mm_inv.dot(dK_mm.dot(K_mm_inv))
+            dB_dtheta = (dK_nm.dot(K_mm_inv) + K_nm.dot(dK_mm_inv)).dot(K_mn) + K_nm.dot(K_mm_inv.dot(dK_mn))
+            dK_nn = func(zero[:, :, None], zero[:, None, :])
+            gradient.append(self._reg_get_lower_bound_partial_derivative(targets, dB_dtheta, dB_dtheta, B_inv, sigma,
+                                                                         dK_nn))
+
+        # sigma derivative
+        dK_mm = cov_obj.get_noise_derivative(K_mm.shape[0])
+        dK_mm_inv = - K_mm_inv.dot(dK_mm.dot(K_mm_inv))
+        dQ_dtheta = K_nm.dot(dK_mm_inv).dot(K_mn)
+        dB_dtheta = dQ_dtheta + 2 * sigma * np.eye(Q_nn.shape[0])
+        # dK_nn = (zero[:, :, None], zero[:, None, :])
+        dK_nn = 2 * sigma
+        gradient.append(self._reg_get_lower_bound_partial_derivative(targets, dB_dtheta, dQ_dtheta, B_inv, sigma,
+                                                                     dK_nn))
+        gradient[-1] += np.sum(K_nn_diag - np.diag(Q_nn)) / sigma**3
+        return F_v[0, 0], np.array(gradient)

@@ -131,7 +131,7 @@ class SquaredExponential(CovarianceFamily):
     def covariance_derivative(self, x, y):
         """derivative wrt x"""
         r = np.linalg.norm(x - y, axis=0)
-        return  - np.exp(-r**2 / (2 * self.l**2)) * self.sigma_f**2 * 2 * (x - y)[:, :, :] / (2 * self.l**2)
+        return - np.exp(-r**2 / (2 * self.l**2)) * self.sigma_f**2 * 2 * (x - y)[:, :, :] / (2 * self.l**2)
 
     def _dse_dl(self, x, y):
         r = np.linalg.norm(x - y, axis=0)
