@@ -27,7 +27,7 @@ def minimize_wrapper(func, x0, mydisp=False, **kwargs):
         w_list.append(w)
         aux['it'] += 1
         aux['start'] = time.time()
-    print(start)
+    # print(start)
     w_list = []
     time_list = []
     fun_list = []
@@ -109,6 +109,7 @@ class GaussianProcess:
                 isinstance(cov_mat, np.ndarray)):
             raise TypeError("points must be a numpy array")
         # y = np.random.multivariate_normal(mean_vec.reshape((mean_vec.size,)), cov_mat)
+        # print(np.diagonal(cov_mat).reshape(mean_vec.shape))
         upper_bound = mean_vec + 3 * np.sqrt(np.diagonal(cov_mat).reshape(mean_vec.shape))
         lower_bound = mean_vec - 3 * np.sqrt(np.diagonal(cov_mat).reshape(mean_vec.shape))
         return mean_vec, upper_bound, lower_bound
@@ -586,19 +587,22 @@ class GaussianProcess:
                isinstance(target_values, np.ndarray)):
             raise TypeError("The operands must be of type numpy array")
 
+        dim = data_points.shape[0]
         param_len = self.covariance_obj.get_params().size
+
         def loc_fun(w):
             # print("Params:", w[:param_len])
-            ind_points = (w[param_len:])[None, :] # has to be rewritten for multidimensional case
+
+            ind_points = (w[param_len:]).reshape((dim, num_inputs)) # has to be rewritten for multidimensional case
             loss, grad = self._reg_inducing_points_oracle(data_points, target_values, w[:param_len], ind_points)
             return -loss, -grad
 
-        bnds = tuple(list(self.covariance_obj.get_bounds()) + [(1e-2, 1)] * num_inputs)
+        bnds = tuple(list(self.covariance_obj.get_bounds()) + [(1e-2, 1)] * num_inputs * dim)
         if max_iter is None:
             max_iter = np.inf
-        inputs = data_points[:, :num_inputs].reshape(num_inputs,) + np.random.normal(0, 0.1, (num_inputs,))
+        inputs = data_points[:, :num_inputs] + np.random.normal(0, 0.1, (dim, num_inputs))
         np.random.seed(15)
-        w0 = np.concatenate((self.covariance_obj.get_params(), inputs))
+        w0 = np.concatenate((self.covariance_obj.get_params(), inputs.ravel()))
         # f2, g2 = loc_fun(w0)
         # print("Gradient:", g2)
         # for i in range(w0.size):
@@ -610,10 +614,10 @@ class GaussianProcess:
         res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, w0, method='L-BFGS-B',
                                                   mydisp=False, bounds=bnds, options={'gtol': 1e-8, 'ftol': 0,
                                                                                      'maxiter': max_iter})
-        optimal_params = res.x[:-num_inputs]
+        optimal_params = res.x[:-num_inputs*dim]
         # print(optimal_params)
-        inducing_point = res.x[-num_inputs:]
-        inducing_point = inducing_point[None, :]
+        inducing_point = res.x[-num_inputs*dim:]
+        inducing_point = inducing_point.reshape((dim, num_inputs))
         self.covariance_obj.set_params(optimal_params)
 
         cov_fun = self.covariance_obj.covariance_function
@@ -680,17 +684,18 @@ class GaussianProcess:
         # inducing points derivatives
         K_mn_derivatives = covariance_mat(cov_obj.covariance_derivative, ind_points, points)
         K_mm_derivatives = covariance_mat(cov_obj.covariance_derivative, ind_points, ind_points)
-        for i in range(ind_points.shape[1]):
-            dK_mn = np.zeros(K_mn.shape)
-            dK_mn[i, :] = K_mn_derivatives[i, :]
-            dK_nm = dK_mn.T
-            dK_mm = np.zeros(K_mm.shape)
-            dK_mm[i, :] = K_mm_derivatives[i, :]
-            dK_mm[:, i] = K_mm_derivatives[i, :].T
-            dK_mm_inv = - K_mm_inv.dot(dK_mm.dot(K_mm_inv))
-            dB_dtheta = (dK_nm.dot(K_mm_inv) + K_nm.dot(dK_mm_inv)).dot(K_mn) + K_nm.dot(K_mm_inv.dot(dK_mn))
-            dK_nn = 0
-            gradient.append(self._reg_get_lower_bound_partial_derivative(targets, dB_dtheta, dB_dtheta, B_inv, sigma,
+        for j in range(ind_points.shape[0]):
+            for i in range(ind_points.shape[1]):
+                dK_mn = np.zeros(K_mn.shape)
+                dK_mn[i, :] = K_mn_derivatives[j, i, :]
+                dK_nm = dK_mn.T
+                dK_mm = np.zeros(K_mm.shape)
+                dK_mm[i, :] = K_mm_derivatives[j, i, :]
+                dK_mm[:, i] = K_mm_derivatives[j, i, :].T
+                dK_mm_inv = - K_mm_inv.dot(dK_mm.dot(K_mm_inv))
+                dB_dtheta = (dK_nm.dot(K_mm_inv) + K_nm.dot(dK_mm_inv)).dot(K_mn) + K_nm.dot(K_mm_inv.dot(dK_mn))
+                dK_nn = 0
+                gradient.append(self._reg_get_lower_bound_partial_derivative(targets, dB_dtheta, dB_dtheta, B_inv, sigma,
                                                                          dK_nn))
         return F_v[0, 0], np.array(gradient)
 

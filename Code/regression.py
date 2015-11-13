@@ -10,7 +10,7 @@ from covariance_functions import SquaredExponential, GammaExponential, Matern, \
 data_params = np.array([2.0, 0.3, 0.01])
 data_covariance_obj = SquaredExponential(data_params)
 gp = GaussianProcess(data_covariance_obj, lambda x: 0, 'reg')
-num = 900
+num = 200
 test_num = 500
 dim = 1
 seed = 21
@@ -29,11 +29,12 @@ model_params = np.array([1., 0.5, 0.2])
 model_covariance_obj = SquaredExponential(model_params)
 
 new_gp = GaussianProcess(model_covariance_obj, lambda x: 0, 'reg')
-inducing_points, mean, cov, _, _, _ = new_gp.reg_find_inducing_inputs(x_tr, y_tr, 10, max_iter=10)
-print(inducing_points.shape)
-print(mean.shape)
-print(new_gp.covariance_obj.get_params())
+# new_gp.find_hyper_parameters(x_tr, y_tr, max_iter=30)
+# predicted_y_test, high, low = new_gp.predict(x_test, x_tr, y_tr)
+inducing_points, mean, cov, _, _, _ = new_gp.reg_find_inducing_inputs(x_tr, y_tr, 7, max_iter=30)
 predicted_y_test, high, low = new_gp.reg_inducing_points_predict(inducing_points, mean, cov, x_test)
+print(new_gp.covariance_obj.get_params())
+print(np.linalg.norm(predicted_y_test - y_test)/y_test.size)
 
 if dim == 1:
     gp_plot_reg_data(x_tr, y_tr, 'yo')
