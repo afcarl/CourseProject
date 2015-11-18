@@ -34,7 +34,7 @@ model_params = np.array([1., 0.2, 0.2])
 model_covariance_obj = SquaredExponential(model_params)
 new_gp = GaussianProcess(model_covariance_obj, lambda x: 0, 'reg')
 inducing_points, mean, cov, _, _, _ = new_gp.reg_find_inducing_inputs(x_tr, y_tr, 30, max_iter=30)
-predicted_y_test, high, low = new_gp.predict(x_test, x_tr, y_tr)
+predicted_y_test, high, low = new_gp.reg_inducing_points_predict(inducing_points, mean, cov, x_test)
 
 # means = KMeans(n_clusters=6)
 # means.fit(x_tr.T)

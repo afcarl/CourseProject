@@ -27,12 +27,6 @@ def gaussian_noise_term(noise_variance, r):
 #     return f
 
 
-def covariance_mat(covariance_func, x, y):
-    """Computing covariance matrix for given covariance function and point arrays"""
-    # return covariance_func(x[:, :, None], y[:, None, :])
-    return covariance_func(x, y)
-
-
 def pairwise_distance(x, y):
     """
     Compute a matrix of pairwise distances between x and y
