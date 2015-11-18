@@ -7,7 +7,7 @@ import time
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 
-from covariance_functions import CovarianceFamily, covariance_mat, sigmoid
+from covariance_functions import CovarianceFamily, covariance_mat, sigmoid, pairwise_distance
 
 
 def minimize_wrapper(func, x0, mydisp=False, **kwargs):
@@ -96,6 +96,7 @@ class GaussianProcess:
         mean_vector = m_v.reshape((m_v.size,))
         if not (seed is None):
             np.random.seed(seed)
+        print(cov_mat.shape)
         res = np.random.multivariate_normal(mean_vector, cov_mat)
         return res
 
@@ -162,7 +163,8 @@ class GaussianProcess:
         cov_obj = copy.deepcopy(self.covariance_obj)
         cov_obj.set_params(params)
         cov_fun = cov_obj.covariance_function
-        points_cov = covariance_mat(cov_fun, points, points)
+        # points_cov = covariance_mat(cov_fun, points, points)
+        points_cov = cov_fun(points, points)
         points_l = np.linalg.cholesky(points_cov)
         points_l_inv = np.linalg.inv(points_l)
         points_cov_inv = points_l_inv.T.dot(points_l_inv)
@@ -643,9 +645,12 @@ class GaussianProcess:
         cov_obj = copy.deepcopy(self.covariance_obj)
         cov_obj.set_params(params)
         cov_fun = cov_obj.covariance_function
-        K_mm = covariance_mat(cov_fun, ind_points, ind_points)
+        K_mm = cov_fun(ind_points, ind_points)
+        # print(pairwise_distance(ind_points, ind_points))
+        # print(ind_points)
+        # print(np.linalg.det(K_mm))
         K_mm_inv = np.linalg.inv(K_mm) # use cholesky?
-        K_nm = covariance_mat(cov_fun, points, ind_points)
+        K_nm = cov_fun(points, ind_points)
         K_mn = K_nm.T
         Q_nn = (K_nm.dot(K_mm_inv)).dot(K_mn)
         B = Q_nn + np.eye(Q_nn.shape[0]) * sigma**2
@@ -654,7 +659,7 @@ class GaussianProcess:
         B_l_inv = np.linalg.inv(B_l)
         B_inv = B_l_inv.T.dot(B_l_inv)
         zero = np.array([[0]])
-        K_nn_diag = cov_fun(zero[:, :, None], zero[:, None, :])
+        K_nn_diag = cov_fun(zero, zero)
         F_v = - np.sum(np.log(np.diag(B_l))) - targets.T.dot(B_inv).dot(targets)/2 - \
               np.sum(K_nn_diag - np.diag(Q_nn)) / (2 * sigma**2)
 
@@ -662,12 +667,12 @@ class GaussianProcess:
         gradient = []
         derivative_matrix_list = cov_obj.get_derivative_function_list(params)
         for func in derivative_matrix_list:
-            dK_nm = covariance_mat(func, points, ind_points)
+            dK_nm = func(points, ind_points)
             dK_mn = dK_nm.T
-            dK_mm = covariance_mat(func, ind_points, ind_points)
+            dK_mm = func(ind_points, ind_points)
             dK_mm_inv = - K_mm_inv.dot(dK_mm.dot(K_mm_inv))
             dB_dtheta = (dK_nm.dot(K_mm_inv) + K_nm.dot(dK_mm_inv)).dot(K_mn) + K_nm.dot(K_mm_inv.dot(dK_mn))
-            dK_nn = func(zero[:, :, None], zero[:, None, :])
+            dK_nn = func(zero, zero)
             gradient.append(self._reg_get_lower_bound_partial_derivative(targets, dB_dtheta, dB_dtheta, B_inv, sigma,
                                                                          dK_nn))
 
@@ -683,8 +688,8 @@ class GaussianProcess:
         gradient[-1] += np.sum(K_nn_diag - np.diag(Q_nn)) / sigma**3
 
         # inducing points derivatives
-        K_mn_derivatives = covariance_mat(cov_obj.covariance_derivative, ind_points, points)
-        K_mm_derivatives = covariance_mat(cov_obj.covariance_derivative, ind_points, ind_points)
+        K_mn_derivatives = cov_obj.covariance_derivative(ind_points, points)
+        K_mm_derivatives = cov_obj.covariance_derivative(ind_points, ind_points)
         for j in range(ind_points.shape[0]):
             for i in range(ind_points.shape[1]):
                 dK_mn = np.zeros(K_mn.shape)
