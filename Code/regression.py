@@ -10,9 +10,9 @@ from covariance_functions import SquaredExponential, GammaExponential, Matern
 data_params = np.array([1.1, 0.1, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
 gp = GaussianProcess(data_covariance_obj, lambda x: 0, 'reg')
-num = 200
-test_num = 1000
-dim = 1
+num = 500
+test_num = 100
+dim = 2
 seed = 21
 
 np.random.seed(seed)
@@ -33,7 +33,7 @@ y_tr, y_test = gp.generate_data(x_tr, x_test, seed=seed)
 model_params = np.array([1., 0.2, 0.2])
 model_covariance_obj = SquaredExponential(model_params)
 new_gp = GaussianProcess(model_covariance_obj, lambda x: 0, 'reg')
-inducing_points, mean, cov, _, _, _ = new_gp.reg_find_inducing_inputs(x_tr, y_tr, 30, max_iter=30)
+inducing_points, mean, cov, _, _, _ = new_gp.reg_find_inducing_inputs(x_tr, y_tr, 10, max_iter=30)
 predicted_y_test, high, low = new_gp.reg_inducing_points_predict(inducing_points, mean, cov, x_test)
 
 # means = KMeans(n_clusters=6)

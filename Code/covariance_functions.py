@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.special import gamma, kv
+from scipy.spatial.distance import cdist
 from abc import ABCMeta, abstractmethod
 
 # General functions
@@ -11,6 +12,8 @@ def sigmoid(x):
 
 def delta(r):
     """Delta-function"""
+    # print(r)
+    # exit(0)
     if np.all(np.diag(r) == 0):
         return np.eye(r.shape[1])
     return np.zeros((r.shape))
@@ -34,12 +37,13 @@ def pairwise_distance(x, y):
     :param y: array
     :return: pairwise distances matrix
     """
-    x_norm = np.linalg.norm(x, axis=0)[:, None]
-    y_norm = np.linalg.norm(y, axis=0)[None, :]
-    d = np.square(x_norm) + np.square(y_norm) - 2 * x.T.dot(y)
-    d[d < 0] = 0
+    # x_norm = np.linalg.norm(x, axis=0)[:, None]
+    # y_norm = np.linalg.norm(y, axis=0)[None, :]
+    # d = np.square(x_norm) + np.square(y_norm) - 2 * x.T.dot(y)
+    # d[d < 0] = 0
+    return cdist(x.T, y.T)
     # print(np.min(d))
-    return np.sqrt(d)
+    # return np.sqrt(d)
 
 
 def stationary_cov(fun):

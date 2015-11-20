@@ -614,7 +614,7 @@ class GaussianProcess:
         #     print("Difference:", (f1 - f2) * 1e8)
         # exit(0)
         res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, w0, method='L-BFGS-B',
-                                                  mydisp=True, bounds=bnds, options={'gtol': 1e-8, 'ftol': 0,
+                                                  mydisp=False, bounds=bnds, options={'gtol': 1e-8, 'ftol': 0,
                                                                                      'maxiter': max_iter})
         optimal_params = res.x[:-num_inputs*dim]
         # print(optimal_params)
@@ -779,11 +779,9 @@ class GaussianProcess:
         #     print("Difference:", (f1 - f2) * 1e8)
         # exit(0)
         res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, w0, method='L-BFGS-B',
-                                                  mydisp=True, bounds=bnds, options={'gtol': 1e-8, 'ftol': 0,
+                                                  mydisp=False, bounds=bnds, options={'gtol': 1e-8, 'ftol': 0,
                                                                                      'maxiter': max_iter})
         optimal_params = res.x
-        print(res)
-        print(inputs.shape)
         self.covariance_obj.set_params(optimal_params)
 
         cov_fun = self.covariance_obj.covariance_function

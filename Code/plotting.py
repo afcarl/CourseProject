@@ -82,3 +82,9 @@ def plot_performance_errors(w_list, gp, test_points, test_labels, train_points, 
     else:
         plt.plot(time_list, error_list, color, label=lbl)
         plt.xlabel("Time (s)")
+
+
+def plot_smse_vs_time(time_lst, smse_lst, *args, **kwargs):
+    plt.plot(time_lst, smse_lst, *args, **kwargs)
+    plt.ylabel('SMSE')
+    plt.xlabel('Time to learn')
