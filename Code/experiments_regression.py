@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import time
+from sklearn.cluster import KMeans
+from sklearn.neighbors import NearestNeighbors
 
 from gaussian_process import GaussianProcess
 from plotting import gp_plot_class_data, plot_performance_hyper_parameter, \
@@ -14,7 +16,7 @@ def calculate_smse(predicted_y, true_y, train_y):
 data_params = np.array([1.1, 0.1, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
 gp = GaussianProcess(data_covariance_obj, lambda x: 0, 'reg')
-num = 500
+num = 1000
 test_num = 700
 dim = 2
 seed = 21
@@ -32,29 +34,29 @@ else:
     x_test = np.random.rand(dim, test_num)
 y_tr, y_test = gp.generate_data(x_tr, x_test, seed=seed)
 
-# Inducing_points
-ip_times, ip_smse = [], []
-start, finish = 0, 0
+# # Inducing_points
+# ip_times, ip_smse = [], []
+# start, finish = 0, 0
+# #
+# for m in [10, 15, 20]:
+#     print('m:', m)
+#     model_params = np.array([1., 0.2, 0.2])
+#     model_covariance_obj = SquaredExponential(model_params)
+#     new_gp = GaussianProcess(model_covariance_obj, lambda x: 0, 'reg')
+#     start = time.time()
+#     inducing_points, mean, cov, _, _, _ = new_gp.reg_find_inducing_inputs(x_tr, y_tr, m, max_iter=30)
+#     finish = time.time()
+#     predicted_y_test, high, low = new_gp.reg_inducing_points_predict(inducing_points, mean, cov, x_test)
+#     ip_times.append(finish - start)
+#     ip_smse.append(calculate_smse(predicted_y_test, y_test, y_tr))
 #
-for m in [10, 15, 20, 30]:
-    print('m:', m)
-    model_params = np.array([1., 0.2, 0.2])
-    model_covariance_obj = SquaredExponential(model_params)
-    new_gp = GaussianProcess(model_covariance_obj, lambda x: 0, 'reg')
-    start = time.time()
-    inducing_points, mean, cov, _, _, _ = new_gp.reg_find_inducing_inputs(x_tr, y_tr, m, max_iter=30)
-    finish = time.time()
-    predicted_y_test, high, low = new_gp.reg_inducing_points_predict(inducing_points, mean, cov, x_test)
-    ip_times.append(finish - start)
-    ip_smse.append(calculate_smse(predicted_y_test, y_test, y_tr))
-
-plot_smse_vs_time(ip_times, ip_smse, label='Variarional Inducing Points')
+# plot_smse_vs_time(ip_times, ip_smse, label='Variarional Inducing Points')
 
 # Inducing points means
 ipm_times, ipm_smse = [], []
 start, finish = 0, 0
 
-for m in [10, 15, 20, 40, 50, 70, 100]:
+for m in [10, 15, 20, 40, 50, 70]:
     print('m:', m)
     model_params = np.array([1., 0.2, 0.2])
     model_covariance_obj = SquaredExponential(model_params)
@@ -67,6 +69,38 @@ for m in [10, 15, 20, 40, 50, 70, 100]:
     ipm_smse.append(calculate_smse(predicted_y_test, y_test, y_tr))
 
 plot_smse_vs_time(ipm_times, ipm_smse, '-gx', label='K-Means Inducing Points')
+
+# Subset of data
+sod_times, sod_smse = [], []
+start, finish = 0, 0
+
+for m in [10, 50, 100, 200, 300, 500]:
+    print('m:', m)
+    model_params = np.array([1., 0.2, 0.2])
+    model_covariance_obj = SquaredExponential(model_params)
+
+    start = time.time()
+    means = KMeans(n_clusters=m)
+    means.fit(x_tr.T)
+    inducing_points = means.cluster_centers_.T
+    targets = []
+    for i in range(inducing_points.shape[1]):
+        nbrs = NearestNeighbors(n_neighbors=1).fit(x_tr.T)
+        mean = inducing_points[:, i]
+        if dim == 1:
+            mean = mean[:, None]
+        _, indices = nbrs.kneighbors(mean)
+        targets.append(y_tr[indices][0,0,0])
+    targets = np.array(targets)[:, None]
+    # print(targets.shape)
+    small_gp = GaussianProcess(model_covariance_obj, lambda x: 0, 'reg')
+    _, _, fun_lst = small_gp.find_hyper_parameters(inducing_points, targets, max_iter=30)
+    finish = time.time()
+    predicted_y_test, high, low = small_gp.predict(x_test, x_tr, y_tr)
+    sod_times.append(finish - start)
+    sod_smse.append(calculate_smse(predicted_y_test, y_test, y_tr))
+
+plot_smse_vs_time(sod_times, sod_smse, '-rs', label='K-Means Inducing Points')
 plt.legend()
 plt.show()
 

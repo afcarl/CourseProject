@@ -197,7 +197,7 @@ class GaussianProcess:
         if max_iter is None:
             max_iter = np.inf
         res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, self.covariance_obj.get_params(), method='L-BFGS-B',
-                                                  mydisp=True, bounds=bnds, options={'gtol': 1e-8, 'ftol': 0,
+                                                  mydisp=False, bounds=bnds, options={'gtol': 1e-8, 'ftol': 0,
                                                                                      'maxiter': max_iter})
         optimal_params = res.x
         self.covariance_obj.set_params(optimal_params)
