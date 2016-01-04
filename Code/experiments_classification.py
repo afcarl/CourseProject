@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-from gaussian_process import GaussianProcess
+from old_version_gp import GaussianProcess
 from plotting import gp_plot_class_data, plot_performance_hyper_parameter, plot_performance_errors
 from covariance_functions import CovarianceFamily, SquaredExponential, GammaExponential, ExpScaledSquaredExponential
 

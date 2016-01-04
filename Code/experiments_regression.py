@@ -4,7 +4,7 @@ import time
 from sklearn.cluster import KMeans
 from sklearn.neighbors import NearestNeighbors
 
-from gaussian_process import GaussianProcess
+from old_version_gp import GaussianProcess
 from plotting import gp_plot_class_data, plot_performance_hyper_parameter, \
     plot_performance_errors, plot_performance_function, plot_smse_vs_time, gp_plot_reg_data
 from covariance_functions import CovarianceFamily, SquaredExponential, GammaExponential
