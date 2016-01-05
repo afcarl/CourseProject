@@ -16,7 +16,7 @@ num = 100
 test_num = 100
 dim = 1
 seed = 21
-method = 'vi'  # possible methods: 'brute', 'vi', 'means'(, 'svi')
+method = 'means'  # possible methods: 'brute', 'vi', 'means'(, 'svi')
 ind_inputs_num = 5
 
 # Generating data points
@@ -31,15 +31,15 @@ y_tr, y_test = gp.generate_data(x_tr, x_test, seed=seed)
 
 if method == 'brute':
     new_gp = GPR(model_covariance_obj)
-    new_gp.find_hyper_parameters(x_tr, y_tr, max_iter=30)
+    new_gp.fit(x_tr, y_tr, max_iter=30)
     predicted_y_test, high, low = new_gp.predict(x_test, x_tr, y_tr)
 
 else:
     model_covariance_obj = SquaredExponential(model_params)
     new_gp = GPR(model_covariance_obj, method=method)
-    inducing_points, mean, cov, _, _, _ = new_gp.find_inducing_inputs(x_tr, y_tr, ind_inputs_num, max_iter=30)
-    predicted_y_test, high, low = new_gp.predict(inducing_points, mean, cov, x_test)
-
+    new_gp.fit(x_tr, y_tr, ind_inputs_num, max_iter=30)
+    inducing_points, mean, cov = new_gp.inducing_inputs
+    predicted_y_test, high, low = new_gp.predict(x_test)
 
 print(np.linalg.norm(predicted_y_test - y_test)/y_test.size)
 
