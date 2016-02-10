@@ -39,6 +39,8 @@ otherkeywords={self},
 \newcommand{\N}{\mathcal{N}}
 \newcommand{\cov}{\mbox{cov}}
 \newcommand{\Nystrom}{Nystr\"{o}m }
+\newcommand{\KL}[2]{\mbox{KL}\left(#1\mbox{ || }#2\right)}
+\newcommand{\tr}{\mbox{tr}}
 
 \newlength{\arrayrulewidthOriginal}
 \newcommand{\Cline}[2]{%
@@ -144,22 +146,92 @@ Pavel Izmailov
 \subsection{Methods, based on inducing inputs}
 	\hspace{0.6cm}Most of the existing methods are based on introducing a set of $m$ function points that are called inducing inputs. Using these inputs one can make approximate predictions of the values of the hidden process at test points with a complexity of $O(nm^3)$ instead of $O(n^3)$.
 	
-	Consider the following situation. We have a dataset of $n$ examples $x_i$ with corresponding values $y_i$. We will denote the matrix of pairwise values of the covariance function by $K_{nn}$. Now we introduce a set of $m$ inducing points. We will denote the corresponding covariance matrix by $K_{mm}$ and the matrices of covariances between the inducing points and training points by $K_{nm}$ and $K_{mn}$.
+	Consider the following situation. We have a dataset of $n$ examples $x_i$ with corresponding values $y_i$. We will denote the matrix of pairwise values of the covariance function by $K_{nn}$. Now we introduce a set of $m$ inducing inputs. We will denote the corresponding covariance matrix by $K_{mm}$ and the matrices of covariances between the inducing points and training points by $K_{nm}$ and $K_{mn}$. We will denote the vectors, comprised of noisy and true function values $y_i$ and $f_i$ at training points by $\vec y$ and $\vec f$ respectively. We will also introduce a distribution $q(\vec u)$ over the hidden function values $\vec u$ at the inducing inputs.
 	
 %	Most of the inducing point methods form a low-rank approximation $\tilde K$ to the covariance matrix $K_{nn}$ of the following form
 %	$$\tilde K = K_{nm} K_{mm}^{-1} K_{mn}.$$
 %	This approximation is called the \Nystrom approximation of the matrix $K_{nn}$.
 	
-	The methods mostly differ in the way they use to find the inducing points. The most basic idea is to choose this points at random or by some criterion from the training data, or apply some clustering procedure and use the cluster centers as the inducing points. More advanced methods use variational inference (or it's stochastic variant) to find these points. In this section a description of several methods is be provided. 
+%	The methods mostly differ in the way they use to find the inducing points. The most basic idea is to choose this points at random or by some criterion from the training data, or apply some clustering procedure and use the cluster centers as the inducing points. More advanced methods use variational inference (or it's stochastic variant) to find these points. In this section a description of several methods is be provided. 
 	
+	It's easy to see, that
+	$$p(y | f) = \N (y | f, \sigma_n I),$$
+	$$p(f | u) = \N (f | K_{nm} K_{mm}^{-1}u, \tilde K),$$
+	$$p(u) = \N(u | 0, K_mm),$$
+	where $\tilde K = K_{nn} - K_{nm} K_{mm}^{-1} K_{mn}.$
+		
 	\subsubsection{Variational learning of inducing points}
+	\label{Titsias}
 	
-	The method discussed here was introduced in \cite{Titsias}. To be written.
+	\hspace{0.6cm}The method discussed here was introduced in \cite{Titsias}. To be written.
 	
 	\subsubsection{Stochastic variational inference}
 	
-	The method discussed here was proposed in \cite{BigData}.
+	\hspace{0.6cm}The method discussed here was proposed in \cite{BigData}. The method doesn't provide a way to choose the positions of inducing points. It provides a way to find the predictive distribution and optimize hyper-parameters for large datasets.
 	
+	For using stochastic variational inference, we have to provide a lower bound for the marginal likelihood, that factorizes over the training examples. To obtain such an ELBO (evidence lower bound) two ancillary lower bounds are found. 
+	
+	By applying the Jensen inequality we obtain
+	$$ \log p(y | u) = \log \left ( \int p(y|f) p(f | u) du\right) \ge  \int \log (p(y|f)) p(f | u) du = L_1.$$	
+	As $p(y | f)$ factorizes over examples we obtain
+	$$\exp(L_1) = \prod_{i = 1}^{n} \N(y_i| \mu_i, \sigma_n) \exp \left( -\frac 1 {2\sigma_n} \tilde K_{ii}\right).$$
+	Note that 
+	$$\log p(y | u) - L_1 = \KL{p(f | u)}{p(f | u, y)}.$$
+	
+	Using the lower bound $L_1$ we obtain a lower bound for the marginal likelihood
+	$$\log p(y) = \log \left( \int p(y|u) p(u) du\right) \ge \log \left( \int \exp(L_1) p(u) du\right) = L_2.$$
+	With some algebraic manipulations we obtain the following expression for $L_2$
+	$$L_2 = \log \N(y| 0, K_{nm} K_{mm}^{-1} K_{mn} + \sigma_n I) - \frac 1 {2 \sigma_n} \tr (\tilde K).$$
+	This is exactly the expression for the lower bound, used in the method, described in the section \ref{Titsias} for the optimal approximating distribution $q(u) = \N(u | \Lambda, \hat u),$ where
+	$$\Lambda = \frac 1 {\sigma_n} K_{mm}^{-1} K_{mn} K_{nm} K_{mm}^{-1} + K_{mm}^{-1},$$
+	$$\hat u = \frac 1 {\sigma_n} \Lambda^{-1} K_{mm}^{-1} K_{mn} y.$$
+	In the method, described in section \ref{Titsias}, this lower bound is being maximized over the kernel hyper-parameters and the optimal distribution $q(u)$ is used for making predictions at unseen points $x$ as follows
+	$$\E f(x) = K_{xm} K_{mm}^{-1} \hat u, $$
+	$$\cov(f(x), f(x')) = k(x, x') - K_{xm} K_{mm}^{-1} K_{mx'} + K_{xm} K_{mm}^{-1} \Lambda^{-1} K_{mm}^{-1} K_{mx'}.$$
+	
+	Unfortunately, evaluating $\Lambda$ takes $O(n m^2)$ operations and thus this method cannot be applied to big datasets. To overcome this limitation, we will use stochastic optimization to find the approximate optimal distribution $q(u)$ and to optimize for hyper-parameters. 
+	
+	Let the variational distribution $q$ be normal with mean $\mu$ and covariance matrix $\Sigma$. The final ELBO is derived as follows
+	$$\log p(y) \ge \int \left( L_1 + \log p(u) - \log q(u)\right) q(u) du = L_3.$$
+	This lower bound factorizes over the examples 
+	$$L_3 = \sum_{i = 1}^{n} \left( \log \N(y_i | k_i^T K_{mm}^{-1} \mu, \sigma_n) - \frac 1 {2 \sigma_n} \tilde K_{ii} - \frac 1 2 \tr (\frac 1 {\sigma_n} \Sigma K_{mm}^{-1} k_i k_i^T K_{mm}^{-1}) \right) - \KL{q(u)}{p(u)} = $$
+	$$ = \sum_{i = 1}^{n} \left( \log \N(y_i | k_i^T K_{mm}^{-1} \mu, \sigma_n) - \frac 1 {2 \sigma_n} \tilde K_{ii} - \frac 1 2 \tr (\Sigma \Lambda_i) \right) - $$
+	$$ -\frac 1 2 \left (\log \frac {|K_{mm}|} {|\Sigma|} - m + \tr(K_{mm}^{-1} \Sigma) + \mu^T K_{mm}^{-1} \mu \right),$$
+	where $\Lambda_i = \frac 1 {\sigma_n} K_{mm}^{-1} k_i k_i^T K_{mm}^{-1}$, and $k_i$ is the $i$-th column of the matrix $K_{mn}$.
+	
+	In stochastic variational inference natural gradients are used to maximize the ELBO. The canonical parameters for the normal distribution $q(u)$ are
+	$$\eta_1 = \Sigma^{-1} \mu, \hspace{0.3cm}\eta_2 = - \frac 1 2 \Sigma^{-1}.$$
+	The expectation parameters are
+	$$\beta_1 = \mu, \hspace{0.3cm}\beta_2 = \mu \mu^T + \Sigma.$$
+	In the exponential family the natural gradients are equal to the gradients with respect to expectation parameters. To find these gradients we first reparametrise the ELBO
+	$$L_3(\beta_1, \beta_2) =  \sum_{i = 1}^{n} \left( \log \N(y_i | k_i^T K_{mm}^{-1} \beta_1, \sigma_n) - \frac 1 {2 \sigma_n} \tilde K_{ii} - \frac 1 2 \tr ((\beta_2 - \beta_1 \beta_1^T) \Lambda_i) \right) - $$
+	$$ -\frac 1 2 \left (\log |K_{mm}| - \log |\beta_2 - \beta_1 \beta_1^T| - m + \tr(K_{mm}^{-1} (\beta_2 - \beta_1 \beta_1^T)) + \beta_1^T K_{mm}^{-1} \beta_1 \right).$$
+	Differentiating with respect to expectation parameters we obtain
+	\begin{equation}
+		\label{natgrad1}
+		\frac{\partial L_3} {\beta_1} =  -\frac 1 {\sigma_n}  \sum_{i = 1}^{n} \left(K_{mm}^{-1} k_i^T y_i \right) + \Sigma^{-1} \mu,
+	\end{equation}
+	\begin{equation}
+		\label{natgrad2}
+		\frac{\partial L_3} {\beta_2} = \frac 1 {2} \left(-\sum_{i = 1}^{n} (\Lambda_i) + \Sigma^{-1}  - K_{mm}^{-1}\right).
+	\end{equation}
+	
+	The natural gradient descent updates of these parameters are
+	$$\eta_{1(t+1)} = \Sigma_{(t+1)}^{-1} \mu_{(t+1)} = \Sigma_{(t)}^{-1} \mu_{(t)} + \ell \left(\frac 1 {\sigma_n} K_{mm}^{-1} K_{mn} y - \Sigma_{(t)}^{-1} \mu_{(t)} \right), $$
+	$$\eta_{2 (t+1)} = -\frac 1 2 \Sigma_{(t+1)}^{-1} = -\frac 1 2 \Sigma_{(t)}^{-1}  + \ell \left( -\frac 1 2 \Lambda + \frac 1 2 \Sigma_{(t+1)}^{-1}\right),$$
+	where $\ell$ is the step length. It's easy to see, that if $\ell = 1$ the method converges to the optimal distribution $q(u)$ in one iteration. Unfortunately, we can not directly compute the updates described above, because the computational complexity of computing the matrix $\Lambda$ is $O(n m^2)$. We will use approximations to the natural gradients, obtained by considering the data points individually or in batches. The formulas for these approximations can be obtained from equalities \ref{natgrad1}, \ref{natgrad2}.
+	
+	Finally, we need to find the derivatives of the ELBO with respect to kernel hyper-parameters $\theta$
+	$$\frac{\partial L_3} {\partial \theta} = \sum_{i = 1}^n \left ( \frac 1 {\sigma_n} (y_i - k_i^T K_{mm} \mu) \left(\frac{\partial k_i^T}{\partial \theta} K_{mm}^{-1} - k_i^T K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} \right)m + \right.$$
+	$$\left. +\frac 1 {2 \sigma_n} \left (- \frac{\partial K_{nn}}{\partial \theta} +  \frac{\partial K_{nm}}{\partial \theta} K_{mm}^{-1} K_{mn} + K_{nm} K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} K_{mn} + K_{nm} K_{mm}^{-1} \frac{\partial K_{mn}}{\partial \theta}\right)_ {ii} + \right.$$
+	$$\left. +  \frac 1 {2 \sigma_n} \Sigma \left( K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} k_i k_i^T K_{mm}^{-1}  + K_{mm}^{-1} k_i k_i^{T} K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} - \right. \right.$$
+	$$ \left. \left.-  K_{mm}^{-1} \frac{\partial k_{i}}{\partial \theta}k_i^T K_{mm}^{-1} + K_{mm}^{-1} k_i  \frac{\partial k_i^T}{\partial \theta} K_{mm}^{-1}\right)\right)$$
+	$$ + \frac 1 2 K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} + \frac 1 2 \Sigma K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} + \frac 1 2 \mu^T K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1}\mu,$$
+	and $\sigma_n$
+	$$\frac{\partial L_{3}}{\sigma_n} = \sum_{i = 1}^{n} \left(-\frac{1}{2\sigma_n} - \frac 1 {4 \sigma_n^3} (k_i^T K_{mm}^{-1} \mu - y_i)^2 + \frac 1 {2 \sigma_n^2} \tilde K_{ii}\right).$$
+	Now, we can optimize the kernel hyper-parameters and the noise variance alongside the variational parameters. 
+	
+\pagebreak
 \begin{thebibliography}{99}
 
 \bibitem{Titsias}

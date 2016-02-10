@@ -370,24 +370,22 @@ class GPR(GP):
         return means.cluster_centers_.T
 
 
-    # def _svi_find_hyper_parameters(self, data_points, target_values, inputs=None, num_inputs=0, max_iter=None):
-    #     """
-    #     A method for optimizing hyper-parameters (for fixed inducing points), based on stochastic variational inference
-    #     :param data_points:
-    #     :param target_values:
-    #     :param inputs:
-    #     :param num_inputs:
-    #     :param max_iter:
-    #     :return:
-    #     """
-    #
-    #     # if no inducing inputs are provided, we use K-Means cluster centers as inducing inputs
-    #     if inputs is None:
-    #         means = KMeans(n_clusters=num_inputs)
-    #         means.fit(data_points.T)
-    #         inputs = means.cluster_centers_.T
-    #
-    # def _svi_oracle
+    def _svi_find_hyper_parameters(self, data_points, target_values, inputs=None, num_inputs=0, max_iter=None):
+        """
+        A method for optimizing hyper-parameters (for fixed inducing points), based on stochastic variational inference
+        :param data_points:
+        :param target_values:
+        :param inputs:
+        :param num_inputs:
+        :param max_iter:
+        :return:
+        """
+
+        # if no inducing inputs are provided, we use K-Means cluster centers as inducing inputs
+        if inputs is None:
+            means = KMeans(n_clusters=num_inputs)
+            means.fit(data_points.T)
+            inputs = means.cluster_centers_.T
 
 
 
