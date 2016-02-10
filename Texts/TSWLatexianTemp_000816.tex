@@ -1,0 +1,172 @@
+\documentclass[12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[russian]{babel}
+\usepackage[T2A]{fontenc}
+\usepackage{textcomp}
+\usepackage{a4wide}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage{caption}
+\usepackage{subfig}
+\usepackage{listings}
+\usepackage{hyperref}
+%\usepackage{fontspec}
+\usepackage{pgfplots}
+\usepackage{tikz}
+\usepackage{amsthm}
+
+\lstset{
+language=Python,
+basicstyle=\ttfamily\small,
+otherkeywords={self},                   
+}
+
+\title{Title}
+\title{Неточный метод Ньютона.}
+\date{4 октября 2015}
+\author{Павел Измаилов}
+
+\begin{document}
+
+\renewcommand{\contentsname}{\centerline{\bf Contents}}
+\renewcommand{\refname}{\centerline{\bf Literature}}
+
+\newcommand{\GP}{\mathcal{GP}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathcal{N}}
+\newcommand{\cov}{\mbox{cov}}
+\newcommand{\Nystrom}{Nystr\"{o}m }
+
+\newlength{\arrayrulewidthOriginal}
+\newcommand{\Cline}[2]{%
+  \noalign{\global\setlength{\arrayrulewidthOriginal}{\arrayrulewidth}}%
+  \noalign{\global\setlength{\arrayrulewidth}{#1}}\cline{#2}%
+  \noalign{\global\setlength{\arrayrulewidth}{\arrayrulewidthOriginal}}}
+
+\newtheorem{definition}{Definition}
+\newtheorem{theorem}{Theorem}
+
+
+\def\vec#1{\mathchoice{\mbox{\boldmath$\displaystyle#1$}}{\mbox{\boldmath$\textstyle#1$}} {\mbox{\boldmath$\scriptstyle#1$}} {\mbox{\boldmath$\scriptscriptstyle#1$}}}
+
+%\maketitle
+\centerline{Lomonosov Moscow State University}
+
+\centerline{Faculty of Computer Science}
+
+\vspace{5 cm}
+
+\centerline{\Large Review of matherials on}
+
+\vspace{1 cm}
+
+\centerline{\Large \bf Gaussian Processes for Machine Learning}
+
+\vspace{6 cm}
+
+\begin{flushright}
+
+Pavel Izmailov
+\end{flushright}
+
+\vfill 
+
+\centerline{Moscow,  2016}
+\thispagestyle{empty} 
+\pagebreak
+
+\section{Theory}
+
+\hspace{0.6cm}In this section an introduction to Gaussian process theory is provided.
+
+\subsection{Gaussian Process}
+
+	\hspace{0.6cm}Consider the following definition
+	\begin{definition}
+		A Gaussian process is a collection of random variables, any finite number of which have a joint Gaussian distribution.
+	\end{definition}
+	A Gaussian process is completely specified by it's mean function and covariance function. These functions are defined as follows
+	\begin{definition}
+		Let $f(x)$ be a real-valued Gaussian process. Then the functions
+		$$m(x) = \E[f(x)],$$
+		$$k(x, x') = \E[(f(x) - m(x)) (f(x') - m(x'))],$$
+		are the mean function and the covariance function of the process $f$ respectively. 
+	\end{definition}
+	
+	We will write the Gaussian process as $f(x) \sim \GP(m(x), k(x, x'))$.
+	
+\subsection{GP-regression}
+	\hspace{0.6cm}Consider the following task. We have a dataset $\{(x_i, f_i) | i = 1, \ldots, n\}$, generated from a Gaussian process $f \sim \GP(m(x), k(x, x'))$, let $x \in \R^d$.  We will denote the matrix comprised of points $x_1, \ldots, x_n$ by $X \in \R^{n \times d}$ and the vector of corresponding values $f_1, ..., f_n$ by $f \in \R^n$. We want to predict the values $f_* \in \R^m$ of this random process at a set of other m points $X_* \in \R^{m \times d}$. The joint distribution of $f$ and $f_*$ is given by
+	$$
+	\left [ \begin{array}{c} f\\ f_* \end{array} \right ]
+	\sim
+	\N \left ( 0, \left [\begin{array}{cc} K(X, X) & K(X, X_*)\\ K(X_*, X) & K(X_*, X_*) \end{array} \right] \right ),
+	$$
+	where $K(X, X) \in \R^{n \times n}$, $K(X, X_*) = K(X^*, X)^T \in \R^{n \times m}$, $K(X^*, X^*) \in \R^{m \times m}$ are the matrices comprised of pairwise values of the covariance function $k$ for the given sets.
+	
+	The conditional distributin
+	
+	$$f_* | X_*, X, f \sim \N( \hat m, \hat K ),$$
+	where 
+	$$\E [f_* | f ] = \hat m = K(X_*, X) K(X, X)^{-1} f,$$
+	$$\cov(f_* | f ) = \hat K = K(X_*, X_*) - K(X_*, X)K(X, X)^{-1}K(X, X_*).$$
+		
+	Thus, predicting the values of the Gaussian process at a new data point requires solving a linear system with a matrix of size $n \times n$ and thus scales as $O(n^3)$.
+	
+	\subsubsection{Noisy case}
+		\hspace{0.6cm}Consider the following model. We now have a dataset $\{(x_i, y_i)| i = 1, \ldots n\}$, where $y_i = f(x_i) + \varepsilon$, $\varepsilon \sim \N(0, \sigma_n)$. This means that we only have access to the noisy observations and not the true values of the process at data points. With the notation and logics similar to the one we used it the previous section we can find the conditional distribution for the values $f_*$ of the process at new points $X_*$ in this case:
+		$$f_* | y \sim \N( \hat m, \hat K ),$$
+		$$\E[f_* | y] = \hat m = K(X_*, X)^{-1} (K(X, X) + \sigma_n^2 I)^{-1} y,$$
+		$$\cov(f_* | y ) = \hat K = K(X_*, X_*) - K(X_*, X)(K(X, X) + \sigma_n^2 I)^{-1}K(X, X_*).$$
+		
+\subsection{GP-classification}
+	\hspace{0.6cm}To be wrritten.
+	
+\subsection{Kernel functions}
+	\hspace{0.6cm}To be wrritten.
+	
+\subsection{Hyper-parameter estimation}
+	\hspace{0.6cm}Bayesian paradigm provides a way of estimating the kernel hyper-parameters of the GP-model through th  maximizization of the marginal likelihood of the model. Marginal likelihood is given by
+	$$p(y | X) = \int p(y | f, X) p(f | X) df,$$
+	which is the likelihood, marginalized over the hidden values $f$ of the underlying process.
+	
+\subsection{Theoretical perspectives}
+	\hspace{0.6cm}To be wrritten.
+
+\pagebreak
+\section{Review of existing methods}
+
+\hspace{0.6cm}It follows from the discussion above, that full Gaussian process regression scales as $O(n^3)$ and thus cannot be applied to big datasets. In this section we will review several approximate methods, that make Gaussian processes practical.
+
+\subsection{Methods, based on inducing inputs}
+	\hspace{0.6cm}Most of the existing methods are based on introducing a set of $m$ function points that are called inducing inputs. Using these inputs one can make approximate predictions of the values of the hidden process at test points with a complexity of $O(nm^3)$ instead of $O(n^3)$.
+	
+	Consider the following situation. We have a dataset of $n$ examples $x_i$ with corresponding values $y_i$. We will denote the matrix of pairwise values of the covariance function by $K_{nn}$. Now we introduce a set of $m$ inducing points. We will denote the corresponding covariance matrix by $K_{mm}$ and the matrices of covariances between the inducing points and training points by $K_{nm}$ and $K_{mn}$.
+	
+%	Most of the inducing point methods form a low-rank approximation $\tilde K$ to the covariance matrix $K_{nn}$ of the following form
+%	$$\tilde K = K_{nm} K_{mm}^{-1} K_{mn}.$$
+%	This approximation is called the \Nystrom approximation of the matrix $K_{nn}$.
+	
+	The methods mostly differ in the way they use to find the inducing points. The most basic idea is to choose this points at random or by some criterion from the training data, or apply some clustering procedure and use the cluster centers as the inducing points. More advanced methods use variational inference (or it's stochastic variant) to find these points. In this section a description of several methods is be provided. 
+	
+	\subsubsection{Variational learning of inducing points}
+	
+	The method discussed here was introduced in \cite{Titsias}. To be written.
+	
+	\subsubsection{Stochastic variational inference}
+	
+	The method discussed here was proposed in \cite{BigData}.
+	
+\begin{thebibliography}{99}
+
+\bibitem{Titsias}
+Titsias M. K. (2009).  Variational Learning of Inducing Variables in Sparse GaussianProcesses.  In: {\it International Conference on Artificial Intelligence and Statistics}, pp.~567–574.
+
+\bibitem{BigData}
+Hensman J., Fusi N., Lawrence D. (2013).  Gaussian Processes for Big Data.  In: {\it Proceedings of the Twenty-Ninth Conference on Uncertainty in Artificial Intelligence}.
+
+\end{thebibliography}	
+\end{document}
