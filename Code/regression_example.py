@@ -9,14 +9,14 @@ from covariance_functions import SquaredExponential, GammaExponential, Matern
 
 data_params = np.array([1.1, 0.3, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
-model_params = np.array([1., 0.1, 0.1])
+model_params = np.array([1.1, 0.3, 0.1])
 model_covariance_obj = SquaredExponential(model_params)
 gp = GPR(data_covariance_obj)
 num = 100
 test_num = 100
 dim = 1
 seed = 21
-method = 'means'  # possible methods: 'brute', 'vi', 'means'(, 'svi')
+method = 'svi'  # possible methods: 'brute', 'vi', 'means'(, 'svi')
 ind_inputs_num = 5
 
 # Generating data points
@@ -37,18 +37,18 @@ if method == 'brute':
 else:
     model_covariance_obj = SquaredExponential(model_params)
     new_gp = GPR(model_covariance_obj, method=method)
-    new_gp.fit(x_tr, y_tr, ind_inputs_num, max_iter=30)
+    new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, max_iter=5)
     inducing_points, mean, cov = new_gp.inducing_inputs
-    predicted_y_test, high, low = new_gp.predict(x_test)
+    # predicted_y_test, high, low = new_gp.predict(x_test)
 
-print(np.linalg.norm(predicted_y_test - y_test)/y_test.size)
+# print(np.linalg.norm(predicted_y_test - y_test)/y_test.size)
 
 if dim == 1:
     gp_plot_reg_data(x_tr, y_tr, 'yo')
-    gp_plot_reg_data(x_test, predicted_y_test, 'b')
-    gp_plot_reg_data(x_test, low, 'g-')
-    gp_plot_reg_data(x_test, high, 'r-')
-    gp_plot_reg_data(x_test, y_test, 'y-')
+    # gp_plot_reg_data(x_test, predicted_y_test, 'b')
+    # gp_plot_reg_data(x_test, low, 'g-')
+    # gp_plot_reg_data(x_test, high, 'r-')
+    # gp_plot_reg_data(x_test, y_test, 'y-')
     if method != 'brute':
         gp_plot_reg_data(inducing_points, mean, 'ro', markersize=12)
     # gp_plot_reg_data(inducing_points, targets, 'ro', markersize=12)

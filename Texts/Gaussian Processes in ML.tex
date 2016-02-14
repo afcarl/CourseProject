@@ -209,11 +209,11 @@ Pavel Izmailov
 	Differentiating with respect to expectation parameters we obtain
 	\begin{equation}
 		\label{natgrad1}
-		\frac{\partial L_3} {\beta_1} =  -\frac 1 {\sigma_n}  \sum_{i = 1}^{n} \left(K_{mm}^{-1} k_i^T y_i \right) + \Sigma^{-1} \mu,
+		\frac{\partial L_3} {\partial\beta_1} =  -\frac 1 {\sigma_n}  \sum_{i = 1}^{n} \left(K_{mm}^{-1} k_i y_i \right) + \Sigma^{-1} \mu,
 	\end{equation}
 	\begin{equation}
 		\label{natgrad2}
-		\frac{\partial L_3} {\beta_2} = \frac 1 {2} \left(-\sum_{i = 1}^{n} (\Lambda_i) + \Sigma^{-1}  - K_{mm}^{-1}\right).
+		\frac{\partial L_3} {\partial\beta_2} = \frac 1 {2} \left(-\sum_{i = 1}^{n} (\Lambda_i) + \Sigma^{-1}  - K_{mm}^{-1}\right).
 	\end{equation}
 	
 	The natural gradient descent updates of these parameters are

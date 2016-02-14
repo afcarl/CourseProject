@@ -34,7 +34,8 @@ class GPR(GP):
         self.covariance_obj = cov_obj
         self.mean_fun = mean_function
         self.method = method
-        # A tuple: inducing inputs, and parameters of gaussian distribution at these points (means and covariances)
+
+        # A tuple: inducing inputs, and parameters of gaussian distribution at these points (mean and covariance)
         self.inducing_inputs = None
 
     def generate_data(self, tr_points, test_points, seed=None):
@@ -166,9 +167,11 @@ class GPR(GP):
             return self._brute_fit(*args, **kwargs)
         if self.method == 'vi' or self.method == 'means':
             return self._vi_means_fit(*args, **kwargs)
+        if self.method == 'svi':
+            return self._svi_fit(*args, **kwargs)
         else:
             print(self.method)
-            raise ValueError("Method" + self.method + " is invalid")
+            raise ValueError("Method " + self.method + " is invalid")
 
     def predict(self, *args, **kwargs):
         if self.method == 'brute':
@@ -369,15 +372,15 @@ class GPR(GP):
         means.fit(data_points.T)
         return means.cluster_centers_.T
 
-
-    def _svi_find_hyper_parameters(self, data_points, target_values, inputs=None, num_inputs=0, max_iter=None):
+    def _svi_fit(self, data_points, target_values, num_inputs=0, inputs=None, max_iter=1):
         """
         A method for optimizing hyper-parameters (for fixed inducing points), based on stochastic variational inference
-        :param data_points:
-        :param target_values:
-        :param inputs:
-        :param num_inputs:
-        :param max_iter:
+        :param data_points: training set objects
+        :param target_values: training set answers
+        :param inputs: inducing inputs
+        :param num_inputs: number of inducing points to generate. If inducing points are provided, this parameter is
+        ignored
+        :param max_iter: maximum number of iterations in stochastic gradient descent
         :return:
         """
 
@@ -386,6 +389,56 @@ class GPR(GP):
             means = KMeans(n_clusters=num_inputs)
             means.fit(data_points.T)
             inputs = means.cluster_centers_.T
+
+        # Initializing required variables
+        y = target_values
+        sigma_n = self.covariance_obj.get_params()[-1]
+        m = num_inputs
+        n = y.size
+        cov_fun = self.covariance_obj.covariance_function
+        print(inputs.shape)
+        K_mm = cov_fun(inputs, inputs)
+        K_mm_inv = np.linalg.inv(K_mm)
+        K_mn = cov_fun(inputs, data_points)
+        # K_nm = K_mn.T
+
+        # Initializing variational (normal) distribution parameters
+        mu = np.zeros((m, 1))
+        sigma = np.eye(m)
+        sigma_inv = sigma
+
+        #Stochastic gradient descent
+
+        # Learning rate
+        alpha = 1e-2
+        alpha_updater = 1e-1
+
+        # Canonical parameters initialization
+        eta_1 = sigma_inv.dot(mu)
+        eta_2 = - sigma_inv / 2
+
+        for epoch in range(max_iter):
+            for i in range(n):
+                k_i = K_mn[:, i][:, None]
+                lambda_i = K_mm_inv.dot(k_i)
+                lambda_i = lambda_i.dot(lambda_i.T)
+
+                # Natural gradients
+                dL_dbeta1 = - 1 / sigma_n * (K_mm_inv.dot(k_i * y[i])) + eta_1 / n
+                dL_dbeta2 = (-lambda_i - K_mm_inv / n) / 2 + eta_2 / n
+
+                # Canonical parameters updates
+                eta_1 -= alpha * dL_dbeta1
+                eta_2 += alpha * dL_dbeta2
+
+                print((sigma.dot(eta_1)).T)
+
+            # Learning rate update
+            alpha *= alpha_updater
+
+        sigma_inv = - 2 * eta_2
+        mu = sigma.dot(eta_1)
+        self.inducing_inputs = (inputs, mu, np.linalg.inv(sigma))
 
 
 
