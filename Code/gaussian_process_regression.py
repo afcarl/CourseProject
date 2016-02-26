@@ -419,17 +419,17 @@ class GPR(GP):
 
         #ELBO check
 
-        theta = self.covariance_obj.get_params()
-        def fun(x):
-            return self._svi_elbo_approx_oracle(data_points, target_values, inputs, np.load('mu.npy'), np.load('sigma.npy'), theta=x, index=11)[0]
-        for i in range(len(theta)-1):
-            x = np.copy(theta)
-            x[i] += 1e-8
-            # print((fun(x) - fun(theta)))
-            print((fun(x) - fun(theta))*1e8)
-
-        print(self._svi_elbo_approx_oracle(data_points, target_values, inputs, np.load('mu.npy'), np.load('sigma.npy'), theta=theta, index=11)[1])
-        exit(1)
+        # theta = self.covariance_obj.get_params()
+        # def fun(x):
+        #     return self._svi_elbo_approx_oracle(data_points, target_values, inputs, np.load('mu.npy'), np.load('sigma.npy'), theta=x, index=55)[0]
+        # for i in range(len(theta)):
+        #     x = np.copy(theta)
+        #     x[i] += 1e-8
+        #     # print((fun(x) - fun(theta)))
+        #     print((fun(x) - fun(theta))*1e8)
+        #
+        # print(self._svi_elbo_approx_oracle(data_points, target_values, inputs, np.load('mu.npy'), np.load('sigma.npy'), theta=theta, index=55)[1])
+        # exit(1)
             # self._svi_elbo_oracle(data_points, target_values, inputs, np.load('mu.npy'), np.load('sigma.npy'))
 
         for epoch in range(max_iter):
@@ -468,6 +468,7 @@ class GPR(GP):
             self.covariance_obj.set_params(theta)
 
         N = target_values.size
+        m = inducing_inputs.shape[1]
         # Data point for gradient estimation
         if index is None:
             index = np.random.randint(0, high=N-1)
@@ -486,20 +487,24 @@ class GPR(GP):
         L = np.linalg.cholesky(K_mm)
         L_inv = np.linalg.inv(L)
         K_mm_inv = L_inv.T.dot(L_inv)
-        # K_mm_inv = np.linalg.inv(K_mm)
         k_i = cov_fun(inducing_inputs, data_points[:, i][:, None])
         Lambda_i = K_mm_inv.dot(k_i.dot(k_i.T.dot(K_mm_inv))) / sigma_n
+        tilde_K_ii = cov_fun(x_i, x_i) - k_i.T.dot(K_mm_inv.dot(k_i))
 
         # Derivatives
         derivative_matrix_list = self.covariance_obj.get_derivative_function_list(params)
         d_K_mm__d_theta_lst = [fun(inducing_inputs, inducing_inputs) for fun in derivative_matrix_list]
         d_k_i__d_theta_lst = [fun(inducing_inputs, data_points[:, i][:, None]) for fun in derivative_matrix_list]
+        d_K_mm__d_sigma_n = self.covariance_obj.get_noise_derivative(points_num=m)
+        d_k_i__d_sigma_n = np.zeros((m, 1))
+        # # print(k_i.shape)
+        d_K_mm__d_theta_lst.append(d_K_mm__d_sigma_n)
+        d_k_i__d_theta_lst.append(d_k_i__d_sigma_n)
 
-        # Variational Lower Bound, estimated by one data point
-        # loss = 0
-        loss = -np.log(2 * sigma_n) - (y_i - k_i.T.dot(K_mm_inv.dot(mu)))**2 / (2 * sigma_n)
-        loss += - (cov_fun(x_i, x_i) -
-                   k_i.T.dot(K_mm_inv.dot(k_i))) / (2 * sigma_n)
+        # # Variational Lower Bound, estimated by one data point
+        loss = 0
+        loss = -np.log(sigma_n)/2 - (y_i - k_i.T.dot(K_mm_inv.dot(mu)))**2 / (2 * sigma_n)
+        loss += - tilde_K_ii / (2 * sigma_n)
         loss += -np.trace(sigma.dot(Lambda_i))/2
         loss += - np.sum(np.log(np.diag(L))) / N
         loss += - np.trace(sigma.dot(K_mm_inv)) / (2*N)
@@ -507,9 +512,11 @@ class GPR(GP):
 
         # Gradient
         grad = np.zeros((len(theta,)))
-        for param in range(len(theta)-1):
-            cov_derivative = derivative_matrix_list[param]
-
+        for param in range(len(theta)):
+            if param != len(theta) - 1:
+                cov_derivative = derivative_matrix_list[param]
+            else:
+                cov_derivative = lambda x, y: self.covariance_obj.get_noise_derivative(points_num=1)
             d_K_mm__d_theta = d_K_mm__d_theta_lst[param]
             d_k_i__d_theta = d_k_i__d_theta_lst[param]
             grad[param] += (y_i - k_i.T.dot(K_mm_inv.dot(mu))) * \
@@ -528,7 +535,9 @@ class GPR(GP):
             grad[param] += np.trace(sigma.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv))))/(2*N)
             grad[param] += mu.T.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv.dot(mu))))/(2*N)
 
-        # grad[-1] =
+        grad[-1] += tilde_K_ii / (2 * sigma_n**2) - 1 / (2 * sigma_n) + \
+                    (y_i - k_i.T.dot(K_mm_inv.dot(mu)))**2 / (2 * sigma_n**2) + \
+                    np.trace(sigma.dot(Lambda_i))/ (2 * sigma_n)
 
         self.covariance_obj.set_params(old_params)
 
