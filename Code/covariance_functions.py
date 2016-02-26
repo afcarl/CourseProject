@@ -12,8 +12,6 @@ def sigmoid(x):
 
 def delta(r):
     """Delta-function"""
-    # print(r)
-    # exit(0)
     if np.all(np.diag(r) == 0):
         return np.eye(r.shape[1])
     return np.zeros((r.shape))
@@ -22,12 +20,6 @@ def delta(r):
 
 def gaussian_noise_term(noise_variance, r):
     return noise_variance**2 * delta(r)
-
-
-# def add_noise(cov_func, noise_variance):
-#     def f(x, y):
-#         return cov_func(x, y) + gaussian_noise_term(noise_variance, x, y)
-#     return f
 
 
 def pairwise_distance(x, y):

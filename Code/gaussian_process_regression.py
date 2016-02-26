@@ -417,6 +417,8 @@ class GPR(GP):
         eta_1 = sigma_inv.dot(mu)
         eta_2 = - sigma_inv / 2
 
+        self._svi_L3_gradient_approximation(data_points, target_values, inputs, np.load('mu.npy'), np.load('sigma.npy'))
+
         for epoch in range(max_iter):
             for i in range(n):
                 k_i = K_mn[:, i][:, None]
@@ -430,15 +432,121 @@ class GPR(GP):
                 # Canonical parameters updates
                 eta_1 -= alpha * dL_dbeta1
                 eta_2 += alpha * dL_dbeta2
-
-                print((sigma.dot(eta_1)).T)
-
             # Learning rate update
             alpha *= alpha_updater
 
         sigma_inv = - 2 * eta_2
-        mu = sigma.dot(eta_1)
-        self.inducing_inputs = (inputs, mu, np.linalg.inv(sigma))
 
+
+        # CHECK THIS LINE
+        mu = sigma.dot(eta_1)
+        np.save("mu.npy", mu)
+        np.save("sigma.npy", sigma)
+
+        self.inducing_inputs = (inputs, mu, np.linalg.inv(sigma_inv))
+
+    def _svi_L3_gradient_approximation(self, data_points, target_values, inducing_inputs, mu, sigma, theta=None):
+
+        if theta is None:
+            theta = self.covariance_obj.get_params()
+        i = 1
+        y_i = target_values[i]
+        x_i = data_points[:, i][:, None]
+        self.covariance_obj.set_params(theta)
+        cov_fun = self.covariance_fun
+        params = self.covariance_obj.get_params()
+        K_mm = cov_fun(inducing_inputs, inducing_inputs)
+        K_mm_inv = np.linalg.inv(K_mm)
+        derivative_matrix_list = self.covariance_obj.get_derivative_function_list(params)
+        d_K_mm__d_theta_lst = [fun(inducing_inputs, inducing_inputs) for fun in derivative_matrix_list]
+        k_i = cov_fun(inducing_inputs, data_points[:, i][:, None])
+        d_k_i__d_theta_lst = [fun(inducing_inputs, data_points[:, i][:, None]) for fun in derivative_matrix_list]
+
+        tilde_K_ii = cov_fun(data_points[:, i][:, None], data_points[:, i][:, None]) - k_i.T.dot(K_mm_inv.dot(k_i))
+
+
+
+        sigma_n = self.covariance_obj.get_params()[-1]
+
+        def F(theta):
+            old_params = self.covariance_obj.get_params()
+            self.covariance_obj.set_params(theta)
+            K_mm = cov_fun(inducing_inputs, inducing_inputs)
+            L = np.linalg.cholesky(K_mm)
+            K_mm_inv = np.linalg.inv(K_mm)
+            k_i = cov_fun(inducing_inputs, data_points[:, i][:, None])
+            sigma_n = self.covariance_obj.get_params()[-1]
+
+            res = - mu.T.dot(K_mm_inv.dot(mu))/2
+            return res
+
+        # def test_fun(theta):
+        #     old_params = self.covariance_obj.get_params()
+        #     self.covariance_obj.set_params(theta)
+        #     K_mm = cov_fun(inducing_inputs, inducing_inputs)
+        #     K_mm_inv = np.linalg.inv(K_mm)
+        #     k_i = cov_fun(inducing_inputs, data_points[:, i][:, None])
+        #     res = k_i.T.dot(K_mm_inv.dot(mu))
+        #     self.covariance_obj.set_params(old_params)
+        #     return res
+
+        def find_approx_grad(fun):
+            # theta = self.covariance_obj.get_params()
+            fun_0 = fun(theta)
+            grad = np.zeros((len(theta),))
+            for i in range(len(theta)):
+                theta_i = np.copy(theta)
+                theta_i[i] += 1e-6
+                fun_i = fun(theta_i)
+                grad[i] = (fun_i - fun_0)*1e6
+            return grad
+
+        approx_grad = np.zeros((len(theta,)))
+        for i in range(len(theta)-1):
+            cov_derivative = derivative_matrix_list[i]
+            d_K_mm__d_theta = d_K_mm__d_theta_lst[i]
+            d_k_i__d_theta = d_k_i__d_theta_lst[i]
+            approx_grad[i] = mu.T.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv.dot(mu))))/2
+
+
+
+        #L3
+        # L3 = -np.log(2 * sigma_n) - (y_i - k_i.T.dot(K_mm_inv.dot(mu)))**2 / (2 * sigma_n)
+        # L3 += - (cov_fun(data_points[:, i][:, None], data_points[:, i][:, None]) -
+        #              k_i.T.dot(K_mm_inv.dot(k_i))) / (2 * sigma_n)
+        # Lambda_i = K_mm_inv.dot(k_i.dot(k_i.T.dot(K_mm_inv))) / sigma_n
+        # L3 += -np.trace(sigma.dot(Lambda_i))/2
+        # L = np.linalg.cholesky(K_mm)
+        # L3 += - np.sum(np.log(np.diag(L)))
+        # L3 += - np.trace(sigma.dot(K_mm_inv)) / 2
+        # L3 += - mu.T.dot(K_mm_inv.dot(mu))/2
+
+        # grad
+        # grad = np.zeros((len(theta,)))
+        # for theta in range(len(theta)-1):
+        #     d_K_mm__d_theta = d_K_mm__d_theta_lst[theta]
+        #     d_k_i__d_theta = d_k__i_d_theta_lst[theta]
+        #     grad[i] = (y_i - k_i.T.dot(K_mm_inv.dot(mu))) * \
+        #                      (d_k_i__d_theta.T.dot(K_mm_inv) -
+        #                       k_i.T.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv)))).dot(mu) / sigma_n
+        #     grad[i] += (- cov_derivative(data_points[:, i][:, None], data_points[:, i][:, None]) +
+        #                       d_k_i__d_theta.T.dot(K_mm_inv.dot(k_i)) -
+        #                       k_i.T.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv.dot(k_i))))+
+        #                       k_i.T.dot(K_mm_inv.dot(d_k_i__d_theta))
+        #                         ) / (2 * sigma_n)
+        #     grad[i] += np.trace(sigma.dot(
+        #         K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv.dot(k_i.dot(k_i.T.dot(K_mm_inv))))) -
+        #         K_mm_inv.dot(d_k_i__d_theta.dot(k_i.T.dot(K_mm_inv)))
+        #     )) / sigma_n
+        #     grad[i] += - np.trace(K_mm_inv.dot(d_K_mm__d_theta))/ 2
+        #     grad[i] += np.trace(sigma.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv))))/2
+        #     grad[i] += mu.T.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv.dot(mu))))/2
+
+        print('Evaluated')
+        print(approx_grad)
+        print('Numerically approximated')
+        print(find_approx_grad(F))
+
+        exit(1)
 
 

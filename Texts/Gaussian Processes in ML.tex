@@ -52,7 +52,8 @@ otherkeywords={self},
 \newtheorem{theorem}{Theorem}
 
 
-\def\vec#1{\mathchoice{\mbox{\boldmath$\displaystyle#1$}}{\mbox{\boldmath$\textstyle#1$}} {\mbox{\boldmath$\scriptstyle#1$}} {\mbox{\boldmath$\scriptscriptstyle#1$}}}
+\def\vec#1{\mathchoice{\mbox{\boldmath$\displaystyle#1$}}
+{\mbox{\boldmath$\textstyle#1$}} {\mbox{\boldmath$\scriptstyle#1$}} {\mbox{\boldmath$\scriptscriptstyle#1$}}}
 
 %\maketitle
 \centerline{Lomonosov Moscow State University}
@@ -222,20 +223,23 @@ Pavel Izmailov
 	where $\ell$ is the step length. It's easy to see, that if $\ell = 1$ the method converges to the optimal distribution $q(u)$ in one iteration. Unfortunately, we can not directly compute the updates described above, because the computational complexity of computing the matrix $\Lambda$ is $O(n m^2)$. We will use approximations to the natural gradients, obtained by considering the data points individually or in batches. The formulas for these approximations can be obtained from equalities \ref{natgrad1}, \ref{natgrad2}.
 	
 	Finally, we need to find the derivatives of the ELBO with respect to kernel hyper-parameters $\theta$
-	$$\frac{\partial L_3} {\partial \theta} = \sum_{i = 1}^n \left ( \frac 1 {\sigma_n} (y_i - k_i^T K_{mm} \mu) \left(\frac{\partial k_i^T}{\partial \theta} K_{mm}^{-1} - k_i^T K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} \right)m + \right.$$
+	$$\frac{\partial L_3} {\partial \theta} = \sum_{i = 1}^n \left [ \frac 1 {\sigma_n} (y_i - k_i^T K_{mm} \mu) \left(\frac{\partial k_i^T}{\partial \theta} K_{mm}^{-1} - k_i^T K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} \right)\mu + \right.$$
 	$$\left. +\frac 1 {2 \sigma_n} \left (- \frac{\partial K_{nn}}{\partial \theta} +  \frac{\partial K_{nm}}{\partial \theta} K_{mm}^{-1} K_{mn} + K_{nm} K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} K_{mn} + K_{nm} K_{mm}^{-1} \frac{\partial K_{mn}}{\partial \theta}\right)_ {ii} + \right.$$
-	$$\left. +  \frac 1 {2 \sigma_n} \Sigma \left( K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} k_i k_i^T K_{mm}^{-1}  + K_{mm}^{-1} k_i k_i^{T} K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} - \right. \right.$$
-	$$ \left. \left.-  K_{mm}^{-1} \frac{\partial k_{i}}{\partial \theta}k_i^T K_{mm}^{-1} + K_{mm}^{-1} k_i  \frac{\partial k_i^T}{\partial \theta} K_{mm}^{-1}\right)\right)$$
-	$$ + \frac 1 2 K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} + \frac 1 2 \Sigma K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} + \frac 1 2 \mu^T K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1}\mu,$$
+	% $$\left. +  \frac 1 {2 \sigma_n} \tr\left( \Sigma \left( K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} k_i k_i^T K_{mm}^{-1}  + K_{mm}^{-1} k_i k_i^{T} K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} - \right. \right. \right.$$
+	% $$\left. \left. \left.-  K_{mm}^{-1} \frac{\partial k_{i}}{\partial \theta}k_i^T K_{mm}^{-1} - K_{mm}^{-1} k_i  \frac{\partial k_i^T}{\partial \theta} K_{mm}^{-1}\right)\right)\right)$$
+	$$\left. +  \frac 1 {\sigma_n} \tr\left( \Sigma \left( K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} k_i k_i^T K_{mm}^{-1}  -  K_{mm}^{-1} \frac{\partial k_{i}}{\partial \theta}k_i^T K_{mm}^{-1}\right)\right)\right]$$
+
+	$$ - \frac 1 2 \tr\left(K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta}\right) + \frac 1 2 \tr\left(\Sigma K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} \right)+ \frac 1 2 \mu^T K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1}\mu,$$
 	and $\sigma_n$
-	$$\frac{\partial L_{3}}{\sigma_n} = \sum_{i = 1}^{n} \left(-\frac{1}{2\sigma_n} - \frac 1 {4 \sigma_n^3} (k_i^T K_{mm}^{-1} \mu - y_i)^2 + \frac 1 {2 \sigma_n^2} \tilde K_{ii}\right).$$
+	$$\frac{\partial L_{3}}{\partial\sigma_n} = \sum_{i = 1}^{n} \left(-\frac{1}{2\sigma_n} - \frac 1 {4 \sigma_n^3} (k_i^T K_{mm}^{-1} \mu - y_i)^2 + \frac 1 {2 \sigma_n^2} \tilde K_{ii}\right).$$
 	Now, we can optimize the kernel hyper-parameters and the noise variance alongside the variational parameters. 
 	
 \pagebreak
 \begin{thebibliography}{99}
 
 \bibitem{Titsias}
-Titsias M. K. (2009).  Variational Learning of Inducing Variables in Sparse GaussianProcesses.  In: {\it International Conference on Artificial Intelligence and Statistics}, pp.~567–574.
+Titsias M. K. (2009).  Variational Learning of Inducing Variables in Sparse Gaussian
+Processes.  In: {\it International Conference on Artificial Intelligence and Statistics}, pp.~567–574.
 
 \bibitem{BigData}
 Hensman J., Fusi N., Lawrence D. (2013).  Gaussian Processes for Big Data.  In: {\it Proceedings of the Twenty-Ninth Conference on Uncertainty in Artificial Intelligence}.
