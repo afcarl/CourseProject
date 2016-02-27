@@ -9,7 +9,7 @@ from covariance_functions import SquaredExponential, GammaExponential, Matern
 
 data_params = np.array([1.1, 0.3, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
-model_params = np.array([1.1, 0.3, 0.1])
+model_params = np.array([0.5, 0.3, 0.3])
 model_covariance_obj = SquaredExponential(model_params)
 gp = GPR(data_covariance_obj)
 num = 100
@@ -37,7 +37,7 @@ if method == 'brute':
 else:
     model_covariance_obj = SquaredExponential(model_params)
     new_gp = GPR(model_covariance_obj, method=method)
-    new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, max_iter=10)
+    new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, max_iter=100)
     inducing_points, mean, cov = new_gp.inducing_inputs
     predicted_y_test, high, low = new_gp.predict(x_test)
 
