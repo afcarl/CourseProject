@@ -106,28 +106,6 @@ class CovarianceFamily:
         """
         return 2 * self.get_params()[-1] * np.eye(points_num)
 
-    def project_into_bounds(self, point):
-        """
-
-        :param bounds:
-        :param point:
-        :return:
-        """
-        bounds = self.get_bounds()
-        low_bounds = [bound[0] for bound in bounds]
-        high_bounds = [bound[1] for bound in bounds]
-        proj = np.copy(point)
-        i = 0
-        for coord, l_bound, h_bound in list(zip(point, low_bounds, high_bounds)):
-            if not(l_bound is None):
-                if coord < l_bound:
-                    proj[i] = l_bound
-            if not(h_bound is None):
-                if coord > h_bound:
-                    proj[i] = h_bound
-            i += 1
-        return proj
-
 
 class StationaryCovarianceFamily(CovarianceFamily):
     """This is an abstract class, representing the concept of a family of stationary covariance functions"""

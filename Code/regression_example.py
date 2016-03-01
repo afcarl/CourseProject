@@ -9,7 +9,7 @@ from covariance_functions import SquaredExponential, GammaExponential, Matern
 
 data_params = np.array([1.1, 0.3, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
-model_params = np.array([0.5, 0.3, 0.3])
+model_params = np.array([5.5, 0.1, 0.3])
 model_covariance_obj = SquaredExponential(model_params)
 gp = GPR(data_covariance_obj)
 num = 100
@@ -17,7 +17,7 @@ test_num = 100
 dim = 1
 seed = 21
 method = 'svi'  # possible methods: 'brute', 'vi', 'means'(, 'svi')
-ind_inputs_num = 7
+ind_inputs_num = 6
 
 # Generating data points
 np.random.seed(seed)
