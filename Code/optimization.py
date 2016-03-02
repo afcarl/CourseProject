@@ -66,71 +66,107 @@ def gradient_descent(oracle, point, bounds=None, options=None):
     :param point: point
     :param bounds: bounds on the variables
     :param options: a dictionary, containing the following fields
-    'maxiter': maximum number of iterations
-    'verbose': a boolean, showing weather or not to print the convergence info
-    'print_freq': the frequency of the convergence messages
-    'g_tol': the tolerance wrt gradient. If the gradient at the current point is
-    smaller than the tollerance, the method stops
-    'step_tol' the tolerance wrt the step length. If the step length at current
-    iteration is less than tollerance, the method stops.
-    'maxstep' is the maximum allowed step length
-    default options : {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'g_tol': 1e-5, 'step_tol': 1e-16,
+        'maxiter': maximum number of iterations
+        'verbose': a boolean, showing weather or not to print the convergence info
+        'print_freq': the frequency of the convergence messages
+        'g_tol': the tolerance wrt gradient. If the gradient at the current point is
+        smaller than the tollerance, the method stops
+        'step_tol' the tolerance wrt the step length. If the step length at current
+        iteration is less than tollerance, the method stops.
+        'maxstep' is the maximum allowed step length
+    default options: {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'g_tol': 1e-5, 'step_tol': 1e-16,
                        'maxstep': 1.0}
     :return: the point with the minimal function value found
     """
-    if 'maxiter' in options.keys():
-        maxiter = options['maxiter']
-    else:
-        maxiter = 1000
+    defaul_options = {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'g_tol': 1e-5, 'step_tol': 1e-16,
+                       'maxstep': 1.0}
+    defaul_options.update(options)
     if 'print_freq' in options.keys():
-        print_freq = options['print_freq']
-    else:
-        print_freq = 10
-    if 'verbose' in options.keys():
-        verbose = options['verbose']
-    elif 'print_freq' in options.keys():
-        verbose = True
-    else:
-        verbose = False
-    if 'g_tol' in options.keys():
-        g_tol = options['g_tol']
-    else:
-        g_tol = 1e-5
-    if 'step_tol' in options.keys():
-        step_tol = options['step_tol']
-    else:
-        step_tol = 1e-16
-    if 'maxstep' in options.keys():
-        maxstep = options['maxstep']
-    else:
-        maxstep = 1.0
+        defaul_options['verbose'] = True
+    options = defaul_options
 
-    step0 = 0.1
-    gamma = 0.55
-
-    step = step0
+    step = 1.0
     x = point
     loss_fun = lambda w: oracle(w)[0]
 
-    for i in range(maxiter):
+    for i in range(options['maxiter']):
         x = project_into_bounds(x, bounds)
-        print('x', x[1])
         loss, grad = oracle(x)
-        if np.linalg.norm(grad) < g_tol:
-            if verbose:
+        if np.linalg.norm(grad) < options['g_tol']:
+            if options['verbose']:
                 print("Gradient norm reached the stopping criterion")
             break
-        # x, step = _linesearch_armiho(fun=loss_fun, gradient=grad, point_loss=loss, bounds=bounds, point=x,
-        #                              step_0=step, maxstep=maxstep)
-        x -= grad * step
-        # x = project_into_bounds(x, bounds)
-        if step < step_tol:
-            if verbose:
+        x, step = _linesearch_armiho(fun=loss_fun, gradient=grad, point_loss=loss, bounds=bounds, point=x,
+                                     step_0=step, maxstep=options['maxstep'])
+        if step < options['step_tol']:
+            if options['verbose']:
                 print("Step length reached the stopping criterion")
             break
-        if not (i % print_freq) and verbose:
+        if not (i % options['print_freq']) and options['verbose']:
             print("Iteration ", i, ":")
             print("\tGradient norm", np.linalg.norm(grad))
             print("\tFunction value", loss)
+    return x
+
+
+def stochastic_gradient_descent(oracle, point, n, bounds=None, options=None):
+    """
+    Stochastic gradient descent optimization method for finite sums
+    :param oracle: an oracle gunction, returning the gradient approximation by one data point,
+    given it's index and the point
+    :param point:
+    :param n: number of training examples
+    :param bounds: bounds on the variables
+    :param options: a dictionary, containing the following fields
+        'maxiter': maximum number of iterations
+        'verbose': a boolean, showing weather or not to print the convergence info
+        'print_freq': the frequency of the convergence messages
+        'batch_size': the size of the mini-batch, used for gradient estimation
+        'step0': initial step of the method
+        'gamma': a parameter of the step length rule. It should be in (0.5, 1). The smaller it
+        is, the more aggressive the method is
+        'update_rate': the rate of shuffling the data points
+    defaul options: {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'batch_size': 1,
+                      'step0': 0.1, 'gamma': 0.55, 'update_rate':1}
+    :return:
+    """
+    defaul_options = {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'batch_size': 1,
+                      'step0': 0.1, 'gamma': 0.55, 'update_rate':1}
+    defaul_options.update(options)
+    if 'print_freq' in options.keys():
+        defaul_options['verbose'] = True
+    options = defaul_options
+
+    batch_size = options['batch_size']
+    step0 = options['step0']
+    gamma = options['gamma']
+
+    batch_num = int(n / batch_size)
+    if n % batch_size:
+        batch_num += 1
+    update_rate = options['update_rate']
+
+    indices = np.random.random_integers(0, n-1, (update_rate * n,))
+    step = step0
+    x = point
+    x = project_into_bounds(x, bounds)
+    grad = 0
+    for epoch in range(options['maxiter']):
+        for i in range(n):
+            index = indices[i]
+            if not (i % batch_size):
+                x -= grad * step
+                x = project_into_bounds(x, bounds)
+                grad = oracle(x, index)
+            else:
+                grad += oracle(x, index)
+
+            # print('x', x[1])
+
+        if not (epoch % update_rate):
+            indices = np.random.random_integers(0, n-1, (update_rate * n,))
+
+        if not (epoch % options['print_freq']) and options['verbose']:
+            print("Epoch ", epoch, ":")
         step = step0 / np.power((i+1), gamma)
     return x

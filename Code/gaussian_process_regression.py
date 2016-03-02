@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 
 from gaussian_process import GP, minimize_wrapper
 from covariance_functions import CovarianceFamily, sigmoid
-from optimization import gradient_descent
+from optimization import gradient_descent, stochastic_gradient_descent
 
 
 class GPR(GP):
@@ -394,7 +394,7 @@ class GPR(GP):
 
 
 
-    def _svi_fit(self, data_points, target_values, num_inputs=0, inputs=None, max_iter=1):
+    def _svi_fit(self, data_points, target_values, num_inputs=0, inputs=None, max_iter=10):
         """
         A method for optimizing hyper-parameters (for fixed inducing points), based on stochastic variational inference
         :param data_points: training set objects
@@ -420,113 +420,40 @@ class GPR(GP):
 
         # Initializing variational (normal) distribution parameters
         mu = np.zeros((m, 1))
-        # mu = np.load("mean.npy")[:num_inputs, :]
-
-        sigma = np.eye(m)
-        # sigma = np.load("cov.npy")[:num_inputs, :num_inputs]
-        sigma_inv = np.linalg.inv(sigma)
-        # sigma_inv = np.eye(m)
+        # sigma = np.eye(m)
+        sigma_inv = np.eye(m)
 
         # Canonical parameters initialization
         eta_1 = sigma_inv.dot(mu)
         eta_2 = - sigma_inv / 2
 
-        # Expectation parameters
-        # beta_1 = mu
-        # beta_2 = mu.dot(mu.T) + sigma
-
-        #ELBO check
-
-        # theta = self.covariance_obj.get_params()[:-1]
-        # param_vec = self._svi_get_parameter_vector(theta, beta_1, beta_2)
-        # param_vec = np.load("res.npy")
-        # theta, beta_1, beta_2 = self._svi_get_parameters(param_vec)
-
-        # # Debug
         sigma_n = self.covariance_obj.get_params()[-1]
-        # cov_fun = self.covariance_obj.covariance_function
-        # K_mm = cov_fun(inputs, inputs)
-        # K_mn = cov_fun(inputs, data_points)
-        # L = np.linalg.cholesky(K_mm)
-        # L_inv = np.linalg.inv(L)
-        # K_mm_inv = L_inv.T.dot(L_inv)
-        # Lambda = K_mm_inv.dot(K_mn.dot(K_mn.T.dot(K_mm_inv))) / sigma_n + K_mm_inv
-        # print(sigma_inv/2 - Lambda/2)
-        # sigma = np.linalg.inv(Lambda)
-        # sigma_inv = Lambda
-        # mu = sigma.dot(K_mm_inv.dot(K_mn.dot(y)))/sigma_n
-        # beta_1 = mu
-        # beta_2 = mu.dot(mu.T) + sigma
-        # theta = self.covariance_obj.get_params()[:-1]
-        # param_vec = self._svi_get_parameter_vector(theta, beta_1, beta_2)
-
-        # mu = np.load("mean.npy")
-        # sigma = np.load("cov.npy")
-
         theta = self.covariance_obj.get_params()[:-1]
         param_vec = self._svi_get_parameter_vector(theta, eta_1, eta_2)
 
-        def fun(x):
-            full_loss = 0
-            full_grad = np.zeros((len(param_vec),))
-            for i in range(n):
-                oracle = self._svi_elbo_approx_oracle(data_points, target_values, inputs, parameter_vec=x, index=i)
-                full_loss += oracle[0]
-                full_grad += oracle[1]
-            # print(full_grad)
-            # exit(0)
-            return -full_loss, -np.array(full_grad)
+        # def fun(x):
+        #     full_loss = 0
+        #     full_grad = np.zeros((len(param_vec),))
+        #     for i in range(n):
+        #         oracle = self._svi_elbo_approx_oracle(data_points, target_values, inputs, parameter_vec=x, index=i)
+        #         full_loss += oracle[0]
+        #         full_grad += oracle[1]
+        #     return -full_loss, -np.array(full_grad)
 
-        # print(fun(param_vec))
-
-        # grad = fun(param_vec)[1]
-        # for i in range(len(param_vec)):
-        #     x_i = np.copy(param_vec)
-        #     x_i[i] += 1e-7
-        #     estimation = (fun(x_i)[0] - fun(param_vec)[0]) * 1e7
-        #     print(estimation, "\t", grad[i], '\t', np.abs(grad[i] - estimation))
-        #
-        # exit(0)
-
-
-        #
-        # print(param_vec[2])
-        # fun_vals = []
-        # param_vals = []
-        # for i in range(7):#range(len(param_vec)):
-        #     diff = np.exp(-i)
-        #     x_i = np.copy(param_vec)
-        #     x_i[2] += diff
-        #     fun_vals.append((fun(x_i)[0])[0, 0])
-        #     param_vals.append(-i)
-        #
-        # print(fun_vals)
-        # exit(0)
+        def stoch_fun(x, i):
+            return -self._svi_elbo_approx_oracle(data_points, target_values, inputs, parameter_vec=x, index=i)[1]
 
         bnds = tuple(list(self.covariance_obj.get_bounds()[:-1]) + [(None, None)] * (len(param_vec) - len(theta)))
-        res = gradient_descent(oracle=fun, point=param_vec, bounds=bnds, options={'maxiter': 100, 'verbose': True,
-                                                                                  'print_freq':10, 'maxstep': 1.0})
+        res = stochastic_gradient_descent(oracle=stoch_fun, n=n, point=param_vec, bounds=bnds,
+                                          options={'maxiter':max_iter, 'batch_size': 10})
         theta, eta_1, eta_2 = self._svi_get_parameters(res)
-        #
-        # res = minimize(fun, param_vec, method='L-BFGS-B', jac=True, bounds=bnds, options={'maxiter': 30, 'iprint':True, 'disp':True})
-        # print(res)
-        # theta, beta_1, beta_2 = self._svi_get_parameters(res['x'])
         theta = list(theta)
         theta.append(sigma_n)
         theta = np.array(theta)
         self.covariance_obj.set_params(theta)
-        # np.save("res.npy", res)
-
         sigma_inv = - 2 * eta_2
         sigma = np.linalg.inv(sigma_inv)
         mu = sigma.dot(eta_1)
-        print(mu)
-
-        # sigma = beta_2 - beta_1.dot(beta_1.T)
-        # sigma_inv = np.linalg.inv(sigma)
-        # mu = beta_1
-        # print(mu)
-        # print(sigma)
         self.inducing_inputs = (inputs, mu, sigma)
 
     def _svi_elbo_approx_oracle(self, data_points, target_values, inducing_inputs, parameter_vec,
@@ -553,23 +480,6 @@ class GPR(GP):
         sigma_L = np.linalg.cholesky(sigma)
         mu = sigma.dot(eta_1)
 
-        # theta, beta_1, beta_2 = self._svi_get_parameters(parameter_vec)
-        # sigma = beta_2 - beta_1.dot(beta_1.T)
-        # print(sigma)
-        # print(np.linalg.eigvals(sigma))
-        # sigma_L = np.linalg.cholesky(sigma)
-        # sigma_inv = np.linalg.inv(sigma)
-        # mu = beta_1
-        # eta_1 = sigma_inv.dot(mu)
-        # eta_2 = - sigma_inv / 2
-
-        # theta, mu, sigma = self._svi_get_parameters(parameter_vec)
-        # # print(np.linalg.eigvals(sigma))
-        # sigma_L = np.linalg.cholesky(sigma)
-        # sigma_inv = np.linalg.inv(sigma)
-        # eta_1 = sigma_inv.dot(mu)
-        # eta_2 = - sigma_inv / 2
-
         old_params = self.covariance_obj.get_params()
         theta = list(theta)
         theta.append(old_params[-1])
@@ -588,7 +498,6 @@ class GPR(GP):
         cov_fun = self.covariance_fun
         params = self.covariance_obj.get_params()
         sigma_n = self.covariance_obj.get_params()[-1]
-        # print(sigma_n)
 
         # Covariance matrices
         K_mm = cov_fun(inducing_inputs, inducing_inputs)
@@ -650,15 +559,10 @@ class GPR(GP):
         dL_dbeta1 = - y_i / sigma_n * (K_mm_inv.dot(k_i)) + eta_1 / N
         dL_dbeta2 = (-Lambda_i - K_mm_inv / N) / 2 - eta_2 / N
 
-        # dL_dsigma = -(Lambda_i + K_mm_inv / N) / 2 + sigma_inv / (2*N)
-        # dL_dmu = -(K_mm_inv.dot(k_i)) * y_i/sigma_n + (Lambda_i + K_mm_inv/N).dot(mu)
-
         grad = grad[:, None]
 
         grad = np.vstack((grad, -dL_dbeta1.reshape(-1)[:, None]))
         grad = np.vstack((grad, dL_dbeta2.reshape(-1)[:, None]))
-        # grad = np.vstack((grad, -dL_dmu.reshape(-1)[:, None]))
-        # grad = np.vstack((grad, dL_dsigma.reshape(-1)[:, None]))
 
         self.covariance_obj.set_params(old_params)
 
