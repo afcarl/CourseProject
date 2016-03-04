@@ -3,6 +3,7 @@ import time
 import scipy.optimize as op
 from abc import ABCMeta, abstractmethod
 
+
 def minimize_wrapper(func, x0, mydisp=False, **kwargs):
 
     start = time.time()
@@ -30,6 +31,7 @@ def minimize_wrapper(func, x0, mydisp=False, **kwargs):
     out = op.minimize(func, x0, jac=True, callback=callback, **kwargs)
 
     return out, w_list, time_list, fun_list
+
 
 class GP:
     """

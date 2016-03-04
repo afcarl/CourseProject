@@ -157,16 +157,16 @@ def stochastic_gradient_descent(oracle, point, n, bounds=None, options=None):
             if not (i % batch_size):
                 x -= grad * step
                 x = project_into_bounds(x, bounds)
+                # print('x', x[2])
                 grad = oracle(x, index)
             else:
                 grad += oracle(x, index)
-
-            # print('x', x[1])
 
         if not (epoch % update_rate):
             indices = np.random.random_integers(0, n-1, (update_rate * n,))
 
         if not (epoch % options['print_freq']) and options['verbose']:
             print("Epoch ", epoch, ":")
-        step = step0 / np.power((i+1), gamma)
+            print("\tStep:", step)
+        step = step0 / np.power((epoch+1), gamma)
     return x

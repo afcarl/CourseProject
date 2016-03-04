@@ -1,23 +1,23 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn import svm, cross_validation
-from sklearn.cluster import KMeans
-from sklearn.neighbors import NearestNeighbors
+# from sklearn import svm, cross_validation
+# from sklearn.cluster import KMeans
+# from sklearn.neighbors import NearestNeighbors
 from gaussian_process_regression import GPR
 from plotting import gp_plot_reg_data, gp_plot_class_data
 from covariance_functions import SquaredExponential, GammaExponential, Matern
 
 data_params = np.array([1.1, 0.3, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
-model_params = np.array([10.3, 1.2, 0.1])
+model_params = np.array([10.3, 1.2, 0.2])
 model_covariance_obj = SquaredExponential(model_params)
 gp = GPR(data_covariance_obj)
 num = 100
 test_num = 100
 dim = 1
 seed = 21
-method = 'svi'  # possible methods: 'brute', 'vi', 'means'(, 'svi')
-ind_inputs_num = 8
+method = 'means'  # possible methods: 'brute', 'vi', 'means'(, 'svi')
+ind_inputs_num = 9
 
 # Generating data points
 np.random.seed(seed)
@@ -37,7 +37,7 @@ if method == 'brute':
 else:
     model_covariance_obj = SquaredExponential(model_params)
     new_gp = GPR(model_covariance_obj, method=method)
-    new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, max_iter=100)
+    new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, max_iter=40)
     inducing_points, mean, cov = new_gp.inducing_inputs
     # np.save("inputs.npy", inducing_points)
     # np.save('mean.npy', mean)

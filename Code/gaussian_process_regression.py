@@ -392,8 +392,6 @@ class GPR(GP):
         eta_2 = vec[theta_len+mat_size:, :].reshape((mat_size, mat_size))
         return theta, eta_1, eta_2
 
-
-
     def _svi_fit(self, data_points, target_values, num_inputs=0, inputs=None, max_iter=10):
         """
         A method for optimizing hyper-parameters (for fixed inducing points), based on stochastic variational inference
@@ -445,7 +443,7 @@ class GPR(GP):
 
         bnds = tuple(list(self.covariance_obj.get_bounds()[:-1]) + [(None, None)] * (len(param_vec) - len(theta)))
         res = stochastic_gradient_descent(oracle=stoch_fun, n=n, point=param_vec, bounds=bnds,
-                                          options={'maxiter':max_iter, 'batch_size': 10})
+                                          options={'maxiter':max_iter, 'batch_size': 10, 'print_freq': 10, 'step0':0.1})
         theta, eta_1, eta_2 = self._svi_get_parameters(res)
         theta = list(theta)
         theta.append(sigma_n)
@@ -567,5 +565,3 @@ class GPR(GP):
         self.covariance_obj.set_params(old_params)
 
         return loss, grad[:, 0]
-
-
