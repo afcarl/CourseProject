@@ -9,15 +9,17 @@ from covariance_functions import SquaredExponential, GammaExponential, Matern
 
 data_params = np.array([1.1, 0.3, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
-model_params = np.array([10.3, 1.2, 0.2])
+model_params = np.array([10.3, 1.2, 0.1])
 model_covariance_obj = SquaredExponential(model_params)
 gp = GPR(data_covariance_obj)
 num = 100
 test_num = 100
 dim = 1
 seed = 21
-method = 'means'  # possible methods: 'brute', 'vi', 'means'(, 'svi')
-ind_inputs_num = 9
+method = 'svi'  # possible methods: 'brute', 'vi', 'means'(, 'svi')
+parametrization = 'cholesky' # possible parametrizations for svi method: cholesky, natural
+ind_inputs_num = 8
+max_iter = 500
 
 # Generating data points
 np.random.seed(seed)
@@ -31,18 +33,23 @@ y_tr, y_test = gp.generate_data(x_tr, x_test, seed=seed)
 
 if method == 'brute':
     new_gp = GPR(model_covariance_obj)
-    new_gp.fit(x_tr, y_tr, max_iter=30)
+    new_gp.fit(x_tr, y_tr, max_iter=max_iter)
     predicted_y_test, high, low = new_gp.predict(x_test, x_tr, y_tr)
 
-else:
+elif method == 'means' or method == 'vi':
     model_covariance_obj = SquaredExponential(model_params)
     new_gp = GPR(model_covariance_obj, method=method)
-    new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, max_iter=40)
+    new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, max_iter=max_iter)
     inducing_points, mean, cov = new_gp.inducing_inputs
-    # np.save("inputs.npy", inducing_points)
-    # np.save('mean.npy', mean)
-    # np.save('cov.npy', cov)
     predicted_y_test, high, low = new_gp.predict(x_test)
+
+elif method == 'svi':
+    model_covariance_obj = SquaredExponential(model_params)
+    new_gp = GPR(model_covariance_obj, method=method, parametrization=parametrization)
+    new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, max_iter=max_iter)
+    inducing_points, mean, cov = new_gp.inducing_inputs
+    predicted_y_test, high, low = new_gp.predict(x_test)
+
 
 print(new_gp.covariance_obj.get_params())
 print(np.linalg.norm(predicted_y_test - y_test)/y_test.size)

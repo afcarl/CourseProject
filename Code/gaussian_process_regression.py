@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 
 from gaussian_process import GP, minimize_wrapper
 from covariance_functions import CovarianceFamily, sigmoid
-from optimization import gradient_descent, stochastic_gradient_descent
+from optimization import gradient_descent, stochastic_gradient_descent, check_gradient
 
 
 class GPR(GP):
@@ -15,15 +15,19 @@ class GPR(GP):
     Gaussian Process Regressor
     """
 
-    def __init__(self, cov_obj, mean_function=lambda x: 0, method='brute'):
+    def __init__(self, cov_obj, mean_function=lambda x: 0, method='brute', parametrization='natural'):
         """
         :param cov_obj: object of the CovarianceFamily class
         :param mean_function: function, mean of the gaussian process
         :param method: a string, showing, which method will be used for prediction and hyper-parameter optimization
-        brute — full gaussian process regression
-        vi — a method, using variational inference for finding inducing inputs
-        means — a method, using k-means cluster centers as inducing inputs
-        svi — a method, using stochastic variational inference for finding inducing inputs
+            brute — full gaussian process regression
+            vi — a method, using variational inference for finding inducing inputs
+            means — a method, using k-means cluster centers as inducing inputs
+            svi — a method, using stochastic variational inference for finding inducing inputs
+        :param parametrization: the parametrization of the ELBO. Used only in the svi method, ignored otherwise.
+            natural — natural gradient descent is used for optimization
+            cholesky – cholesky decomposition is used for storing the covartiance matrix of the variational
+            distribution
         :return: GPR object
         """
         if not isinstance(cov_obj, CovarianceFamily):
@@ -32,11 +36,14 @@ class GPR(GP):
             raise TypeError("mean_function must be callable")
         if not method in ['brute', 'vi', 'means', 'svi']:
             raise ValueError("Invalid method name")
+        if not parametrization in ['natural', 'cholesky']:
+            raise ValueError("Invalid parametrization name")
 
         self.covariance_fun = cov_obj.covariance_function
         self.covariance_obj = cov_obj
         self.mean_fun = mean_function
         self.method = method
+        self.parametrization = parametrization
 
         # A tuple: inducing inputs, and parameters of gaussian distribution at these points (mean and covariance)
         self.inducing_inputs = None
@@ -375,22 +382,84 @@ class GPR(GP):
         means.fit(data_points.T)
         return means.cluster_centers_.T
 
-    def _svi_get_parameter_vector(self, theta, eta_1, eta_2):
+    @staticmethod
+    def _svi_lower_triang_mat_to_vec(mat):
+        """
+        Transforms a lower-triangular matrix to a vector of it's components, that are lower than the main diagonal
+        :param mat: lower-triangular matrix
+        :return: a vector
+        """
+        indices = np.tril_indices(mat.shape[0])
+        vec = mat[indices]
+        return vec
 
+    @staticmethod
+    def _svi_lower_triang_vec_to_mat(vec):
+        """
+        Transforms a vector similar to the ones, produced by _svi_lower_triang_mat_to_vec, to a lower-diagonal matrix
+        :param vec: a vector of the lower-triangular matrix' components, that are lower than the main diagonal
+        :return: a lower-triangular matrix
+        """
+        m = len(vec)
+        k = (-1 + np.sqrt(1 + 8 * m)) / 2
+        if k != int(k):
+            raise ValueError("Vec has an invalid size")
+        indices = np.tril_indices(k)
+        mat = np.zeros((k, k))
+        mat[indices] = vec.reshape(-1)
+        return mat
+
+    def _svi_get_parameter_vector(self, theta, eta_1, eta_2):
+        """
+        Transform given parameters to a vector, according to the used parametrization
+        :param theta: vector or list
+        :param eta_1: vector
+        :param eta_2: matrix
+        :return: a vector
+        """
         theta = np.array(theta).reshape(-1)[:, None]
         eta_1 = eta_1.reshape(-1)[:, None]
-        eta_2 = eta_2.reshape(-1)[:, None]
-        # print(eta_1.shape)
+        if self.parametrization == 'cholesky':
+            eta_2 = self._svi_lower_triang_mat_to_vec(eta_2)[:, None]
+        else:
+            eta_2 = eta_2.reshape(-1)[:, None]
         return np.vstack((theta, eta_1, eta_2))[:, 0]
 
     def _svi_get_parameters(self, vec):
+        """
+        Retrieve the parameters from the parameter vector vec of the same form, as the one, _svi_get_parameter_vector
+        produces.
+        :param vec: a vector
+        :return: a tuple of parameters
+        """
         theta_len = len(self.covariance_obj.get_params())-1
         vec = vec[:, None]
         theta = vec[:theta_len, :]
-        mat_size = np.int(np.sqrt((vec.size - theta_len+ 1/4)) - 1 / 2)
+        if self.parametrization == 'natural':
+            mat_size = np.int(np.sqrt((vec.size - theta_len + 1/4)) - 1 / 2)
+        elif self.parametrization == 'cholesky':
+            mat_size = np.int(np.sqrt(2 * (vec.size - theta_len) + 9 / 4) - 3 / 2)
         eta_1 = vec[theta_len:theta_len+mat_size, :].reshape((mat_size, 1))
-        eta_2 = vec[theta_len+mat_size:, :].reshape((mat_size, mat_size))
+        if self.parametrization == 'cholesky':
+            eta_2 = self._svi_lower_triang_vec_to_mat(vec[theta_len+mat_size:, :])
+        else:
+            eta_2 = vec[theta_len+mat_size:, :].reshape((mat_size, mat_size))
         return theta, eta_1, eta_2
+
+    def _svi_get_bounds(self, m):
+        bnds = list(self.covariance_obj.get_bounds()[:-1])
+        if self.parametrization == 'natural':
+            return tuple(bnds +
+                         [(None, None)] * (m + m*m))
+        elif self.parametrization == 'cholesky':
+            bnds += [(None, None)] * m
+            sigma_bnds = self._svi_lower_triang_mat_to_vec(np.eye(m)).tolist()
+            for elem in sigma_bnds:
+                if elem == 0:
+                    bnds.append((None, None))
+                else:
+                    bnds.append((1e-2, None))
+            return tuple(bnds)
 
     def _svi_fit(self, data_points, target_values, num_inputs=0, inputs=None, max_iter=10):
         """
@@ -418,40 +487,59 @@ class GPR(GP):
 
         # Initializing variational (normal) distribution parameters
         mu = np.zeros((m, 1))
-        # sigma = np.eye(m)
-        sigma_inv = np.eye(m)
-
-        # Canonical parameters initialization
-        eta_1 = sigma_inv.dot(mu)
-        eta_2 = - sigma_inv / 2
-
         sigma_n = self.covariance_obj.get_params()[-1]
+
         theta = self.covariance_obj.get_params()[:-1]
-        param_vec = self._svi_get_parameter_vector(theta, eta_1, eta_2)
+        if self.parametrization == 'natural':
+            sigma_inv = np.eye(m)
 
-        # def fun(x):
-        #     full_loss = 0
-        #     full_grad = np.zeros((len(param_vec),))
-        #     for i in range(n):
-        #         oracle = self._svi_elbo_approx_oracle(data_points, target_values, inputs, parameter_vec=x, index=i)
-        #         full_loss += oracle[0]
-        #         full_grad += oracle[1]
-        #     return -full_loss, -np.array(full_grad)
+            # Canonical parameters initialization
+            eta_1 = sigma_inv.dot(mu)
+            eta_2 = - sigma_inv / 2
+            param_vec = self._svi_get_parameter_vector(theta, eta_1, eta_2)
 
-        def stoch_fun(x, i):
-            return -self._svi_elbo_approx_oracle(data_points, target_values, inputs, parameter_vec=x, index=i)[1]
+        elif self.parametrization == 'cholesky':
+            sigma_L = np.eye(m)  # Cholesky factor of sigma
+            # sigma_L = np.tril(np.arange(1, 10).reshape(3, 3))
+            param_vec = self._svi_get_parameter_vector(theta, mu, sigma_L)
 
-        bnds = tuple(list(self.covariance_obj.get_bounds()[:-1]) + [(None, None)] * (len(param_vec) - len(theta)))
-        res = stochastic_gradient_descent(oracle=stoch_fun, n=n, point=param_vec, bounds=bnds,
-                                          options={'maxiter':max_iter, 'batch_size': 10, 'print_freq': 10, 'step0':0.1})
-        theta, eta_1, eta_2 = self._svi_get_parameters(res)
+        bnds = self._svi_get_bounds(m)
+
+
+        if self.parametrization == 'natural':
+            def stoch_fun(x, i):
+                return -self._svi_elbo_approx_oracle(data_points, target_values, inputs, parameter_vec=x, index=i)[1]
+
+            res = stochastic_gradient_descent(oracle=stoch_fun, n=n, point=param_vec, bounds=bnds,
+                                              options={'maxiter':max_iter, 'batch_size': 10, 'print_freq': 10, 'step0':0.1})
+            theta, eta_1, eta_2 = self._svi_get_parameters(res)
+            sigma_inv = - 2 * eta_2
+            sigma = np.linalg.inv(sigma_inv)
+            mu = sigma.dot(eta_1)
+
+        elif self.parametrization == 'cholesky':
+            def fun(x):
+                full_loss = 0
+                full_grad = np.zeros((len(param_vec),))
+                for i in range(n):
+                    oracle = self._svi_elbo_approx_oracle(data_points, target_values, inputs, parameter_vec=x, index=i)
+                    full_loss += oracle[0]
+                    full_grad += oracle[1]
+                return -full_loss, -np.array(full_grad)
+            # check_gradient(fun, param_vec, print_diff=True)
+            # exit(0)
+
+            # res = gradient_descent(fun, point=param_vec, bounds=bnds, options={'maxiter':max_iter,
+            #                                                                'print_freq': 10})
+            res = minimize(fun=fun, x0=param_vec, method='L-BFGS-B', bounds=bnds, jac=True,
+                           options={'maxiter':max_iter})['x']
+            theta, mu, sigma_L = self._svi_get_parameters(res)
+            sigma = sigma_L.dot(sigma_L.T)
+
         theta = list(theta)
         theta.append(sigma_n)
         theta = np.array(theta)
         self.covariance_obj.set_params(theta)
-        sigma_inv = - 2 * eta_2
-        sigma = np.linalg.inv(sigma_inv)
-        mu = sigma.dot(eta_1)
         self.inducing_inputs = (inputs, mu, sigma)
 
     def _svi_elbo_approx_oracle(self, data_points, target_values, inducing_inputs, parameter_vec,
@@ -472,11 +560,15 @@ class GPR(GP):
         N = target_values.size
         m = inducing_inputs.shape[1]
 
-        theta, eta_1, eta_2 = self._svi_get_parameters(parameter_vec)
-        sigma_inv = - 2 * eta_2
-        sigma = np.linalg.inv(sigma_inv)
-        sigma_L = np.linalg.cholesky(sigma)
-        mu = sigma.dot(eta_1)
+        if self.parametrization == 'natural':
+            theta, eta_1, eta_2 = self._svi_get_parameters(parameter_vec)
+            sigma_inv = - 2 * eta_2
+            sigma = np.linalg.inv(sigma_inv)
+            sigma_L = np.linalg.cholesky(sigma)
+            mu = sigma.dot(eta_1)
+        elif self.parametrization == 'cholesky':
+            theta, mu, sigma_L = self._svi_get_parameters(parameter_vec)
+            sigma = sigma_L.dot(sigma_L.T)
 
         old_params = self.covariance_obj.get_params()
         theta = list(theta)
@@ -554,14 +646,25 @@ class GPR(GP):
         #             (y_i - k_i.T.dot(K_mm_inv.dot(mu)))**2 / (2 * sigma_n**2) + \
         #             np.trace(sigma.dot(Lambda_i)) / (2 * sigma_n)
 
-        dL_dbeta1 = - y_i / sigma_n * (K_mm_inv.dot(k_i)) + eta_1 / N
-        dL_dbeta2 = (-Lambda_i - K_mm_inv / N) / 2 - eta_2 / N
-
         grad = grad[:, None]
 
-        grad = np.vstack((grad, -dL_dbeta1.reshape(-1)[:, None]))
-        grad = np.vstack((grad, dL_dbeta2.reshape(-1)[:, None]))
+        if self.parametrization == 'natural':
+            dL_dbeta1 = - y_i / sigma_n * (K_mm_inv.dot(k_i)) + eta_1 / N
+            dL_dbeta2 = (-Lambda_i - K_mm_inv / N) / 2 - eta_2 / N
+            grad = np.vstack((grad, -dL_dbeta1.reshape(-1)[:, None]))
+            grad = np.vstack((grad, dL_dbeta2.reshape(-1)[:, None]))
+        elif self.parametrization == 'cholesky':
+            dL_dsigma_L = -Lambda_i.dot(sigma_L) + np.eye(m) / (N * np.diag(sigma_L)) - (K_mm_inv.dot(sigma_L)) / N
+            dL_dsigma_L = self._svi_lower_triang_mat_to_vec(dL_dsigma_L)
+            dL_dmu = -(K_mm_inv.dot(k_i)) * y_i/sigma_n + (Lambda_i + K_mm_inv/N).dot(mu)
+            grad = np.vstack((grad, -dL_dmu.reshape(-1)[:, None]))
+            grad = np.vstack((grad, dL_dsigma_L.reshape(-1)[:, None]))
+
 
         self.covariance_obj.set_params(old_params)
 
         return loss, grad[:, 0]
+
+    # def _svi_elbo_full_oracle(self, data_points, target_values, inducing_inputs, parameter_vec,
+    #                                    index=None, parametrization='natural'):
+    #
