@@ -17,7 +17,7 @@ test_num = 100
 dim = 1
 seed = 21
 method = 'svi'  # possible methods: 'brute', 'vi', 'means'(, 'svi')
-parametrization = 'cholesky' # possible parametrizations for svi method: cholesky, natural
+parametrization = 'natural' # possible parametrizations for svi method: cholesky, natural
 ind_inputs_num = 8
 max_iter = 500
 
