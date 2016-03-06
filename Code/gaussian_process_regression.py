@@ -257,6 +257,7 @@ class GPR(GP):
         K_mm = cov_fun(inducing_points, inducing_points)
         K_mn = cov_fun(inducing_points, data_points)
         K_nm = K_mn.T
+
         Sigma = np.linalg.inv(K_mm + K_mn.dot(K_nm)/sigma**2)
         mu = sigma**(-2) * K_mm.dot(Sigma).dot(K_mn).dot(target_values)
         A = K_mm.dot(Sigma).dot(K_mm)
@@ -500,7 +501,28 @@ class GPR(GP):
 
         elif self.parametrization == 'cholesky':
             sigma_L = np.eye(m)  # Cholesky factor of sigma
-            # sigma_L = np.tril(np.arange(1, 10).reshape(3, 3))
+
+            # #######################################################
+            # # Experiment
+            # cov_fun = self.covariance_obj.covariance_function
+            # K_mn = cov_fun(inputs, data_points)
+            # K_mm = cov_fun(inputs, inputs)
+            # K_mm_inv = np.linalg.inv(K_mm)
+            # # print(K_mm_inv.dot(K_mn.dot(K_mn.T)).dot(K_mm_inv))
+            # n_est = 50
+            # mat_mat = np.zeros((m, m))
+            # for i in range(10):
+            #     mat = K_mn[:, i*n_est:(i+1)*n_est] * np.sqrt(n/n_est)
+            #     mat_mat += mat.dot(mat.T) / 10
+            # # mat = K_mn[:, 0:n_est] * np.sqrt(n/n_est)
+            # # mat_mat = mat.dot(mat.T)
+            # # print(K_mm_inv.dot(mat.dot(mat.T)* n/n_est).dot(K_mm_inv))
+            # # sigma = np.linalg.inv(K_mm_inv.dot(K_mn.dot(K_mn.T.dot(K_mm_inv)))/sigma_n + K_mm_inv)
+            # sigma = np.linalg.inv(K_mm_inv.dot(mat_mat.dot(K_mm_inv))/sigma_n + K_mm_inv)
+            # mu = sigma.dot(K_mm_inv.dot((K_mn.dot(y)))) / sigma_n
+            # # #######################################################
+
+            # sigma_L = np.linalg.cholesky(sigma)
             param_vec = self._svi_get_parameter_vector(theta, mu, sigma_L)
 
         bnds = self._svi_get_bounds(m)
@@ -526,13 +548,17 @@ class GPR(GP):
                     full_loss += oracle[0]
                     full_grad += oracle[1]
                 return -full_loss, -np.array(full_grad)
+
+            # print(fun(param_vec))
+            # exit(0)
             # check_gradient(fun, param_vec, print_diff=True)
             # exit(0)
 
             # res = gradient_descent(fun, point=param_vec, bounds=bnds, options={'maxiter':max_iter,
             #                                                                'print_freq': 10})
+
             res = minimize(fun=fun, x0=param_vec, method='L-BFGS-B', bounds=bnds, jac=True,
-                           options={'maxiter':max_iter})['x']
+                           options={'maxiter':max_iter, 'disp':True})['x']
             theta, mu, sigma_L = self._svi_get_parameters(res)
             sigma = sigma_L.dot(sigma_L.T)
 

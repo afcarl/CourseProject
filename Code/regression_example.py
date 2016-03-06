@@ -12,14 +12,14 @@ data_covariance_obj = SquaredExponential(data_params)
 model_params = np.array([10.3, 1.2, 0.1])
 model_covariance_obj = SquaredExponential(model_params)
 gp = GPR(data_covariance_obj)
-num = 100
+num = 2000
 test_num = 100
 dim = 1
 seed = 21
 method = 'svi'  # possible methods: 'brute', 'vi', 'means'(, 'svi')
-parametrization = 'natural' # possible parametrizations for svi method: cholesky, natural
-ind_inputs_num = 8
-max_iter = 500
+parametrization = 'cholesky' # possible parametrizations for svi method: cholesky, natural
+ind_inputs_num = 5
+max_iter = 10
 
 # Generating data points
 np.random.seed(seed)
