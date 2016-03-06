@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 
 from gaussian_process import GP, minimize_wrapper
 from covariance_functions import CovarianceFamily, sigmoid
-from optimization import gradient_descent, stochastic_gradient_descent, check_gradient
+from optimization import gradient_descent, stochastic_gradient_descent, check_gradient, stochastic_average_gradient
 
 
 class GPR(GP):
@@ -500,29 +500,19 @@ class GPR(GP):
             param_vec = self._svi_get_parameter_vector(theta, eta_1, eta_2)
 
         elif self.parametrization == 'cholesky':
-            sigma_L = np.eye(m)  # Cholesky factor of sigma
+            # sigma_L = np.eye(m)  # Cholesky factor of sigma
 
+            #######################################################
+            # Experimental
+            cov_fun = self.covariance_obj.covariance_function
+            K_mn = cov_fun(inputs, data_points)
+            K_mm = cov_fun(inputs, inputs)
+            K_mm_inv = np.linalg.inv(K_mm)
+            sigma = np.linalg.inv(K_mm_inv.dot(K_mn.dot(K_mn.T.dot(K_mm_inv)))/sigma_n + K_mm_inv)
+            mu = sigma.dot(K_mm_inv.dot((K_mn.dot(y)))) / sigma_n
             # #######################################################
-            # # Experiment
-            # cov_fun = self.covariance_obj.covariance_function
-            # K_mn = cov_fun(inputs, data_points)
-            # K_mm = cov_fun(inputs, inputs)
-            # K_mm_inv = np.linalg.inv(K_mm)
-            # # print(K_mm_inv.dot(K_mn.dot(K_mn.T)).dot(K_mm_inv))
-            # n_est = 50
-            # mat_mat = np.zeros((m, m))
-            # for i in range(10):
-            #     mat = K_mn[:, i*n_est:(i+1)*n_est] * np.sqrt(n/n_est)
-            #     mat_mat += mat.dot(mat.T) / 10
-            # # mat = K_mn[:, 0:n_est] * np.sqrt(n/n_est)
-            # # mat_mat = mat.dot(mat.T)
-            # # print(K_mm_inv.dot(mat.dot(mat.T)* n/n_est).dot(K_mm_inv))
-            # # sigma = np.linalg.inv(K_mm_inv.dot(K_mn.dot(K_mn.T.dot(K_mm_inv)))/sigma_n + K_mm_inv)
-            # sigma = np.linalg.inv(K_mm_inv.dot(mat_mat.dot(K_mm_inv))/sigma_n + K_mm_inv)
-            # mu = sigma.dot(K_mm_inv.dot((K_mn.dot(y)))) / sigma_n
-            # # #######################################################
 
-            # sigma_L = np.linalg.cholesky(sigma)
+            sigma_L = np.linalg.cholesky(sigma)
             param_vec = self._svi_get_parameter_vector(theta, mu, sigma_L)
 
         bnds = self._svi_get_bounds(m)
@@ -549,16 +539,16 @@ class GPR(GP):
                     full_grad += oracle[1]
                 return -full_loss, -np.array(full_grad)
 
-            # print(fun(param_vec))
-            # exit(0)
-            # check_gradient(fun, param_vec, print_diff=True)
-            # exit(0)
+            def sag_oracle(x, i):
+                fun, grad = self._svi_elbo_approx_oracle(data_points, target_values, inputs, parameter_vec=x, index=i)
+                return -fun, -grad
 
-            # res = gradient_descent(fun, point=param_vec, bounds=bnds, options={'maxiter':max_iter,
-            #                                                                'print_freq': 10})
+            res = stochastic_average_gradient(oracle=sag_oracle, n=n, point=param_vec, bounds=bnds,
+                                              options={'maxiter':max_iter, 'batch_size': 20, 'print_freq': 1})
 
-            res = minimize(fun=fun, x0=param_vec, method='L-BFGS-B', bounds=bnds, jac=True,
-                           options={'maxiter':max_iter, 'disp':True})['x']
+            # res = minimize(fun=fun, x0=param_vec, method='L-BFGS-B', bounds=bnds, jac=True,
+            #                options={'maxiter':max_iter, 'disp':True})['x']
+
             theta, mu, sigma_L = self._svi_get_parameters(res)
             sigma = sigma_L.dot(sigma_L.T)
 
