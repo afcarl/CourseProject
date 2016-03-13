@@ -7,8 +7,9 @@ import time
 from sklearn.cluster import KMeans
 from abc import ABCMeta, abstractmethod
 
-from gaussian_process import GP, minimize_wrapper
+from gaussian_process import GP
 from covariance_functions import CovarianceFamily, sigmoid
+from optimization import minimize_wrapper
 
 
 class GPC(GP):

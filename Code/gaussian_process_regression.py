@@ -5,9 +5,10 @@ import copy
 from sklearn.cluster import KMeans
 from matplotlib import pyplot as plt
 
-from gaussian_process import GP, minimize_wrapper
+from gaussian_process import GP
 from covariance_functions import CovarianceFamily, sigmoid
-from optimization import gradient_descent, stochastic_gradient_descent, check_gradient, stochastic_average_gradient
+from optimization import gradient_descent, stochastic_gradient_descent, check_gradient, stochastic_average_gradient,\
+                         minimize_wrapper
 
 
 class GPR(GP):
@@ -209,6 +210,7 @@ class GPR(GP):
                 ind_points = (w[param_len:]).reshape((dim, num_inputs)) # has to be rewritten for multidimensional case
                 loss, grad = self._vi_means_oracle(data_points, target_values, w[:param_len], ind_points)
                 return -loss, -grad
+
         def _means_loc_fun(w):
                 loss, grad = self._vi_means_oracle(data_points, target_values, w, inputs)
                 return -loss, -grad
@@ -234,9 +236,8 @@ class GPR(GP):
         #     f1, g1 = loc_fun(w0 + diff)
         #     print("Difference:", (f1 - f2) * 1e8)
         # exit(0)
-        res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, w0, method='L-BFGS-B',
-                                                  mydisp=False, bounds=bnds, options={'gtol': 1e-8, 'ftol': 0,
-                                                                                     'maxiter': max_iter})
+        res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, w0, method='L-BFGS-B', mydisp=False, bounds=bnds,
+                                                           options={'gtol': 1e-8, 'ftol': 0, 'maxiter': max_iter})
         if self.method == 'vi':
             optimal_params = res.x[:-num_inputs*dim]
             inducing_points = res.x[-num_inputs*dim:]
@@ -253,7 +254,7 @@ class GPR(GP):
         K_nm = K_mn.T
 
         Sigma = np.linalg.inv(K_mm + K_mn.dot(K_nm)/sigma**2)
-        mu = sigma**(-2) * K_mm.dot(Sigma).dot(K_mn).dot(target_values)
+        mu = sigma**(-2) * K_mm.dot(Sigma.dot(K_mn.dot(target_values)))
         A = K_mm.dot(Sigma).dot(K_mm)
         self.inducing_inputs = (inducing_points, mu, A)
         return w_list, time_list, fun_lst
@@ -266,22 +267,28 @@ class GPR(GP):
         :param params: hyper-parameters vector
         :param ind_points: inducing points
         """
+        n = points.shape[1]
+        m = ind_points.shape[1]
         sigma = params[-1]
         cov_obj = copy.deepcopy(self.covariance_obj)
         cov_obj.set_params(params)
         cov_fun = cov_obj.covariance_function
         K_mm = cov_fun(ind_points, ind_points)
-        K_mm_inv = np.linalg.inv(K_mm) # use cholesky?
+        K_mm_l = np.linalg.cholesky(K_mm)
+        K_mm_l_inv = np.linalg.inv(K_mm_l)
+        K_mm_inv = K_mm_l_inv.T.dot(K_mm_l_inv)
         K_nm = cov_fun(points, ind_points)
         K_mn = K_nm.T
         Q_nn = (K_nm.dot(K_mm_inv)).dot(K_mn)
-        B = Q_nn + np.eye(Q_nn.shape[0]) * sigma**2
-        B_l = np.linalg.cholesky(B)
-        B_l_inv = np.linalg.inv(B_l)
-        B_inv = B_l_inv.T.dot(B_l_inv)
+        anc_l = np.linalg.cholesky(K_mm + K_mn.dot(K_nm)/sigma**2)
+        anc_l_inv = np.linalg.inv(anc_l)
+        anc_inv = anc_l_inv.T.dot(anc_l_inv)
+        B_inv = np.eye(n)/sigma**2 - K_nm.dot(anc_inv.dot(K_mn))/sigma**4
+        B_log_det = (np.sum(np.log(np.diag(anc_l))) + n * np.log(sigma) - np.sum(np.log(np.diag(K_mm_l))))*2
+
         zero = np.array([[0]])
         K_nn_diag = cov_fun(zero, zero)
-        F_v = - np.sum(np.log(np.diag(B_l))) - targets.T.dot(B_inv).dot(targets)/2 - \
+        F_v = - B_log_det/2 - targets.T.dot(B_inv).dot(targets)/2 - \
               np.sum(K_nn_diag - np.diag(Q_nn)) / (2 * sigma**2)
 
         # Gradient

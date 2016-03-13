@@ -1,4 +1,6 @@
 import numpy as np
+import time
+import scipy.optimize as op
 
 
 def project_into_bounds(point, bounds):
@@ -309,3 +311,32 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
             print("\tLipschitz constant estimate:", l)
             print("\t", x[:2])
     return x
+
+
+def minimize_wrapper(func, x0, mydisp=False, **kwargs):
+
+    start = time.time()
+    aux = {'start': time.time(), 'total': 0., 'it': 0}
+    def callback(w):
+        # print(start)
+        # print(total_time)
+        # total_time
+        aux['total'] += time.time() - aux['start']
+        if mydisp:
+            print("Hyper-parameters at iteration", aux['it'], ":", w)
+        fun, _ = func(w)
+        fun_list.append(fun)
+        # total_time += time.time() - start
+        time_list.append(aux['total'])
+        w_list.append(w)
+        aux['it'] += 1
+        aux['start'] = time.time()
+    # print(start)
+    w_list = []
+    time_list = []
+    fun_list = []
+    callback(x0)
+
+    out = op.minimize(func, x0, jac=True, callback=callback, **kwargs)
+
+    return out, w_list, time_list, fun_list

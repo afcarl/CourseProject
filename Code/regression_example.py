@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from gaussian_process_regression import GPR
 from plotting import gp_plot_reg_data, gp_plot_class_data
 from covariance_functions import SquaredExponential, GammaExponential, Matern
+import time
 
 data_params = np.array([1.1, 0.1, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
@@ -13,13 +14,13 @@ data_covariance_obj = SquaredExponential(data_params)
 model_params = np.array([1.6, 0.3, 0.1])
 model_covariance_obj = SquaredExponential(model_params)
 gp = GPR(data_covariance_obj)
-num = 200
+num = 700
 test_num = 100
 dim = 1
 seed = 21
-method = 'vi'  # possible methods: 'brute', 'vi', 'means', 'svi'
+method = 'means'  # possible methods: 'brute', 'vi', 'means', 'svi'
 parametrization = 'natural'  # possible parametrizations for svi method: cholesky, natural
-ind_inputs_num = 10
+ind_inputs_num = 7
 max_iter = 100
 
 # Generating data points
@@ -40,7 +41,9 @@ if method == 'brute':
 elif method == 'means' or method == 'vi':
     model_covariance_obj = SquaredExponential(model_params)
     new_gp = GPR(model_covariance_obj, method=method)
+    start = time.time()
     new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, max_iter=max_iter)
+    print(time.time() - start)
     inducing_points, mean, cov = new_gp.inducing_inputs
     predicted_y_test, high, low = new_gp.predict(x_test)
 
