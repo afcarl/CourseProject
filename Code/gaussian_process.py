@@ -59,7 +59,6 @@ class GP:
         mean_vector = m_v.reshape((m_v.size,))
         if not (seed is None):
             np.random.seed(seed)
-        print(cov_mat.shape)
         res = np.random.multivariate_normal(mean_vector, cov_mat)
         return res
 

@@ -248,10 +248,10 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
             new_point = project_into_bounds(new_point, bounds)
             new_loss, _ = batch_oracle(new_point)
             if l > 1e16:
-                print(new_loss)
-                print(to_beat)
-                print(cur_grad.T.dot(cur_grad))
-
+                # print(new_loss)
+                # print(to_beat)
+                # print(cur_grad.T.dot(cur_grad))
+                print('Abnormal termination in linsearch')
                 return 0
         return l
 

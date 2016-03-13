@@ -7,19 +7,20 @@ from gaussian_process_regression import GPR
 from plotting import gp_plot_reg_data, gp_plot_class_data
 from covariance_functions import SquaredExponential, GammaExponential, Matern
 
-data_params = np.array([1.1, 0.3, 0.1])
+data_params = np.array([1.1, 0.1, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
-model_params = np.array([10.3, 1.2, 0.1])
+# model_params = np.array([10.6, 5.2, 0.1])
+model_params = np.array([1.6, 0.3, 0.1])
 model_covariance_obj = SquaredExponential(model_params)
 gp = GPR(data_covariance_obj)
-num = 100
+num = 200
 test_num = 100
 dim = 1
 seed = 21
-method = 'svi'  # possible methods: 'brute', 'vi', 'means'(, 'svi')
-parametrization = 'cholesky' # possible parametrizations for svi method: cholesky, natural
-ind_inputs_num = 8
-max_iter = 500
+method = 'vi'  # possible methods: 'brute', 'vi', 'means', 'svi'
+parametrization = 'natural'  # possible parametrizations for svi method: cholesky, natural
+ind_inputs_num = 10
+max_iter = 100
 
 # Generating data points
 np.random.seed(seed)

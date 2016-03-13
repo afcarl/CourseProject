@@ -123,7 +123,7 @@ Pavel Izmailov
 	\subsubsection{Noisy case}
 		\hspace{0.6cm}Consider the following model. We now have a dataset $\{(x_i, y_i)| i = 1, \ldots n\}$, where $y_i = f(x_i) + \varepsilon$, $\varepsilon \sim \N(0, \sigma_n)$. This means that we only have access to the noisy observations and not the true values of the process at data points. With the notation and logics similar to the one we used it the previous section we can find the conditional distribution for the values $f_*$ of the process at new points $X_*$ in this case:
 		$$f_* | y \sim \N( \hat m, \hat K ),$$
-		$$\E[f_* | y] = \hat m = K(X_*, X)^{-1} (K(X, X) + \sigma_n^2 I)^{-1} y,$$
+		$$\E[f_* | y] = \hat m = K(X_*, X) (K(X, X) + \sigma_n^2 I)^{-1} y,$$
 		$$\cov(f_* | y ) = \hat K = K(X_*, X_*) - K(X_*, X)(K(X, X) + \sigma_n^2 I)^{-1}K(X, X_*).$$
 		
 \subsection{GP-classification}
@@ -197,7 +197,7 @@ Pavel Izmailov
 		By using the eq. (\ref{predictive2}) we can calculate the approximate posterior GP mean at point $x$ and covariance at points $x, x'$
 		$$\E[z(x)] = K_{xm} K_{mm}^{-1} \mu,$$ 
 		$$\cov(z(x), z(x')) = k(x, x') - K_{xm} K_{mm}^{-1} K_{mx'} + K_{xm} A K_{mx'},$$
-		where $A = K_{mm}^{-1} \Sigma K_{mm}$.
+		where $A = K_{mm}^{-1} \Sigma K_{mm}^{-1}$.
 
 		Now we have to specify a way to find the variational distribution parameters $\mu$ and $\Sigma$, and the inducing input positions $X_m$ and a way to optimize the kernel hyper-parameters. 
 		% In order to do so, we will form the variational distribution $q(f)$ and the exact posterior $p(f|y)$ on the training function values, and then minimize the distance between this two distributions. Equivalently, we can minimize a distance, between the augmented true posterior $p(f, u|y)$ and $q(f, u)$.

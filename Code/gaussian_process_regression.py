@@ -133,18 +133,12 @@ class GPR(GP):
             loss, grad = self._oracle(data_points, target_values, w)
             return -loss, -grad
 
-        # w0 = self.covariance_obj.get_params()
-        # f1, g1 = loc_fun(w0 + np.array([0, 0, 1e-8]))
-        # f2, g2 = loc_fun(w0)
-        # print(g1)
-        # print((f1 - f2) * 1e8)
-        # exit(0)
         bnds = self.covariance_obj.get_bounds()
         if max_iter is None:
             max_iter = np.inf
         res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, self.covariance_obj.get_params(), method='L-BFGS-B',
-                                                           mydisp=False, bounds=bnds, options={'gtol': 1e-8, 'ftol': 0,
-                                                                                     'maxiter': max_iter})
+                                                               mydisp=False, bounds=bnds,
+                                                               options={'gtol': 1e-8, 'ftol': 0, 'maxiter': max_iter})
         optimal_params = res.x
         self.covariance_obj.set_params(optimal_params)
         return w_list, time_list, fun_lst
@@ -367,7 +361,7 @@ class GPR(GP):
 
         new_mean = K_xm.dot(K_mm_inv).dot(expectation)
         new_cov = K_xx - K_xm.dot(K_mm_inv).dot(K_mx) + K_xm.dot(K_mm_inv).dot(covariance).dot(K_mm_inv).dot(K_mx)
-
+        print(np.mean(np.abs(K_xm.dot(K_mm_inv).dot(covariance).dot(K_mm_inv).dot(K_mx))))
         test_targets, up, low = self.sample_for_matrices(new_mean, new_cov)
         return test_targets, up, low
 
@@ -543,11 +537,13 @@ class GPR(GP):
                 fun, grad = self._svi_elbo_approx_oracle(data_points, target_values, inputs, parameter_vec=x, index=i)
                 return -fun, -grad
 
-            res = stochastic_average_gradient(oracle=sag_oracle, n=n, point=param_vec, bounds=bnds,
-                                              options={'maxiter':max_iter, 'batch_size': 20, 'print_freq': 1})
+            # res = stochastic_average_gradient(oracle=sag_oracle, n=n, point=param_vec, bounds=bnds,
+            #                                   options={'maxiter':max_iter, 'batch_size': 20, 'print_freq': 1})
 
-            # res = minimize(fun=fun, x0=param_vec, method='L-BFGS-B', bounds=bnds, jac=True,
-            #                options={'maxiter':max_iter, 'disp':True})['x']
+            res = minimize(fun=fun, x0=param_vec, method='L-BFGS-B', bounds=bnds, jac=True,
+                           options={'maxiter':max_iter, 'disp':True})['x']
+
+            # res = gradient_descent(oracle=fun, point=param_vec, bounds=bnds, options={'maxiter':max_iter, 'batch_size': 20, 'print_freq': 1})
 
             theta, mu, sigma_L = self._svi_get_parameters(res)
             sigma = sigma_L.dot(sigma_L.T)
