@@ -218,7 +218,24 @@ Pavel Izmailov
 		where
 		$$\derivative{B}{\theta} =\left(\derivative{K_{nm}}{\theta}K_{mm}^{-1} - K_{nm} K_{mm}^{-1} \derivative{K_{mm}}{\theta}K_{mm}^{-1}\right) K_{mn} +  K_{nm} K_{mm}^{-1} \derivative{K_{mn}}{\theta}.$$
 
+		We can rewrite
+		$$\derivative{F_V}{\theta} = \frac 1 2 \left( -\tr \left(B^{-1} \derivative{B}{\theta}\right) + y^T B^{-1} \derivative{B}{\theta} B^{-1} y - \frac 1 {\sigma_n^2} \tr \left(\derivative {K_{nn}} {\theta} - \derivative {B}{\theta}\right) \right).$$
+
 		Now we can optimize $F_V$ with respect to kernel hyper-parameters. Similarly, we can take derivatives with respect to $X_m$ and $\sigma_n$ and opptimize $F_V$ with respect to them as well.
+
+		However, if we compute $F_v$ and it's derivatives as they are, it takes $O(n^3)$ time which is not faster, than recovering the full Gaussian process. So, we have to rewrite these values in a form that allows for faster computation.
+
+		First of all, let's deal with $log|B|$ and $B^{-1}$. Using the matrix determinant lemma we obtain
+		$$|B| = |\sigma_n^2 I + K_{nm} K_{mm}^{-1} K_{mn}| = \frac{\left|K_{mm} + \cfrac{K_{mn} K_{nm}}{\sigma_n^2}\right| \sigma_n^2}{|K_{mm}|}.$$
+		So, denoting $A = K_{mm} + \cfrac{K_{mn} K_{nm}}{\sigma_n^2}$, we obtain
+		$$\log |B| = \log |A| + 2 \log \sigma_n - \log |K_{mm}|.$$
+		Note tha this is computed in $O(n m^2)$ instead of $O(n^3)$.
+
+		Using the Woodbury identity, we obtain
+		$$B^{-1} = (\sigma_n^2 I + K_{nm} K_{mm}^{-1} K_{mn})^{-1} = \frac I {\sigma_n^2} - \frac{K_{nm} A^{-1} K_{mn}}{\sigma^{4}},$$
+		which allows for computing $y^T B^{-1} y$ in $O(n m)$.
+
+		Similarly, we can compute the gradient in $O(nm^2)$. In order to do so, we need to rewrite every trace $\tr(M_{nm} M_{mm} M_{mn})$, where $M_{kl} \in \R^{k \times l}$, in the form $\tr(M_{mm} M_{mn} M_{nm})$, which is computed in $O(nm^2)$, and use the derived formulas for $B^{-1}$.
 
 
 	\pagebreak
@@ -301,7 +318,7 @@ Pavel Izmailov
 		$$
 		\derivative{L_3}{\mu} =  \sum_{i=1}^n \left(\Lambda_i \mu - \frac {y_i}{\sigma_n} K_{mm}^{-1} k_i \right) + K_{mm}^{-1} \mu,
 		$$
-		$$\derivative{L_3}{L_{\Sigma}} = - \sum_{i=1}^n \Lambda_i \Sigma_L +
+		$$\derivative{L_3}{L_{\Sigma}} = - \sum_{i=1}^n \Lambda_i L_{\Sigma} +
 		\left(
 		\begin{array}{cccc}
 		\frac 1 {(L_{\Sigma})_{11}} & 0 & \ldots & 0\\

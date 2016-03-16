@@ -313,7 +313,7 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
     return x
 
 
-def minimize_wrapper(func, x0, mydisp=False, **kwargs):
+def minimize_wrapper(func, x0, mydisp=False, jac=True, **kwargs):
 
     start = time.time()
     aux = {'start': time.time(), 'total': 0., 'it': 0}
@@ -337,6 +337,6 @@ def minimize_wrapper(func, x0, mydisp=False, **kwargs):
     fun_list = []
     callback(x0)
 
-    out = op.minimize(func, x0, jac=True, callback=callback, **kwargs)
+    out = op.minimize(func, x0, jac=jac, callback=callback, **kwargs)
 
     return out, w_list, time_list, fun_list

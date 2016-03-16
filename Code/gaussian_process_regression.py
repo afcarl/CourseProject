@@ -4,6 +4,7 @@ import math
 import copy
 from sklearn.cluster import KMeans
 from matplotlib import pyplot as plt
+import time
 
 from gaussian_process import GP
 from covariance_functions import CovarianceFamily, sigmoid
@@ -205,15 +206,17 @@ class GPR(GP):
             max_iter = np.inf
 
         def _vi_loc_fun(w):
-                # print("Params:", w[:param_len])
+            # print("Params:", w[:param_len])
 
-                ind_points = (w[param_len:]).reshape((dim, num_inputs)) # has to be rewritten for multidimensional case
-                loss, grad = self._vi_means_oracle(data_points, target_values, w[:param_len], ind_points)
-                return -loss, -grad
+            ind_points = (w[param_len:]).reshape((dim, num_inputs)) # has to be rewritten for multidimensional case
+            loss, grad = self._vi_means_oracle(data_points, target_values, w[:param_len], ind_points)
+            return -loss, -grad
 
         def _means_loc_fun(w):
-                loss, grad = self._vi_means_oracle(data_points, target_values, w, inputs)
-                return -loss, -grad
+            loss, grad = self._vi_means_oracle(data_points, target_values, w, inputs)
+            return -loss, -grad
+            # loss = self._vi_means_oracle(data_points, target_values, w, inputs)
+            # return loss
 
         np.random.seed(15)
         if self.method == 'vi':
@@ -238,6 +241,9 @@ class GPR(GP):
         # exit(0)
         res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, w0, method='L-BFGS-B', mydisp=False, bounds=bnds,
                                                            options={'gtol': 1e-8, 'ftol': 0, 'maxiter': max_iter})
+
+        # res = minimize(loc_fun, w0, method='L-BFGS-B', bounds=bnds, options={'gtol': 1e-8, 'ftol': 0, 'maxiter': max_iter, 'disp':True})
+
         if self.method == 'vi':
             optimal_params = res.x[:-num_inputs*dim]
             inducing_points = res.x[-num_inputs*dim:]
@@ -257,7 +263,8 @@ class GPR(GP):
         mu = sigma**(-2) * K_mm.dot(Sigma.dot(K_mn.dot(target_values)))
         A = K_mm.dot(Sigma).dot(K_mm)
         self.inducing_inputs = (inducing_points, mu, A)
-        return w_list, time_list, fun_lst
+        return 1,2,3
+        # return w_list, time_list, fun_lst
 
     def _vi_means_oracle(self, points, targets, params, ind_points):
         """
@@ -267,6 +274,7 @@ class GPR(GP):
         :param params: hyper-parameters vector
         :param ind_points: inducing points
         """
+        start = time.time()
         n = points.shape[1]
         m = ind_points.shape[1]
         sigma = params[-1]
@@ -279,44 +287,64 @@ class GPR(GP):
         K_mm_inv = K_mm_l_inv.T.dot(K_mm_l_inv)
         K_nm = cov_fun(points, ind_points)
         K_mn = K_nm.T
-        Q_nn = (K_nm.dot(K_mm_inv)).dot(K_mn)
-        anc_l = np.linalg.cholesky(K_mm + K_mn.dot(K_nm)/sigma**2)
+        K_mnK_nm = K_mn.dot(K_nm)
+        Q_nn_tr = np.trace(K_mm_inv.dot(K_mnK_nm))
+        anc_l = np.linalg.cholesky(K_mm + K_mnK_nm/sigma**2)
         anc_l_inv = np.linalg.inv(anc_l)
         anc_inv = anc_l_inv.T.dot(anc_l_inv)
-        B_inv = np.eye(n)/sigma**2 - K_nm.dot(anc_inv.dot(K_mn))/sigma**4
+        K_mn_y = K_mn.dot(targets)
+        y_B_inv_y = targets.T.dot(targets)/sigma**2 - K_mn_y.T.dot(anc_inv.dot(K_mn_y))/sigma**4
+        B_inv_y = targets / sigma**2 - K_mn.T.dot(anc_inv.dot(K_mn.dot(targets)))/sigma**4
         B_log_det = (np.sum(np.log(np.diag(anc_l))) + n * np.log(sigma) - np.sum(np.log(np.diag(K_mm_l))))*2
-
         zero = np.array([[0]])
         K_nn_diag = cov_fun(zero, zero)
-        F_v = - B_log_det/2 - targets.T.dot(B_inv).dot(targets)/2 - \
-              np.sum(K_nn_diag - np.diag(Q_nn)) / (2 * sigma**2)
+        F_v = - B_log_det/2 - y_B_inv_y/2 - \
+              (K_nn_diag * n - Q_nn_tr) / (2 * sigma**2)
 
         # Gradient
         gradient = []
+
         derivative_matrix_list = cov_obj.get_derivative_function_list(params)
+        A = anc_inv
         for func in derivative_matrix_list:
             dK_nm = func(points, ind_points)
             dK_mn = dK_nm.T
             dK_mm = func(ind_points, ind_points)
             dK_mm_inv = - K_mm_inv.dot(dK_mm.dot(K_mm_inv))
-            dB_dtheta = (dK_nm.dot(K_mm_inv) + K_nm.dot(dK_mm_inv)).dot(K_mn) + K_nm.dot(K_mm_inv.dot(dK_mn))
+            K_mndK_nm = K_mn.dot(dK_nm)
+            dB_dtheta_tr = 2 * np.trace(K_mm_inv.dot(K_mndK_nm)) + np.trace(dK_mm_inv.dot(K_mnK_nm))
+            dB_B_inv_y = dK_nm.dot(K_mm_inv.dot(K_mn.dot(B_inv_y))) + K_nm.dot(dK_mm_inv.dot(K_mn.dot(B_inv_y)))\
+                                 + K_nm.dot(K_mm_inv.dot(dK_mn.dot(B_inv_y)))
+            y_B_inv_dB_B_inv_y = B_inv_y.T.dot(dB_B_inv_y)
+            B_inv_dB_tr = dB_dtheta_tr / sigma**2 - \
+                          (2 * np.trace((A.dot(K_mndK_nm)).dot(K_mm_inv.dot(K_mnK_nm)))
+                           + np.trace((A.dot(K_mnK_nm)).dot(dK_mm_inv.dot(K_mnK_nm))))/sigma**4
+
             dK_nn = func(zero, zero)
-            gradient.append(self._lower_bound_partial_derivative(targets, dB_dtheta, dB_dtheta, B_inv, sigma,
-                                                                         dK_nn))
+            gradient.append((-B_inv_dB_tr / 2 + y_B_inv_dB_B_inv_y / 2 -
+                             (dK_nn * n - dB_dtheta_tr) / (2 * sigma**2))[0, 0])
 
         # sigma derivative
         dK_mm = cov_obj.get_noise_derivative(K_mm.shape[0])
         dK_mm_inv = - K_mm_inv.dot(dK_mm.dot(K_mm_inv))
-        dQ_dtheta = K_nm.dot(dK_mm_inv).dot(K_mn)
-        dB_dtheta = dQ_dtheta + 2 * sigma * np.eye(Q_nn.shape[0])
-        # dK_nn = (zero[:, :, None], zero[:, None, :])
+
+        dQ_dtheta_tr = np.trace(dK_mm_inv.dot(K_mnK_nm))
+        dQ_B_inv_y = K_nm.dot(dK_mm_inv.dot(K_mn.dot(B_inv_y)))
+        y_B_inv_dQ_B_inv_y = B_inv_y.T.dot(dQ_B_inv_y)
+        y_B_inv_dB_B_inv_y = 2 * sigma * B_inv_y.T.dot(B_inv_y) + y_B_inv_dQ_B_inv_y
+        dB_dtheta_tr = 2 * sigma * n + dQ_dtheta_tr
+        B_inv_dB_tr = dB_dtheta_tr / sigma**2 - \
+                      (np.trace(A.dot(K_mnK_nm).dot(dK_mm_inv).dot(K_mnK_nm))
+                       + 2 * sigma * np.trace(A.dot(K_mnK_nm)))/sigma**4
         dK_nn = 2 * sigma
-        gradient.append(self._lower_bound_partial_derivative(targets, dB_dtheta, dQ_dtheta, B_inv, sigma,
-                                                                     dK_nn))
-        gradient[-1] += np.sum(K_nn_diag - np.diag(Q_nn)) / sigma**3
+        gradient.append((- B_inv_dB_tr / 2 + y_B_inv_dB_B_inv_y / 2 -
+                (n * dK_nn - dQ_dtheta_tr) / (2 * sigma**2))[0, 0] + (n * K_nn_diag[0, 0] - Q_nn_tr) / sigma**3)
 
         # inducing points derivatives
+        # By now this is not written in an optimal way
         if self.method == 'vi':
+            B_inv = np.eye(n)/sigma**2 - K_mn.T.dot(anc_inv.dot(K_mn))/sigma**4
+            # print('vi method might not work propperly in the current version')
             K_mn_derivatives = cov_obj.covariance_derivative(ind_points, points)
             K_mm_derivatives = cov_obj.covariance_derivative(ind_points, ind_points)
             for j in range(ind_points.shape[0]):
@@ -330,11 +358,11 @@ class GPR(GP):
                     dK_mm_inv = - K_mm_inv.dot(dK_mm.dot(K_mm_inv))
                     dB_dtheta = (dK_nm.dot(K_mm_inv) + K_nm.dot(dK_mm_inv)).dot(K_mn) + K_nm.dot(K_mm_inv.dot(dK_mn))
                     dK_nn = 0
-                    gradient.append(self._lower_bound_partial_derivative(targets, dB_dtheta, dB_dtheta, B_inv, sigma,
+                    gradient.append(self._vi_lower_bound_partial_derivative(targets, dB_dtheta, dB_dtheta, B_inv, sigma,
                                                                              dK_nn))
         return F_v[0, 0], np.array(gradient)
 
-    def _lower_bound_partial_derivative(self, y, dB_dtheta_mat, dQ_dtheta_mat, B_inv, sigma, dK_nn_dtheta):
+    def _vi_lower_bound_partial_derivative(self, y, dB_dtheta_mat, dQ_dtheta_mat, B_inv, sigma, dK_nn_dtheta):
         """
         The derivative of the variational lower bound for evidence wrt to theta. Note that if theta is noise variance,
         the result is incorrect.
