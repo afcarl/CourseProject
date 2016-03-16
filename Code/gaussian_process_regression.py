@@ -206,8 +206,6 @@ class GPR(GP):
             max_iter = np.inf
 
         def _vi_loc_fun(w):
-            # print("Params:", w[:param_len])
-
             ind_points = (w[param_len:]).reshape((dim, num_inputs)) # has to be rewritten for multidimensional case
             loss, grad = self._vi_means_oracle(data_points, target_values, w[:param_len], ind_points)
             return -loss, -grad
@@ -215,8 +213,6 @@ class GPR(GP):
         def _means_loc_fun(w):
             loss, grad = self._vi_means_oracle(data_points, target_values, w, inputs)
             return -loss, -grad
-            # loss = self._vi_means_oracle(data_points, target_values, w, inputs)
-            # return loss
 
         np.random.seed(15)
         if self.method == 'vi':
@@ -242,8 +238,6 @@ class GPR(GP):
         res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, w0, method='L-BFGS-B', mydisp=False, bounds=bnds,
                                                            options={'gtol': 1e-8, 'ftol': 0, 'maxiter': max_iter})
 
-        # res = minimize(loc_fun, w0, method='L-BFGS-B', bounds=bnds, options={'gtol': 1e-8, 'ftol': 0, 'maxiter': max_iter, 'disp':True})
-
         if self.method == 'vi':
             optimal_params = res.x[:-num_inputs*dim]
             inducing_points = res.x[-num_inputs*dim:]
@@ -263,8 +257,7 @@ class GPR(GP):
         mu = sigma**(-2) * K_mm.dot(Sigma.dot(K_mn.dot(target_values)))
         A = K_mm.dot(Sigma).dot(K_mm)
         self.inducing_inputs = (inducing_points, mu, A)
-        return 1,2,3
-        # return w_list, time_list, fun_lst
+        return w_list, time_list, fun_lst
 
     def _vi_means_oracle(self, points, targets, params, ind_points):
         """
