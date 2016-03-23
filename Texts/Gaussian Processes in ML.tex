@@ -159,7 +159,7 @@ Pavel Izmailov
 	It's easy to see, that
 	$$p(y|f) = \N (y|f, \sigma_n I),$$
 	$$p(f|u) = \N (f|K_{nm} K_{mm}^{-1}u, \tilde K),$$
-	$$p(u) = \N(u|0, K_mm),$$
+	$$p(u) = \N(u|0, K_{mm}),$$
 	where $\tilde K = K_{nn} - K_{nm} K_{mm}^{-1} K_{mn}.$
 		
 	\subsubsection{Variational learning of inducing points}
@@ -225,7 +225,7 @@ Pavel Izmailov
 
 		However, if we compute $F_v$ and it's derivatives as they are, it takes $O(n^3)$ time which is not faster, than recovering the full Gaussian process. So, we have to rewrite these values in a form that allows for faster computation.
 
-		First of all, let's deal with $log|B|$ and $B^{-1}$. Using the matrix determinant lemma we obtain
+		First of all, let's deal with $\log|B|$ and $B^{-1}$. Using the matrix determinant lemma we obtain
 		$$|B| = |\sigma_n^2 I + K_{nm} K_{mm}^{-1} K_{mn}| = \frac{\left|K_{mm} + \cfrac{K_{mn} K_{nm}}{\sigma_n^2}\right| \sigma_n^2}{|K_{mm}|}.$$
 		So, denoting $A = K_{mm} + \cfrac{K_{mn} K_{nm}}{\sigma_n^2}$, we obtain
 		$$\log |B| = \log |A| + 2 \log \sigma_n - \log |K_{mm}|.$$

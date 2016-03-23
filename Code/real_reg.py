@@ -1,19 +1,31 @@
 from sklearn.datasets import load_svmlight_file
+from sklearn.metrics import r2_score
+from sklearn.preprocessing import StandardScaler
 import numpy as np
-from sklearn import svm, cross_validation
-
-from old_version_gp import GaussianProcess, gp_plot_reg_data, gp_plot_class_data
-from covariance_functions import CovarianceFamily, SquaredExponential
+import matplotlib.pyplot as plt
+from gaussian_process_regression import GPR
+from plotting import gp_plot_reg_data, gp_plot_class_data
+from covariance_functions import SquaredExponential, GammaExponential, Matern
+import time
 
 #Parameters
 # random_seed_w0 = 32
 mu, sigma1 = 0, 10
 
-x_tr, y_tr = load_svmlight_file('Data/housing.txt')
+# x_tr, y_tr = load_svmlight_file('../../Programming/DataSets/Regression/abalone(4177, 8).txt')
+# data_name = 'abalone'
+# x_tr, y_tr = load_svmlight_file('../../Programming/DataSets/Regression/cpusmall(8192, 12).txt')
+# data_name = 'cpusmall'
+x_tr, y_tr = load_svmlight_file('../../Programming/DataSets/Regression/bodyfat(252, 14).txt')
+data_name = 'bodyfat'
+
+
 x_tr = x_tr.T
 x_tr = x_tr.toarray()
+scaler = StandardScaler()
+x_tr = scaler.fit_transform(x_tr)
 # y_g = y_g.toarray()
-data_name = 'Housing'
+
 
 x_tr = (x_tr + 1) / 2
 y_tr = y_tr.reshape((y_tr.size, 1))
@@ -22,35 +34,50 @@ y_test = y_tr[int(x_tr.shape[1] * 0.8):, :]
 y_tr = y_tr[:int(x_tr.shape[1] * 0.8), :]
 x_tr = x_tr[:, : int(x_tr.shape[1] * 0.8)]
 
+print('Data set', data_name)
 print("Number of data points: ", x_tr.shape[1])
 print("Number of test points: ", x_test.shape[1])
 print("Number of features: ", x_tr.shape[0])
-
+print()
 # #Generating the starting point
 # np.random.seed(random_seed_w0)
 # w0 = np.random.rand(3)
 
 model_params = np.array([1.,  0.5,  1.])
 model_covariance_obj = SquaredExponential(model_params)
-new_gp = GaussianProcess(model_covariance_obj, lambda x: 0, 'reg')
-new_gp.find_hyper_parameters(x_tr, y_tr)
-print(new_gp.covariance_obj.get_params())
-predicted_y_test = new_gp.predict(x_test, x_tr, y_tr)
 
-n_samples = x_tr.shape[1]
-max_score = -np.inf
-c_max, eps_max = 0, 0
-for c, eps in list(zip([1, 10, 1000, 10000], [10, 1, 0.5, 0.1, 0.01])):
-    clf = svm.SVR(C=c, epsilon=eps)
-    cv = cross_validation.ShuffleSplit(n_samples, n_iter=3, test_size=0.3, random_state=0)
-    scores = cross_validation.cross_val_score(clf, x_tr.T, y_tr.reshape((y_tr.size,)), cv=5)
-    if scores.mean() > max_score:
-        max_score = scores.mean()
-        c_max, eps_max = c, eps
-print(c_max, eps_max)
-clf = svm.SVR(C=c_max, epsilon=eps_max)
-clf.fit(x_tr.T, y_tr.reshape((y_tr.size,)))
-svm_y_test = clf.predict(x_test.T)
+model_params = np.array([0.6, 0.3, 0.1])
+model_covariance_obj = SquaredExponential(model_params)
+num = 200
+test_num = 100
+dim = 1
+seed = 21
+method = 'means'  # possible methods: 'brute', 'vi', 'means', 'svi'
+parametrization = 'natural'  # possible parametrizations for svi method: cholesky, natural
+ind_inputs_num = 30
+max_iter = 100
 
-print(np.linalg.norm(y_test - svm_y_test) / y_test.size)
-print(np.linalg.norm(y_test - predicted_y_test) / y_test.size)
+if method == 'brute':
+    new_gp = GPR(model_covariance_obj)
+    new_gp.fit(x_tr, y_tr, max_iter=max_iter)
+    predicted_y_test, high, low = new_gp.predict(x_test, x_tr, y_tr)
+
+elif method == 'means' or method == 'vi':
+    model_covariance_obj = SquaredExponential(model_params)
+    new_gp = GPR(model_covariance_obj, method=method)
+    start = time.time()
+    new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, max_iter=max_iter)
+    print(time.time() - start)
+    inducing_points, mean, cov = new_gp.inducing_inputs
+    predicted_y_test, high, low = new_gp.predict(x_test)
+
+elif method == 'svi':
+    model_covariance_obj = SquaredExponential(model_params)
+    new_gp = GPR(model_covariance_obj, method=method, parametrization=parametrization)
+    new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, max_iter=max_iter)
+    inducing_points, mean, cov = new_gp.inducing_inputs
+    predicted_y_test, high, low = new_gp.predict(x_test)
+
+
+print('RMSE:', np.linalg.norm(y_test - predicted_y_test) / np.sqrt(y_test.size))
+print('r2_score', r2_score(y_test, predicted_y_test))

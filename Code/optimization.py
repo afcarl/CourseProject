@@ -159,7 +159,6 @@ def stochastic_gradient_descent(oracle, point, n, bounds=None, options=None):
             if not (i % batch_size):
                 x -= grad * step
                 x = project_into_bounds(x, bounds)
-                # print('x', x[2])
                 grad = oracle(x, index)
             else:
                 grad += oracle(x, index)
@@ -243,16 +242,18 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
         new_point = project_into_bounds(new_point, bounds)
         new_loss, _ = batch_oracle(new_point)
         to_beat = cur_loss - eps * cur_grad.T.dot(cur_grad) / l
+        # print(to_beat)
+        # print(np.linalg.norm(cur_grad)**2)
+        # print(cur_loss)
 
-        while new_loss > to_beat:
+        while new_loss > cur_loss - eps * cur_grad.T.dot(cur_grad) / l:
+            # print(new_loss)
+            # print(to_beat)
             l *= 2
             new_point = point - cur_grad / l
             new_point = project_into_bounds(new_point, bounds)
             new_loss, _ = batch_oracle(new_point)
             if l > 1e16:
-                # print(new_loss)
-                # print(to_beat)
-                # print(cur_grad.T.dot(cur_grad))
                 print('Abnormal termination in linsearch')
                 return 0
         return l
@@ -266,8 +267,6 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
                 self.batch_num += 1
             self.gradients = np.zeros((self.batch_num, point.size))
             self.current_grad = np.zeros(point.shape)
-            # self.indices = np.random.random_integers(0, n-1, (update_rate * n,))
-            # self.indices = range()
             self.cur_index = 0
             self.cur_batch_index = 0
 
@@ -276,22 +275,25 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
             self.gradients[self.cur_batch_index] = new_grad.reshape(point.shape[0], )
             self.cur_index += batch_size
             self.cur_batch_index += 1
-            # print(self.gradients)
             if self.cur_batch_index > self.batch_num - 1:
                 self.cur_index = 0
                 self.cur_batch_index = 0
             return self.current_grad
 
         def __call__(self, eval_point):
-            new_grad = np.zeros(point.shape)
-            new_loss = 0
-            for i in range(self.batch_size):
-                index = self.cur_index + i
-                stoch_loss, stoch_grad = oracle(eval_point, index)
-                new_loss += stoch_loss
-                new_grad += stoch_grad
+            indices = range(self.cur_index, self.cur_index + self.batch_size)
+            new_loss, new_grad = oracle(eval_point, indices)
             return new_loss, new_grad
 
+        # def __call__(self, eval_point):
+        #     new_grad = np.zeros(point.shape)
+        #     new_loss = 0
+        #     for i in range(self.batch_size):
+        #         index = self.cur_index + i
+        #         stoch_loss, stoch_grad = oracle(eval_point, index)
+        #         new_loss += stoch_loss
+        #         new_grad += stoch_grad
+        #     return new_loss, new_grad
 
     x = point
     x = project_into_bounds(x, bounds)
