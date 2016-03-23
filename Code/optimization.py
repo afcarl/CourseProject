@@ -148,23 +148,29 @@ def stochastic_gradient_descent(oracle, point, n, bounds=None, options=None):
         batch_num += 1
     update_rate = options['update_rate']
 
-    indices = np.random.random_integers(0, n-1, (update_rate * n,))
+    indices = np.random.random_integers(0, n-1, (update_rate * batch_num * batch_size,))
     step = step0
     x = point
     x = project_into_bounds(x, bounds)
-    grad = 0
+    # grad = 0
     for epoch in range(options['maxiter']):
-        for i in range(n):
-            index = indices[i]
-            if not (i % batch_size):
-                x -= grad * step
-                x = project_into_bounds(x, bounds)
-                grad = oracle(x, index)
-            else:
-                grad += oracle(x, index)
+        for batch in range(batch_num):
+            new_indices = indices[range(batch_size*batch, (batch + 1)*batch_size)]
+            grad = oracle(x, new_indices)
+            x -= grad * step
+            x = project_into_bounds(x, bounds)
+        # for i in range(n):
+        #     index = indices[i]
+        #     # new_indices = indices[range(i, )]
+        #     if not (i % batch_size):
+        #         x -= grad * step
+        #         x = project_into_bounds(x, bounds)
+        #         grad = oracle(x, index)
+        #     else:
+        #         grad += oracle(x, index)
 
         if not (epoch % update_rate):
-            indices = np.random.random_integers(0, n-1, (update_rate * n,))
+            indices = np.random.random_integers(0, n-1, (update_rate * batch_num * batch_size,))
 
         if not (epoch % options['print_freq']) and options['verbose']:
             print("Epoch ", epoch, ":")

@@ -550,11 +550,16 @@ class GPR(GP):
 
 
         if self.parametrization == 'natural':
+
+            # def stoch_fun(x, i):
+            #     return -self._svi_elbo_approx_oracle(data_points, target_values, inputs, parameter_vec=x, index=i)[1]
+
             def stoch_fun(x, i):
-                return -self._svi_elbo_approx_oracle(data_points, target_values, inputs, parameter_vec=x, index=i)[1]
+                return -self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
+                                                           indices=i)[1]
 
             res = stochastic_gradient_descent(oracle=stoch_fun, n=n, point=param_vec, bounds=bnds,
-                                              options={'maxiter':max_iter, 'batch_size': 10, 'print_freq': 10, 'step0':0.1})
+                                              options={'maxiter':max_iter, 'batch_size': 100, 'print_freq': 10, 'step0':0.01})
             theta, eta_1, eta_2 = self._svi_get_parameters(res)
             sigma_inv = - 2 * eta_2
             sigma = np.linalg.inv(sigma_inv)
@@ -822,10 +827,12 @@ class GPR(GP):
         grad = grad[:, None]
 
         if self.parametrization == 'natural':
-            dL_dbeta1 = - y_i / sigma_n * (K_mm_inv.dot(k_i)) + eta_1 / N
-            dL_dbeta2 = (-Lambda_i - K_mm_inv / N) / 2 - eta_2 / N
+            dL_dbeta1 = - (K_mm_inv.dot(k_i)).dot(y_i) / sigma_n + eta_1 / N
+            dL_dbeta2 = (-Lambda_i - K_mm_inv * l / N) / 2 - eta_2 * l/ N
+
             grad = np.vstack((grad, -dL_dbeta1.reshape(-1)[:, None]))
             grad = np.vstack((grad, dL_dbeta2.reshape(-1)[:, None]))
+
         elif self.parametrization == 'cholesky':
             dL_dsigma_L = -Lambda_i.dot(sigma_L) + np.eye(m) * l / (N * np.diag(sigma_L)) - (K_mm_inv.dot(sigma_L)) * l / N
             dL_dsigma_L = self._svi_lower_triang_mat_to_vec(dL_dsigma_L)
