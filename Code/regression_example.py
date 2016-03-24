@@ -11,7 +11,7 @@ import time
 data_params = np.array([1.1, 0.3, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
 # model_params = np.array([10.1, 1.2, 0.1])
-model_params = np.array([10.1, 1.9, 0.1])
+model_params = np.array([0.6, 0.2, 0.1077])
 # model_params = np.array([0.6, 0.2, 0.1])
 model_covariance_obj = SquaredExponential(model_params)
 gp = GPR(data_covariance_obj)
@@ -20,8 +20,8 @@ test_num = 200
 dim = 1
 seed = 21
 method = 'svi'  # possible methods: 'brute', 'vi', 'means', 'svi'
-parametrization = 'natural'  # possible parametrizations for svi method: cholesky, natural
-ind_inputs_num = 20
+parametrization = 'cholesky'  # possible parametrizations for svi method: cholesky, natural
+ind_inputs_num = 5
 max_iter = 200
 
 # Generating data points
