@@ -302,8 +302,8 @@ Pavel Izmailov
 		$$\left. +  \frac 1 {\sigma_n^2} \tr\left( \Sigma \left( K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} k_i k_i^T K_{mm}^{-1}  -  K_{mm}^{-1} \frac{\partial k_{i}}{\partial \theta}k_i^T K_{mm}^{-1}\right)\right)\right] - $$
 
 		$$ - \frac 1 2 \tr\left(K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta}\right) + \frac 1 2 \tr\left(\Sigma K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1} \right)+ \frac 1 2 \mu^T K_{mm}^{-1} \frac{\partial K_{mm}}{\partial \theta} K_{mm}^{-1}\mu,$$
-		and for $\sigma_n^2$ we have the same formula plus the following correction
-		$$\sum_{i = 1}^{n} \left(-\frac{1}{2\sigma_n^2} + \frac 1 {2 \sigma_n^4} (k_i^T K_{mm}^{-1} \mu - y_i)^2 + \frac 1 {2 \sigma_n^4} \tilde K_{ii} + \frac {\tr(\Sigma \Lambda_i)}{2 \sigma_n^2}\right).$$
+		and for $\sigma_n$ we have the same formula plus the following correction
+		$$\sum_{i = 1}^{n} \left(-\frac{1}{\sigma_n} + \frac 1 {\sigma_n^3} (k_i^T K_{mm}^{-1} \mu - y_i)^2 + \frac 1 {\sigma_n^3} \tilde K_{ii} + \frac {\tr(\Sigma \Lambda_i)}{\sigma_n}\right).$$
 		Now, we can optimize the kernel hyper-parameters and the noise variance alongside the variational parameters. 
 		
 		We can also maximize the $L_3$ with procedures, other than stochastic gradient descent. However, in most of the effective optimization methods we can't use natural gradients, because they are not necesserily a descending direction. Thus, we have to use the usual gradients. However, there is a problem with this approach as well. The steps in the direction of the antigradient does not guarantee that the updated covariance $\Sigma$ is positive definite. 

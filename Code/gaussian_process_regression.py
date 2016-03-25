@@ -59,20 +59,7 @@ class GPR(GP):
         # A tuple: inducing inputs, and parameters of gaussian distribution at these points (mean and covariance)
         self.inducing_inputs = None
 
-
-    def generate_data(self, tr_points, test_points, seed=None):
-        """
-        :param dim: dimensions of the generated data
-        :param tr_points: training data points
-        :param test_points: testing data points
-        :return: tuple (training data points, training labels or target values, test data points, test labels or target
-        values)
-        """
-        if not (seed is None):
-            np.random.seed(seed)
-        targets = self.sample(self.mean_fun, self.covariance_fun, np.hstack((tr_points, test_points)), seed)
-        targets = targets.reshape((targets.size, 1))
-        return targets[:tr_points.shape[1], :], targets[tr_points.shape[1]:, :]
+    # brute method
 
     @staticmethod
     def _ml(targets, cov_inv, cov_l):
@@ -175,22 +162,23 @@ class GPR(GP):
 
         return test_targets, low, up
 
-    def fit(self, *args, **kwargs):
-        if self.method == 'brute':
-            return self._brute_fit(*args, **kwargs)
-        if self.method == 'vi' or self.method == 'means':
-            return self._vi_means_fit(*args, **kwargs)
-        if self.method == 'svi':
-            return self._svi_fit(*args, **kwargs)
-        else:
-            print(self.method)
-            raise ValueError("Method " + self.method + " is invalid")
+    def _brute_get_prediction_quality(self, params, data_points, data_targets, test_points, test_targets):
+        """
+        Returns prediction quality on the test set for the given kernel (and inducing points) parameters for the means
+        method
+        :param params: parameters
+        :param data_points: train set points
+        :param data_targets: train set target values
+        :param test_points: test set points
+        :param test_targets: test set target values
+        :return: prediction MSE
+        """
+        new_gp = deepcopy(self)
+        new_gp.covariance_obj.set_params(params)
+        predicted_y_test, _, _ = new_gp.predict(test_points, data_points, data_targets)
+        return np.linalg.norm(predicted_y_test - test_targets)**2/test_targets.size
 
-    def predict(self, *args, **kwargs):
-        if self.method == 'brute':
-            return self._brute_predict(*args, **kwargs)
-        else:
-            return self._inducing_points_predict(*args, **kwargs)
+    # vi/means method
 
     def _vi_get_optimal_meancov(self, params, inputs, data_points, targets):
 
@@ -259,7 +247,7 @@ class GPR(GP):
         #     f1, g1 = loc_fun(w0 + diff)
         #     print("Difference:", (f1 - f2) * 1e8)
         # exit(0)
-        res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, w0, method='L-BFGS-B', mydisp=False, bounds=bnds,
+        res, w_list, time_list = minimize_wrapper(loc_fun, w0, method='L-BFGS-B', mydisp=False, bounds=bnds,
                                                            options={'maxiter': max_iter, 'disp': False})
         # print('Number of function calls:', res['nfev'])
 
@@ -387,28 +375,23 @@ class GPR(GP):
         return (-np.trace(B_inv.dot(dB_dtheta_mat)) / 2 + y.T.dot(B_inv.dot(dB_dtheta_mat.dot(B_inv.dot(y)))) / 2 -
                 np.sum(dK_nn_dtheta - np.diag(dQ_dtheta_mat)) / (2 * sigma**2))[0, 0]
 
-    def _inducing_points_predict(self, test_points):
+    def _means_get_prediction_quality(self, params, data_points, data_targets, test_points, test_targets):
         """
-        Predict new values given inducing points
-        :param ind_points: inducing points
-        :param expectation: expectation at inducing points
-        :param covariance: covariance at inducing points
-        :param test_points: test points
-        :return: predicted values at inducing points
+        Returns prediction quality on the test set for the given kernel (and inducing points) parameters for the means
+        method
+        :param params: parameters
+        :param data_points: train set points
+        :param data_targets: train set target values
+        :param test_points: test set points
+        :param test_targets: test set target values
+        :return: prediction MSE
         """
-        ind_points, expectation, covariance = self.inducing_inputs
-        cov_fun = self.covariance_obj.covariance_function
-        K_xm = cov_fun(test_points, ind_points)
-        K_mx = K_xm.T
-        K_mm = cov_fun(ind_points, ind_points)
-        K_xx = cov_fun(test_points, test_points)
-        K_mm_inv = np.linalg.inv(K_mm)
-
-        new_mean = K_xm.dot(K_mm_inv).dot(expectation)
-        new_cov = K_xx - K_xm.dot(K_mm_inv).dot(K_mx) + K_xm.dot(K_mm_inv).dot(covariance).dot(K_mm_inv).dot(K_mx)
-
-        test_targets, up, low = self.sample_for_matrices(new_mean, new_cov)
-        return test_targets, up, low
+        new_gp = deepcopy(self)
+        new_gp.covariance_obj.set_params(params)
+        mu, Sigma = new_gp._vi_get_optimal_meancov(params, new_gp.inducing_inputs[0], data_points, data_targets)
+        new_gp.inducing_inputs = (new_gp.inducing_inputs[0], mu, Sigma)
+        predicted_y_test, _, _ = new_gp.predict(test_points)
+        return np.linalg.norm(predicted_y_test - test_targets)**2/test_targets.size
 
     @staticmethod
     def _k_means_cluster_centers(data_points, num_clusters):
@@ -421,6 +404,8 @@ class GPR(GP):
         means = KMeans(n_clusters=num_clusters)
         means.fit(data_points.T)
         return means.cluster_centers_.T
+
+    # svi method
 
     @staticmethod
     def _svi_lower_triang_mat_to_vec(mat):
@@ -472,7 +457,7 @@ class GPR(GP):
         :param vec: a vector
         :return: a tuple of parameters
         """
-        theta_len = len(self.covariance_obj.get_params())-1
+        theta_len = len(self.covariance_obj.get_params())
         vec = vec[:, None]
         theta = vec[:theta_len, :]
         if self.parametrization == 'natural':
@@ -487,7 +472,7 @@ class GPR(GP):
         return theta, eta_1, eta_2
 
     def _svi_get_bounds(self, m):
-        bnds = list(self.covariance_obj.get_bounds()[:-1])
+        bnds = list(self.covariance_obj.get_bounds())
         if self.parametrization == 'natural':
             return tuple(bnds +
                          [(None, None)] * (m + m*m))
@@ -529,7 +514,7 @@ class GPR(GP):
         mu = np.zeros((m, 1))
         sigma_n = self.covariance_obj.get_params()[-1]
 
-        theta = self.covariance_obj.get_params()[:-1]
+        theta = self.covariance_obj.get_params()
         if self.parametrization == 'natural':
             # sigma_inv = np.eye(m)
 
@@ -599,9 +584,6 @@ class GPR(GP):
                                                      indices=list(range(n)))
                 return -fun, -grad
 
-            # check_gradient(fun, param_vec, 0)
-            # exit(0)
-
             def sag_oracle(x, i):
                 fun, grad = self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
                                                                indices=i)
@@ -624,9 +606,9 @@ class GPR(GP):
             theta, mu, sigma_L = self._svi_get_parameters(res)
             sigma = sigma_L.dot(sigma_L.T)
 
-        theta = list(theta)
-        theta.append(sigma_n)
-        theta = np.array(theta)
+        # theta = list(theta)
+        # theta.append(sigma_n)
+        # theta = np.array(theta)
         self.covariance_obj.set_params(theta)
         self.inducing_inputs = (inputs, mu, sigma)
         return GPRRes(deepcopy(w_list), time_lst=deepcopy(time_list))
@@ -660,9 +642,9 @@ class GPR(GP):
             sigma = sigma_L.dot(sigma_L.T)
 
         old_params = self.covariance_obj.get_params()
-        theta = list(theta)
-        theta.append(np.copy(old_params[-1]))
-        theta = np.array(theta)
+        # theta = list(theta)
+        # theta.append(np.copy(old_params[-1]))
+        # theta = np.array(theta)
         self.covariance_obj.set_params(theta)
 
         # Data point for gradient estimation
@@ -677,7 +659,8 @@ class GPR(GP):
         # Covariance function and it's parameters
         cov_fun = self.covariance_fun
         params = self.covariance_obj.get_params()
-        sigma_n = self.covariance_obj.get_params()[-1]
+        # sigma_n = self.covariance_obj.get_params()[-1]
+        sigma_n = parameter_vec[len(self.covariance_obj.get_params())-1]
 
         # Covariance matrices
         K_mm = cov_fun(inducing_inputs, inducing_inputs)
@@ -697,7 +680,7 @@ class GPR(GP):
         d_K_mm__d_theta_lst.append(d_K_mm__d_sigma_n)
         d_k_i__d_theta_lst.append(d_k_i__d_sigma_n)
 
-        # # Variational Lower Bound, estimated by one data point
+        # Variational Lower Bound, estimated by one data point
         loss = -np.log(sigma_n) * l - np.linalg.norm(y_i - k_i.T.dot(K_mm_inv.dot(mu)))**2 / (2 * sigma_n**2)
         loss += - tilde_K_ii / (2 * sigma_n**2)
         loss += - np.trace(sigma.dot(Lambda_i))/2
@@ -707,12 +690,13 @@ class GPR(GP):
         loss += - mu.T.dot(K_mm_inv.dot(mu)) * l / (2*N)
 
         # Gradient
-        grad = np.zeros((len(theta,)-1))
-        for param in range(len(theta)-1):
+        grad = np.zeros((len(theta,)))
+        for param in range(len(theta)):
             if param != len(theta) - 1:
                 cov_derivative = derivative_matrix_list[param]
             else:
                 cov_derivative = lambda x, y: self.covariance_obj.get_noise_derivative(points_num=1)
+
             d_K_mm__d_theta = d_K_mm__d_theta_lst[param]
             d_k_i__d_theta = d_k_i__d_theta_lst[param]
             grad[param] += np.sum((y_i - k_i.T.dot(K_mm_inv.dot(mu))) * \
@@ -729,9 +713,15 @@ class GPR(GP):
             grad[param] += np.trace(sigma.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv)))) * l / (2*N)
             grad[param] += mu.T.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv.dot(mu)))) * l / (2*N)
 
-        # grad[-1] += tilde_K_ii / (2 * sigma_n**2) - 1 / (2 * sigma_n) + \
-        #             (y_i - k_i.T.dot(K_mm_inv.dot(mu)))**2 / (2 * sigma_n**2) + \
-        #             np.trace(sigma.dot(Lambda_i)) / (2 * sigma_n)
+        # print(l)
+        # print(sigma_n)
+        # exit(0)
+        grad[-1] += (
+            tilde_K_ii / (sigma_n**3) -
+            l / (sigma_n) +
+            np.linalg.norm(y_i - k_i.T.dot(K_mm_inv.dot(mu)))**2 / (sigma_n**3) +
+            np.trace(sigma.dot(Lambda_i)) / sigma_n)
+
         grad = grad[:, None]
 
         if self.parametrization == 'natural':
@@ -751,39 +741,6 @@ class GPR(GP):
         self.covariance_obj.set_params(old_params)
 
         return loss, grad[:, 0]
-
-    def get_prediction_quality(self, *args, **kwargs):
-        """
-        Returns prediction quality on the test set for the given kernel (and inducing points) parameters
-        :param params: parameters
-        :return: prediction MSE
-        """
-        if self.method == 'means':
-            return self._means_get_prediction_quality(*args, **kwargs)
-        elif self.method == 'svi':
-            return self._svi_get_prediction_quality(*args, **kwargs)
-        elif self.method == 'brute':
-            return self._brute_get_prediction_quality(*args, **kwargs)
-        else:
-            raise ValueError('Wrong method')
-
-    def _means_get_prediction_quality(self, params, data_points, data_targets, test_points, test_targets):
-        """
-        Returns prediction quality on the test set for the given kernel (and inducing points) parameters for the means
-        method
-        :param params: parameters
-        :param data_points: train set points
-        :param data_targets: train set target values
-        :param test_points: test set points
-        :param test_targets: test set target values
-        :return: prediction MSE
-        """
-        new_gp = deepcopy(self)
-        new_gp.covariance_obj.set_params(params)
-        mu, Sigma = new_gp._vi_get_optimal_meancov(params, new_gp.inducing_inputs[0], data_points, data_targets)
-        new_gp.inducing_inputs = (new_gp.inducing_inputs[0], mu, Sigma)
-        predicted_y_test, _, _ = new_gp.predict(test_points)
-        return np.linalg.norm(predicted_y_test - test_targets)**2/test_targets.size
 
     def _svi_get_prediction_quality(self, params, test_points, test_targets):
         """
@@ -810,18 +767,73 @@ class GPR(GP):
         predicted_y_test, _, _ = new_gp.predict(test_points)
         return np.linalg.norm(predicted_y_test - test_targets)**2/test_targets.size
 
-    def _brute_get_prediction_quality(self, params, data_points, data_targets, test_points, test_targets):
+    def _inducing_points_predict(self, test_points):
         """
-        Returns prediction quality on the test set for the given kernel (and inducing points) parameters for the means
-        method
+        Predict new values given inducing points
+        :param ind_points: inducing points
+        :param expectation: expectation at inducing points
+        :param covariance: covariance at inducing points
+        :param test_points: test points
+        :return: predicted values at inducing points
+        """
+        ind_points, expectation, covariance = self.inducing_inputs
+        cov_fun = self.covariance_obj.covariance_function
+        K_xm = cov_fun(test_points, ind_points)
+        K_mx = K_xm.T
+        K_mm = cov_fun(ind_points, ind_points)
+        K_xx = cov_fun(test_points, test_points)
+        K_mm_inv = np.linalg.inv(K_mm)
+
+        new_mean = K_xm.dot(K_mm_inv).dot(expectation)
+        new_cov = K_xx - K_xm.dot(K_mm_inv).dot(K_mx) + K_xm.dot(K_mm_inv).dot(covariance).dot(K_mm_inv).dot(K_mx)
+
+        test_targets, up, low = self.sample_for_matrices(new_mean, new_cov)
+        return test_targets, up, low
+
+    # General functions
+
+    def generate_data(self, tr_points, test_points, seed=None):
+        """
+        :param dim: dimensions of the generated data
+        :param tr_points: training data points
+        :param test_points: testing data points
+        :return: tuple (training data points, training labels or target values, test data points, test labels or target
+        values)
+        """
+        if not (seed is None):
+            np.random.seed(seed)
+        targets = self.sample(self.mean_fun, self.covariance_fun, np.hstack((tr_points, test_points)), seed)
+        targets = targets.reshape((targets.size, 1))
+        return targets[:tr_points.shape[1], :], targets[tr_points.shape[1]:, :]
+
+    def fit(self, *args, **kwargs):
+        if self.method == 'brute':
+            return self._brute_fit(*args, **kwargs)
+        if self.method == 'vi' or self.method == 'means':
+            return self._vi_means_fit(*args, **kwargs)
+        if self.method == 'svi':
+            return self._svi_fit(*args, **kwargs)
+        else:
+            print(self.method)
+            raise ValueError("Method " + self.method + " is invalid")
+
+    def predict(self, *args, **kwargs):
+        if self.method == 'brute':
+            return self._brute_predict(*args, **kwargs)
+        else:
+            return self._inducing_points_predict(*args, **kwargs)
+
+    def get_prediction_quality(self, *args, **kwargs):
+        """
+        Returns prediction quality on the test set for the given kernel (and inducing points) parameters
         :param params: parameters
-        :param data_points: train set points
-        :param data_targets: train set target values
-        :param test_points: test set points
-        :param test_targets: test set target values
         :return: prediction MSE
         """
-        new_gp = deepcopy(self)
-        new_gp.covariance_obj.set_params(params)
-        predicted_y_test, _, _ = new_gp.predict(test_points, data_points, data_targets)
-        return np.linalg.norm(predicted_y_test - test_targets)**2/test_targets.size
+        if self.method == 'means':
+            return self._means_get_prediction_quality(*args, **kwargs)
+        elif self.method == 'svi':
+            return self._svi_get_prediction_quality(*args, **kwargs)
+        elif self.method == 'brute':
+            return self._brute_get_prediction_quality(*args, **kwargs)
+        else:
+            raise ValueError('Wrong method')
