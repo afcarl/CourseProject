@@ -487,7 +487,7 @@ class GPR(GP):
                     bnds.append((1e-2, None))
             return tuple(bnds)
 
-    def _svi_fit(self, data_points, target_values, num_inputs=0, inputs=None, max_iter=10):
+    def _svi_fit(self, data_points, target_values, num_inputs=0, inputs=None, optimizer_options={}):
         """
         A method for optimizing hyper-parameters (for fixed inducing points), based on stochastic variational inference
         :param data_points: training set objects
@@ -570,8 +570,9 @@ class GPR(GP):
             # exit(0)
 
             res, w_list, time_list = stochastic_gradient_descent(oracle=stoch_fun, n=n, point=param_vec, bounds=bnds,
-                                              options={'maxiter':max_iter, 'batch_size': 500, 'print_freq': 10,
-                                                       'step0':1e-4, 'gamma':0.7})
+                                                                 options=optimizer_options)
+                                              # options={'maxiter':max_iter, 'batch_size': 500, 'print_freq': 10,
+                                              #          'step0':1e-4, 'gamma':0.7})
 
             theta, eta_1, eta_2 = self._svi_get_parameters(res)
             sigma_inv = - 2 * eta_2
@@ -579,7 +580,6 @@ class GPR(GP):
             mu = sigma.dot(eta_1)
 
         elif self.parametrization == 'cholesky':
-
             def fun(x):
                 fun, grad = self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
                                                      indices=list(range(n)))
@@ -591,15 +591,14 @@ class GPR(GP):
                 return -fun, -grad
 
             if self.optimizer == 'SAG':
-                res, w_list, time_list = stochastic_average_gradient(oracle=sag_oracle, n=n, point=param_vec, bounds=bnds,
-                                                  options={'maxiter':max_iter, 'batch_size': 500, 'print_freq': 10})
+                res, w_list, time_list = stochastic_average_gradient(oracle=sag_oracle, n=n, point=param_vec,
+                                                                     bounds=bnds, options=optimizer_options)
             elif self.optimizer == 'FG':
-                res, w_list, time_list = gradient_descent(oracle=fun, point=param_vec, bounds=bnds, options={'maxiter':max_iter,
-                                                                                          'print_freq': 1})
+                res, w_list, time_list = gradient_descent(oracle=fun, point=param_vec, bounds=bnds,
+                                                          options=optimizer_options)
             elif self.optimizer == 'L-BFGS-B':
                 res, w_list, time_list = minimize_wrapper(fun, param_vec, method='L-BFGS-B', mydisp=False,
-                                                                   bounds=bnds, jac=True,
-                                                           options={'maxiter': max_iter, 'disp': False})
+                                                          bounds=bnds, jac=True, options=optimizer_options)
                 res = res['x']
             else:
                 raise ValueError('Wrong optimizer parameter')

@@ -279,7 +279,11 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
             return self.current_grad
 
         def __call__(self, eval_point):
-            indices = range(self.cur_index, self.cur_index + self.batch_size)
+            if self.cur_index + self.batch_size < n:
+                indices = range(self.cur_index, self.cur_index + self.batch_size)
+            else:
+                indices = list(range(self.cur_index, n-1)) + list(range(self.cur_index + self.batch_size - n + 1))
+
             new_loss, new_grad = oracle(eval_point, indices)
             return new_loss, new_grad
 
