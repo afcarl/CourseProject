@@ -90,6 +90,9 @@ def gradient_descent(oracle, point, bounds=None, options=None):
     step = 1.0
     x = point
     loss_fun = lambda w: oracle(w)[0]
+    x_lst = [x]
+    time_lst = [0]
+    start = time.time()
 
     for i in range(options['maxiter']):
         x = project_into_bounds(x, bounds)
@@ -100,6 +103,8 @@ def gradient_descent(oracle, point, bounds=None, options=None):
             break
         x, step = _linesearch_armiho(fun=loss_fun, gradient=grad, point_loss=loss, bounds=bounds, point=x,
                                      step_0=step, maxstep=options['maxstep'])
+        x_lst.append(x)
+        time_lst.append(time.time() - start)
         if step < options['step_tol']:
             if options['verbose']:
                 print("Step length reached the stopping criterion")
@@ -108,7 +113,7 @@ def gradient_descent(oracle, point, bounds=None, options=None):
             print("Iteration ", i, ":")
             print("\tGradient norm", np.linalg.norm(grad))
             print("\tFunction value", loss)
-    return x
+    return x, x_lst, time_lst
 
 
 def stochastic_gradient_descent(oracle, point, n, bounds=None, options=None):
@@ -152,22 +157,17 @@ def stochastic_gradient_descent(oracle, point, n, bounds=None, options=None):
     step = step0
     x = point
     x = project_into_bounds(x, bounds)
-    # grad = 0
+    x_lst = [x]
+    time_lst = [0]
+    start = time.time()
     for epoch in range(options['maxiter']):
         for batch in range(batch_num):
             new_indices = indices[range(batch_size*batch, (batch + 1)*batch_size)]
             grad = oracle(x, new_indices)
             x -= grad * step
             x = project_into_bounds(x, bounds)
-        # for i in range(n):
-        #     index = indices[i]
-        #     # new_indices = indices[range(i, )]
-        #     if not (i % batch_size):
-        #         x -= grad * step
-        #         x = project_into_bounds(x, bounds)
-        #         grad = oracle(x, index)
-        #     else:
-        #         grad += oracle(x, index)
+        x_lst.append(x)
+        time_lst.append(time.time() - start)
 
         if not (epoch % update_rate):
             indices = np.random.random_integers(0, n-1, (update_rate * batch_num * batch_size,))
@@ -175,8 +175,9 @@ def stochastic_gradient_descent(oracle, point, n, bounds=None, options=None):
         if not (epoch % options['print_freq']) and options['verbose']:
             print("Epoch ", epoch, ":")
             print("\tStep:", step)
+            print("\tParameters", x[:2])
         step = step0 / np.power((epoch+1), gamma)
-    return x
+    return x, x_lst, time_lst
 
 
 def check_gradient(oracle, point, print_diff=False):
@@ -220,13 +221,12 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
         'step0': initial step of the method
         'gamma': a parameter of the step length rule. It should be in (0.5, 1). The smaller it
         is, the more aggressive the method is
-        'update_rate': the rate of shuffling the data points
     defaul options: {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'batch_size': 1,
-                      'step0': 0.1, 'gamma': 0.55, 'update_rate':1}
+                      'step0': 0.1, 'gamma': 0.55}
     :return: optimal point
     """
     defaul_options = {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'batch_size': 1,
-                      'step0': 0.1, 'gamma': 0.55, 'update_rate':1}
+                      'step0': 0.1, 'gamma': 0.55}
     defaul_options.update(options)
     if 'print_freq' in options.keys():
         defaul_options['verbose'] = True
@@ -235,8 +235,6 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
     batch_size = options['batch_size']
     l = 1.0
     eps = 1e-2
-
-    update_rate = options['update_rate']
 
     def update_lipschitz_const (l, point, cur_loss=None, cur_grad=None):
         if cur_loss is None or cur_grad is None:
@@ -247,14 +245,8 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
         new_point = point - cur_grad / l
         new_point = project_into_bounds(new_point, bounds)
         new_loss, _ = batch_oracle(new_point)
-        to_beat = cur_loss - eps * cur_grad.T.dot(cur_grad) / l
-        # print(to_beat)
-        # print(np.linalg.norm(cur_grad)**2)
-        # print(cur_loss)
 
         while new_loss > cur_loss - eps * cur_grad.T.dot(cur_grad) / l:
-            # print(new_loss)
-            # print(to_beat)
             l *= 2
             new_point = point - cur_grad / l
             new_point = project_into_bounds(new_point, bounds)
@@ -291,19 +283,13 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
             new_loss, new_grad = oracle(eval_point, indices)
             return new_loss, new_grad
 
-        # def __call__(self, eval_point):
-        #     new_grad = np.zeros(point.shape)
-        #     new_loss = 0
-        #     for i in range(self.batch_size):
-        #         index = self.cur_index + i
-        #         stoch_loss, stoch_grad = oracle(eval_point, index)
-        #         new_loss += stoch_loss
-        #         new_grad += stoch_grad
-        #     return new_loss, new_grad
-
     x = point
     x = project_into_bounds(x, bounds)
     batch_oracle = BatchOracle(n=n, batch_size=batch_size)
+    x_lst = [x]
+    time_lst = [0]
+    start = time.time()
+
     for epoch in range(options['maxiter']):
         for i in range(batch_oracle.batch_num):
             loss, grad = batch_oracle(x)
@@ -313,38 +299,31 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
                 return x
             x -= direction / l
             x = project_into_bounds(x, bounds)
-
+        x_lst.append(x)
+        time_lst.append(time.time() - start)
         if not (epoch % options['print_freq']) and options['verbose']:
             print("Epoch ", epoch, ":")
             print("\tLipschitz constant estimate:", l)
             print("\t", x[:2])
-    return x
+    return x, x_lst, time_lst
 
 
 def minimize_wrapper(func, x0, mydisp=False, jac=True, **kwargs):
 
-    start = time.time()
     aux = {'start': time.time(), 'total': 0., 'it': 0}
+
     def callback(w):
-        # print(start)
-        # print(total_time)
-        # total_time
         aux['total'] += time.time() - aux['start']
         if mydisp:
             print("Hyper-parameters at iteration", aux['it'], ":", w)
-        fun, _ = func(w)
-        fun_list.append(fun)
-        # total_time += time.time() - start
         time_list.append(aux['total'])
-        w_list.append(w)
+        w_list.append(np.copy(w))
         aux['it'] += 1
         aux['start'] = time.time()
-    # print(start)
     w_list = []
     time_list = []
-    fun_list = []
     callback(x0)
 
     out = op.minimize(func, x0, jac=jac, callback=callback, **kwargs)
 
-    return out, w_list, time_list, fun_list
+    return out, w_list, time_list

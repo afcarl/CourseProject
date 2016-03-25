@@ -3,22 +3,22 @@ from scipy.optimize import minimize
 import math
 import copy
 from sklearn.cluster import KMeans
-from matplotlib import pyplot as plt
-from skimage.io import imshow
 import time
 
 from gaussian_process import GP
 from covariance_functions import CovarianceFamily, sigmoid
 from optimization import gradient_descent, stochastic_gradient_descent, check_gradient, stochastic_average_gradient,\
                          minimize_wrapper
-
+from gpr_res import GPRRes
+from copy import deepcopy
 
 class GPR(GP):
     """
     Gaussian Process Regressor
     """
 
-    def __init__(self, cov_obj, mean_function=lambda x: 0, method='brute', parametrization='natural'):
+    def __init__(self, cov_obj, mean_function=lambda x: 0, method='brute', parametrization='natural',
+                 optimizer='L-BFGS-B'):
         """
         :param cov_obj: object of the CovarianceFamily class
         :param mean_function: function, mean of the gaussian process
@@ -31,6 +31,11 @@ class GPR(GP):
             natural — natural gradient descent is used for optimization
             cholesky – cholesky decomposition is used for storing the covartiance matrix of the variational
             distribution
+        :param optimizer: The optimization method, used to optimize the ELBO. Used only in the svi method,
+        ignored otherwise.
+            L-BFGS-B – the corresponding method from scipy
+            SAG — Stochastic Average Gradient method
+            FG — Gradient descent
         :return: GPR object
         """
         if not isinstance(cov_obj, CovarianceFamily):
@@ -41,15 +46,19 @@ class GPR(GP):
             raise ValueError("Invalid method name")
         if not parametrization in ['natural', 'cholesky']:
             raise ValueError("Invalid parametrization name")
+        if not optimizer in ['SAG', 'L-BFGS-B', 'FG']:
+            raise ValueError("Invalid optimizer name")
 
         self.covariance_fun = cov_obj.covariance_function
         self.covariance_obj = cov_obj
         self.mean_fun = mean_function
         self.method = method
         self.parametrization = parametrization
+        self.optimizer = optimizer
 
         # A tuple: inducing inputs, and parameters of gaussian distribution at these points (mean and covariance)
         self.inducing_inputs = None
+
 
     def generate_data(self, tr_points, test_points, seed=None):
         """
@@ -139,12 +148,12 @@ class GPR(GP):
         bnds = self.covariance_obj.get_bounds()
         if max_iter is None:
             max_iter = np.inf
-        res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, self.covariance_obj.get_params(), method='L-BFGS-B',
+        res, w_list, time_list = minimize_wrapper(loc_fun, self.covariance_obj.get_params(), method='L-BFGS-B',
                                                                mydisp=False, bounds=bnds,
                                                                options={'gtol': 1e-8, 'ftol': 0, 'maxiter': max_iter})
         optimal_params = res.x
         self.covariance_obj.set_params(optimal_params)
-        return w_list, time_list, fun_lst
+        return GPRRes(deepcopy(w_list), time_lst=deepcopy(time_list))
 
     def _brute_predict(self, test_points, training_points, training_targets):
         """
@@ -163,10 +172,7 @@ class GPR(GP):
         new_cov = k_test - np.dot(np.dot(k_test_x, k_x_inv), k_test_x.T)
 
         test_targets, up, low = self.sample_for_matrices(new_mean, new_cov)
-        # if test_points.shape[0] == 1:
-        #     gp_plot_reg_data(test_points, up, 'r')
-        #     gp_plot_reg_data(test_points, low, 'g')
-        #     gp_plot_reg_data(test_points, test_targets, 'b')
+
         return test_targets, low, up
 
     def fit(self, *args, **kwargs):
@@ -185,6 +191,20 @@ class GPR(GP):
             return self._brute_predict(*args, **kwargs)
         else:
             return self._inducing_points_predict(*args, **kwargs)
+
+    def _vi_get_optimal_meancov(self, params, inputs, data_points, targets):
+
+        cov_fun = self.covariance_obj.covariance_function
+        sigma = params[-1]
+        K_mm = cov_fun(inputs, inputs)
+        K_mn = cov_fun(inputs, data_points)
+        K_nm = K_mn.T
+
+        Sigma = np.linalg.inv(K_mm + K_mn.dot(K_nm)/sigma**2)
+        mu = sigma**(-2) * K_mm.dot(Sigma.dot(K_mn.dot(targets)))
+        A = K_mm.dot(Sigma).dot(K_mm)
+        return  mu, A
+        # self.inducing_inputs = (inputs, mu, A)
 
     def _vi_means_fit(self, data_points, target_values, num_inputs, max_iter=None):
         """
@@ -241,7 +261,7 @@ class GPR(GP):
         # exit(0)
         res, w_list, time_list, fun_lst = minimize_wrapper(loc_fun, w0, method='L-BFGS-B', mydisp=False, bounds=bnds,
                                                            options={'maxiter': max_iter, 'disp': False})
-        print('Number of function calls:', res['nfev'])
+        # print('Number of function calls:', res['nfev'])
 
         if self.method == 'vi':
             optimal_params = res.x[:-num_inputs*dim]
@@ -252,17 +272,9 @@ class GPR(GP):
             inducing_points = inputs
         self.covariance_obj.set_params(optimal_params)
 
-        cov_fun = self.covariance_obj.covariance_function
-        sigma = optimal_params[-1]
-        K_mm = cov_fun(inducing_points, inducing_points)
-        K_mn = cov_fun(inducing_points, data_points)
-        K_nm = K_mn.T
-
-        Sigma = np.linalg.inv(K_mm + K_mn.dot(K_nm)/sigma**2)
-        mu = sigma**(-2) * K_mm.dot(Sigma.dot(K_mn.dot(target_values)))
-        A = K_mm.dot(Sigma).dot(K_mm)
-        self.inducing_inputs = (inducing_points, mu, A)
-        return w_list, time_list, fun_lst
+        mu, Sigma = self._vi_get_optimal_meancov(optimal_params, inducing_points, data_points, target_values)
+        self.inducing_inputs = (inducing_points, mu, Sigma)
+        return GPRRes(deepcopy(w_list), time_lst=deepcopy(time_list))
 
     def _vi_means_oracle(self, points, targets, params, ind_points):
         """
@@ -394,13 +406,6 @@ class GPR(GP):
 
         new_mean = K_xm.dot(K_mm_inv).dot(expectation)
         new_cov = K_xx - K_xm.dot(K_mm_inv).dot(K_mx) + K_xm.dot(K_mm_inv).dot(covariance).dot(K_mm_inv).dot(K_mx)
-        print('Mean inducing input correction', np.mean(np.abs(K_xm.dot(K_mm_inv).dot(covariance).dot(K_mm_inv).dot(K_mx))))
-        print(np.max(K_mm_inv.dot(covariance.dot(K_mm_inv))))
-        # plt.matshow(np.abs(K_mm_inv.dot(covariance.dot(K_mm_inv))))
-        # plt.matshow(K_xm.dot(K_mm_inv).dot(covariance).dot(K_mm_inv).dot(K_mx))
-        # plt.colorbar()
-        # plt.show()
-        print('Mean covariance', np.mean(new_cov))
 
         test_targets, up, low = self.sample_for_matrices(new_mean, new_cov)
         return test_targets, up, low
@@ -526,7 +531,18 @@ class GPR(GP):
 
         theta = self.covariance_obj.get_params()[:-1]
         if self.parametrization == 'natural':
-            sigma_inv = np.eye(m)
+            # sigma_inv = np.eye(m)
+
+            ######################################################
+            # Experimental
+            cov_fun = self.covariance_obj.covariance_function
+            K_mn = cov_fun(inputs, data_points)
+            K_mm = cov_fun(inputs, inputs)
+            K_mm_inv = np.linalg.inv(K_mm)
+            sigma_inv = K_mm_inv.dot(K_mn.dot(K_mn.T.dot(K_mm_inv)))/sigma_n**2 + K_mm_inv
+            sigma = np.linalg.inv(sigma_inv)
+            mu = sigma.dot(K_mm_inv.dot((K_mn.dot(y)))) / sigma_n**2
+            #######################################################
 
             # Canonical parameters initialization
             eta_1 = sigma_inv.dot(mu)
@@ -536,7 +552,7 @@ class GPR(GP):
         elif self.parametrization == 'cholesky':
             # sigma_L = np.eye(m)  # Cholesky factor of sigma
 
-            #######################################################
+            ######################################################
             # Experimental
             cov_fun = self.covariance_obj.covariance_function
             K_mn = cov_fun(inputs, data_points)
@@ -544,8 +560,8 @@ class GPR(GP):
             K_mm_inv = np.linalg.inv(K_mm)
             sigma = np.linalg.inv(K_mm_inv.dot(K_mn.dot(K_mn.T.dot(K_mm_inv)))/sigma_n**2 + K_mm_inv)
             mu = sigma.dot(K_mm_inv.dot((K_mn.dot(y)))) / sigma_n**2
-            # #######################################################
-            #
+            #######################################################
+
             # p = np.random.normal(size=(m, 1))
             # sigma = p.dot(p.T) + np.eye(m) * 1e-4
             sigma_L = np.linalg.cholesky(sigma)
@@ -553,15 +569,23 @@ class GPR(GP):
 
         bnds = self._svi_get_bounds(m)
 
-
         if self.parametrization == 'natural':
 
             def stoch_fun(x, i):
                 return -self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
                                                            indices=i)[1]
 
-            res = stochastic_gradient_descent(oracle=stoch_fun, n=n, point=param_vec, bounds=bnds,
-                                              options={'maxiter':max_iter, 'batch_size': 100, 'print_freq': 10, 'step0':0.01})
+            # def fun(x):
+            #     fun, grad = self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
+            #                                                indices=range(n))
+            #     return -fun, -grad
+            #
+            # check_gradient(fun, param_vec, True)
+            # exit(0)
+
+            res, w_list, time_list = stochastic_gradient_descent(oracle=stoch_fun, n=n, point=param_vec, bounds=bnds,
+                                              options={'maxiter':max_iter, 'batch_size': 500, 'print_freq': 10,
+                                                       'step0':1e-4, 'gamma':0.7})
 
             theta, eta_1, eta_2 = self._svi_get_parameters(res)
             sigma_inv = - 2 * eta_2
@@ -575,21 +599,27 @@ class GPR(GP):
                                                      indices=list(range(n)))
                 return -fun, -grad
 
+            # check_gradient(fun, param_vec, 0)
+            # exit(0)
+
             def sag_oracle(x, i):
                 fun, grad = self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
                                                                indices=i)
                 return -fun, -grad
 
-            # res = stochastic_average_gradient(oracle=sag_oracle, n=n, point=param_vec, bounds=bnds,
-            #                                   options={'maxiter':max_iter, 'batch_size': 500, 'print_freq': 1})
-            # print(fun(param_vec))
-            # check_gradient(fun, param_vec, True)
-            # exit(0)
-
-            res = minimize(fun=fun, x0=param_vec, method='L-BFGS-B', bounds=bnds, jac=True,
-                           options={'maxiter':max_iter, 'disp':False})['x']
-
-            # res = gradient_descent(oracle=fun, point=param_vec, bounds=bnds, options={'maxiter':max_iter, 'print_freq': 1})
+            if self.optimizer == 'SAG':
+                res, w_list, time_list = stochastic_average_gradient(oracle=sag_oracle, n=n, point=param_vec, bounds=bnds,
+                                                  options={'maxiter':max_iter, 'batch_size': 500, 'print_freq': 10})
+            elif self.optimizer == 'FG':
+                res, w_list, time_list = gradient_descent(oracle=fun, point=param_vec, bounds=bnds, options={'maxiter':max_iter,
+                                                                                          'print_freq': 1})
+            elif self.optimizer == 'L-BFGS-B':
+                res, w_list, time_list = minimize_wrapper(fun, param_vec, method='L-BFGS-B', mydisp=False,
+                                                                   bounds=bnds, jac=True,
+                                                           options={'maxiter': max_iter, 'disp': False})
+                res = res['x']
+            else:
+                raise ValueError('Wrong optimizer parameter')
 
             theta, mu, sigma_L = self._svi_get_parameters(res)
             sigma = sigma_L.dot(sigma_L.T)
@@ -599,6 +629,7 @@ class GPR(GP):
         theta = np.array(theta)
         self.covariance_obj.set_params(theta)
         self.inducing_inputs = (inputs, mu, sigma)
+        return GPRRes(deepcopy(w_list), time_lst=deepcopy(time_list))
 
     def _svi_elbo_batch_approx_oracle(self, data_points, target_values, inducing_inputs, parameter_vec,
                                        indices):
@@ -704,18 +735,93 @@ class GPR(GP):
         grad = grad[:, None]
 
         if self.parametrization == 'natural':
-            dL_dbeta1 = - y_i / sigma_n**2 * (K_mm_inv.dot(k_i)) + eta_1 / N
-            dL_dbeta2 = (-Lambda_i - K_mm_inv / N) / 2 - eta_2 / N
+
+            dL_dbeta1 = - (K_mm_inv.dot(k_i)).dot(y_i) / sigma_n**2 + eta_1 * l / N
+            dL_dbeta2 = ((-Lambda_i - K_mm_inv * l / N) / 2 - eta_2 * l / N) * 2 # Don't quite get this *2
             grad = np.vstack((grad, -dL_dbeta1.reshape(-1)[:, None]))
             grad = np.vstack((grad, dL_dbeta2.reshape(-1)[:, None]))
+
         elif self.parametrization == 'cholesky':
             dL_dsigma_L = -Lambda_i.dot(sigma_L) + np.eye(m) * l / (N * np.diag(sigma_L)) - (K_mm_inv.dot(sigma_L)) * l / N
             dL_dsigma_L = self._svi_lower_triang_mat_to_vec(dL_dsigma_L)
             dL_dmu = -(K_mm_inv.dot(k_i)).dot(y_i) /sigma_n**2 + (Lambda_i + K_mm_inv *l/N).dot(mu)
-
             grad = np.vstack((grad, -dL_dmu.reshape(-1)[:, None]))
             grad = np.vstack((grad, dL_dsigma_L.reshape(-1)[:, None]))
 
         self.covariance_obj.set_params(old_params)
 
         return loss, grad[:, 0]
+
+    def get_prediction_quality(self, *args, **kwargs):
+        """
+        Returns prediction quality on the test set for the given kernel (and inducing points) parameters
+        :param params: parameters
+        :return: prediction MSE
+        """
+        if self.method == 'means':
+            return self._means_get_prediction_quality(*args, **kwargs)
+        elif self.method == 'svi':
+            return self._svi_get_prediction_quality(*args, **kwargs)
+        elif self.method == 'brute':
+            return self._brute_get_prediction_quality(*args, **kwargs)
+        else:
+            raise ValueError('Wrong method')
+
+    def _means_get_prediction_quality(self, params, data_points, data_targets, test_points, test_targets):
+        """
+        Returns prediction quality on the test set for the given kernel (and inducing points) parameters for the means
+        method
+        :param params: parameters
+        :param data_points: train set points
+        :param data_targets: train set target values
+        :param test_points: test set points
+        :param test_targets: test set target values
+        :return: prediction MSE
+        """
+        new_gp = deepcopy(self)
+        new_gp.covariance_obj.set_params(params)
+        mu, Sigma = new_gp._vi_get_optimal_meancov(params, new_gp.inducing_inputs[0], data_points, data_targets)
+        new_gp.inducing_inputs = (new_gp.inducing_inputs[0], mu, Sigma)
+        predicted_y_test, _, _ = new_gp.predict(test_points)
+        return np.linalg.norm(predicted_y_test - test_targets)**2/test_targets.size
+
+    def _svi_get_prediction_quality(self, params, test_points, test_targets):
+        """
+        Returns prediction quality on the test set for the given kernel (and inducing points) parameters for the means
+        method
+        :param params: parameters
+        :param test_points: test set points
+        :param test_targets: test set target values
+        :return: prediction MSE
+        """
+        new_gp = deepcopy(self)
+        # param_len = len(new_gp.covariance_obj.get_params())
+        if self.parametrization == 'natural':
+            theta, eta_1, eta_2 = new_gp._svi_get_parameters(params)
+            Sigma_inv = - 2 * eta_2
+            Sigma = np.linalg.inv(Sigma_inv)
+            mu = Sigma.dot(eta_1)
+        elif self.parametrization == 'cholesky':
+            theta, mu, Sigma_L = new_gp._svi_get_parameters(params)
+            Sigma = Sigma_L.dot(Sigma_L.T)
+        theta = params[:len(new_gp.covariance_obj.get_params())]
+        new_gp.covariance_obj.set_params(theta)
+        new_gp.inducing_inputs = (new_gp.inducing_inputs[0], mu, Sigma)
+        predicted_y_test, _, _ = new_gp.predict(test_points)
+        return np.linalg.norm(predicted_y_test - test_targets)**2/test_targets.size
+
+    def _brute_get_prediction_quality(self, params, data_points, data_targets, test_points, test_targets):
+        """
+        Returns prediction quality on the test set for the given kernel (and inducing points) parameters for the means
+        method
+        :param params: parameters
+        :param data_points: train set points
+        :param data_targets: train set target values
+        :param test_points: test set points
+        :param test_targets: test set target values
+        :return: prediction MSE
+        """
+        new_gp = deepcopy(self)
+        new_gp.covariance_obj.set_params(params)
+        predicted_y_test, _, _ = new_gp.predict(test_points, data_points, data_targets)
+        return np.linalg.norm(predicted_y_test - test_targets)**2/test_targets.size
