@@ -1,12 +1,12 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+
 # from sklearn import svm, cross_validation
 # from sklearn.cluster import KMeans
 # from sklearn.neighbors import NearestNeighbors
-from gaussian_process_regression import GPR
-from plotting import gp_plot_reg_data, gp_plot_class_data
-from covariance_functions import SquaredExponential, GammaExponential, Matern
-import time
+from GP.gaussian_process_regression import GPR
+from GP.plotting import gp_plot_reg_data
+from GP.covariance_functions import SquaredExponential
 
 data_params = np.array([1.1, 0.3, 0.1])
 data_covariance_obj = SquaredExponential(data_params)

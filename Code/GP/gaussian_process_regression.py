@@ -1,16 +1,17 @@
-import numpy as np
-from scipy.optimize import minimize
-import math
 import copy
-from sklearn.cluster import KMeans
+import math
 import time
-
-from gaussian_process import GP
-from covariance_functions import CovarianceFamily, sigmoid
-from optimization import gradient_descent, stochastic_gradient_descent, check_gradient, stochastic_average_gradient,\
-                         minimize_wrapper
-from gpr_res import GPRRes
 from copy import deepcopy
+
+import numpy as np
+from sklearn.cluster import KMeans
+
+from GP.covariance_functions import CovarianceFamily
+from GP.gaussian_process import GP
+from GP.gpr_res import GPRRes
+from GP.optimization import gradient_descent, stochastic_gradient_descent, stochastic_average_gradient,\
+                         minimize_wrapper
+
 
 class GPR(GP):
     """

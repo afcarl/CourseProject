@@ -1,9 +1,8 @@
-from sklearn.datasets import load_svmlight_file
 import numpy as np
-from sklearn import svm, cross_validation
+from old_version_gp import GaussianProcess
+from sklearn.datasets import load_svmlight_file
 
-from old_version_gp import GaussianProcess, gp_plot_reg_data, gp_plot_class_data
-from covariance_functions import CovarianceFamily, SquaredExponential
+from GP.covariance_functions import SquaredExponential
 
 #Parameters
 # random_seed_w0 = 32

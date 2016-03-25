@@ -1,12 +1,12 @@
+import time
+
+import numpy as np
 from sklearn.datasets import load_svmlight_file
 from sklearn.metrics import r2_score
 from sklearn.preprocessing import StandardScaler
-import numpy as np
-import matplotlib.pyplot as plt
-from gaussian_process_regression import GPR
-from plotting import gp_plot_reg_data, gp_plot_class_data
-from covariance_functions import SquaredExponential, GammaExponential, Matern
-import time
+
+from GP.covariance_functions import SquaredExponential
+from GP.gaussian_process_regression import GPR
 
 #Parameters
 # random_seed_w0 = 32

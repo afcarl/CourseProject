@@ -1,10 +1,9 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
-from gaussian_process_classification import GPC
-from plotting import gp_plot_class_data
-from covariance_functions import CovarianceFamily, SquaredExponential, GammaExponential
-
+from GP.covariance_functions import SquaredExponential
+from GP.gaussian_process_classification import GPC
+from GP.plotting import gp_plot_class_data
 
 data_params = np.array([1.0, 0.25, 0.05])
 data_covariance_obj = SquaredExponential(data_params)

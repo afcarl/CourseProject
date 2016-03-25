@@ -330,6 +330,25 @@ Pavel Izmailov
 		- K_{mm}^{-1} L_{\Sigma}.
 		$$
 
+	\pagebreak
+\section{Experiments}
+	In this section the results of the numerical experiments are provided.
+
+	\subsection{Variations of the stochastic variational inference method}
+		In this section we compare several variations of the stochastic variational inference method.
+
+		The first variation is denoted by \lstinline{svi-natural}. It is the method described in \cite{BigData}. It uses stochastic gradient descent with natural gradients for minimizing the ELBO with respect to the variational parameters, and usual gradients with respect to kernel hyperparameters.
+
+		The methods \lstinline{svi-L-BFGS-B} and \lstinline{svi-FG} use the full (non-stochastic) ELBO from the same article \cite{BigData} and minimize it with L-BFGS-B and gradient descent respectively. These methods use Cholesky factorization (see \ref{svi}) for the variational parameters.
+
+		Finally, the \lstinline{svi-SAG} method to minimize the ELBO. This method also uses Cholesky factorization.
+
+		We will compare the methods on datasets, generated from some gaussian process and on real data.
+
+		\subsubsection{Small data}
+			In this section we compare the methods performance on small datasets.
+
+
 \pagebreak
 \begin{thebibliography}{99}
 

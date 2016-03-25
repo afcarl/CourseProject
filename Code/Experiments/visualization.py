@@ -1,9 +1,9 @@
-from matplotlib import pyplot as plt
 import numpy as np
+from matplotlib import pyplot as plt
 
-from gaussian_process_regression import GPR
-from plotting import gp_plot_reg_data, gp_plot_class_data
-from covariance_functions import SquaredExponential, GammaExponential, Matern
+from GP.covariance_functions import SquaredExponential
+from GP.gaussian_process_regression import GPR
+from GP.plotting import gp_plot_reg_data
 
 data_params = np.array([1.1, 0.3, 0.1])
 data_covariance_obj =  SquaredExponential(data_params)

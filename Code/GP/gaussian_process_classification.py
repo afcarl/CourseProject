@@ -1,15 +1,12 @@
-import numpy as np
-import math
-import scipy.optimize as op
-import scipy as sp
 import copy
 import time
-from sklearn.cluster import KMeans
-from abc import ABCMeta, abstractmethod
 
-from gaussian_process import GP
-from covariance_functions import CovarianceFamily, sigmoid
-from optimization import minimize_wrapper
+import numpy as np
+import scipy as sp
+import scipy.optimize as op
+
+from GP.covariance_functions import CovarianceFamily, sigmoid
+from GP.gaussian_process import GP
 
 
 class GPC(GP):

@@ -1,10 +1,9 @@
-import numpy as np
 import matplotlib.pyplot as plt
-import time
-
+import numpy as np
 from old_version_gp import GaussianProcess
-from plotting import gp_plot_class_data, plot_performance_hyper_parameter, plot_performance_errors
-from covariance_functions import CovarianceFamily, SquaredExponential, GammaExponential, ExpScaledSquaredExponential
+
+from GP.covariance_functions import SquaredExponential, ExpScaledSquaredExponential
+from GP.plotting import plot_performance_hyper_parameter
 
 data_params = np.array([1.0, 0.25, 0.05])
 data_covariance_obj = SquaredExponential(data_params)
