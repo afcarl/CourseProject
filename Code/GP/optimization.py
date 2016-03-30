@@ -90,7 +90,7 @@ def gradient_descent(oracle, point, bounds=None, options=None):
     step = 1.0
     x = point
     loss_fun = lambda w: oracle(w)[0]
-    x_lst = [x]
+    x_lst = [np.copy(x)]
     time_lst = [0]
     start = time.time()
 
@@ -103,7 +103,7 @@ def gradient_descent(oracle, point, bounds=None, options=None):
             break
         x, step = _linesearch_armiho(fun=loss_fun, gradient=grad, point_loss=loss, bounds=bounds, point=x,
                                      step_0=step, maxstep=options['maxstep'])
-        x_lst.append(x)
+        x_lst.append(np.copy(x))
         time_lst.append(time.time() - start)
         if step < options['step_tol']:
             if options['verbose']:
@@ -157,7 +157,7 @@ def stochastic_gradient_descent(oracle, point, n, bounds=None, options=None):
     step = step0
     x = point
     x = project_into_bounds(x, bounds)
-    x_lst = [x]
+    x_lst = [np.copy(x)]
     time_lst = [0]
     start = time.time()
     for epoch in range(options['maxiter']):
@@ -166,7 +166,7 @@ def stochastic_gradient_descent(oracle, point, n, bounds=None, options=None):
             grad = oracle(x, new_indices)
             x -= grad * step
             x = project_into_bounds(x, bounds)
-        x_lst.append(x)
+        x_lst.append(np.copy(x))
         time_lst.append(time.time() - start)
 
         if not (epoch % update_rate):
@@ -234,7 +234,7 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
 
     batch_size = options['batch_size']
     l = 1.0
-    eps = 1e-2
+    eps = 0.5
 
     def update_lipschitz_const (l, point, cur_loss=None, cur_grad=None):
         if cur_loss is None or cur_grad is None:
@@ -290,7 +290,7 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
     x = point
     x = project_into_bounds(x, bounds)
     batch_oracle = BatchOracle(n=n, batch_size=batch_size)
-    x_lst = [x]
+    x_lst = [np.copy(x)]
     time_lst = [0]
     start = time.time()
 
@@ -301,14 +301,14 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
             direction = batch_oracle.update_gradients(grad)
             if l == 0:
                 return x
-            x -= direction / l
+            x -= direction /(16 * l)
             x = project_into_bounds(x, bounds)
-        x_lst.append(x)
+        x_lst.append(np.copy(x))
         time_lst.append(time.time() - start)
         if not (epoch % options['print_freq']) and options['verbose']:
             print("Epoch ", epoch, ":")
             print("\tLipschitz constant estimate:", l)
-            print("\t", x[:2])
+            print("\t", x[:2])    # print(x_lst)
     return x, x_lst, time_lst
 
 

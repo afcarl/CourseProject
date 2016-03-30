@@ -25,6 +25,7 @@ class GPRRes:
         return ans
 
     def plot_performance(self, metrics, it_time='i', freq=1):
+        print(metrics(self.params[0]))
         y_lst = [metrics(self.params[i]) for i in range(len(self.params)) if not (i % freq)]
         if it_time == 'i':
             x_lst = [self.iters[i] for i in range(len(self.iters)) if not(i%freq)]

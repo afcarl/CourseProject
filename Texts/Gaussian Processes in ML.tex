@@ -42,6 +42,7 @@ otherkeywords={self},
 \newcommand{\KL}[2]{\mbox{KL}\left(#1\mbox{ || }#2\right)}
 \newcommand{\tr}{\mbox{tr}}
 \newcommand{\derivative}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\sndderivative}[3]{\frac{\partial^2 #1}{\partial #2 \partial #3}}
 
 \newlength{\arrayrulewidthOriginal}
 \newcommand{\Cline}[2]{%
@@ -216,7 +217,7 @@ Pavel Izmailov
 		$$\derivative{F_V}{\theta} = \frac 1 2 \left( -\tr \left(B^{-1} \derivative{B}{\theta}\right) + y^T B^{-1} \derivative{B}{\theta} B^{-1} y - \right.$$    
 		$$- \left. \frac 1 {\sigma_n^2} \tr\left(\derivative{K_{nn}}{\theta} - \left(\derivative{K_{nm}}{\theta}K_{mm}^{-1} - K_{nm} K_{mm}^{-1} \derivative{K_{mm}}{\theta}K_{mm}^{-1}\right) K_{mn} - K_{nm} K_{mm}^{-1} \derivative{K_{mn}}{\theta}\right)\right),$$
 		where
-		$$\derivative{B}{\theta} =\left(\derivative{K_{nm}}{\theta}K_{mm}^{-1} - K_{nm} K_{mm}^{-1} \derivative{K_{mm}}{\theta}K_{mm}^{-1}\right) K_{mn} +  K_{nm} K_{mm}^{-1} \derivative{K_{mn}}{\theta}.$$
+		$$\derivative{B}{\theta} = \left(\derivative{K_{nm}}{\theta}K_{mm}^{-1} - K_{nm} K_{mm}^{-1} \derivative{K_{mm}}{\theta}K_{mm}^{-1}\right) K_{mn} +  K_{nm} K_{mm}^{-1} \derivative{K_{mn}}{\theta}.$$
 
 		We can rewrite
 		$$\derivative{F_V}{\theta} = \frac 1 2 \left( -\tr \left(B^{-1} \derivative{B}{\theta}\right) + y^T B^{-1} \derivative{B}{\theta} B^{-1} y - \frac 1 {\sigma_n^2} \tr \left(\derivative {K_{nn}} {\theta} - \derivative {B}{\theta}\right) \right).$$
@@ -236,6 +237,23 @@ Pavel Izmailov
 		which allows for computing $y^T B^{-1} y$ in $O(n m)$.
 
 		Similarly, we can compute the gradient in $O(nm^2)$. In order to do so, we need to rewrite every trace $\tr(M_{nm} M_{mm} M_{mn})$, where $M_{kl} \in \R^{k \times l}$, in the form $\tr(M_{mm} M_{mn} M_{nm})$, which is computed in $O(nm^2)$, and use the derived formulas for $B^{-1}$.
+
+		Now let's try to compute the second order derivatives.
+		$$\frac{\partial^2 F_V} {\partial \theta_j \partial\theta_i} = \derivative{}{\theta_j} \left(\derivative{F_V}{\theta_i}\right) = \frac 1 2 \derivative{}{\theta_j} \left( -\tr \left(B^{-1} \derivative{B}{\theta_i}\right) + y^T B^{-1} \derivative{B}{\theta_i} B^{-1} y - \frac 1 {\sigma_n^2} \tr \left(\derivative {K_{nn}} {\theta_i} - \derivative {B}{\theta_i}\right)\right) = $$
+		$$ = \frac 1 2 \left(\tr\left( B^{-1} \derivative{B}{\theta_j} B^{-1}\derivative{B}{\theta_i} - B^{-1} \sndderivative{B}{\theta_j}{\theta_i}\right) + y^T \left(B^{-1} \sndderivative{B}{\theta_j} {\theta_i} B^{-1}  - 2 B^{-1} \derivative{B}{\theta_j} B^{-1} \derivative{B}{\theta_i} B^{-1} \right) y \right. - $$
+		$$ \left.- \frac 1 {\sigma_n^2} \tr\left(\sndderivative{K_{nn}}{\theta_j}{\theta_i} - \sndderivative{B}{\theta_j}{\theta_i}\right)\right),$$
+		where
+		$$\sndderivative{B}{\theta_j}{\theta_i} = \derivative{}{\theta_j} \left(\derivative{K_{nm}}{\theta_i}K_{mm}^{-1} K_{mn} - K_{nm} K_{mm}^{-1} \derivative{K_{mm}}{\theta_i}K_{mm}^{-1} K_{mn} +  K_{nm} K_{mm}^{-1} \derivative{K_{mn}}{\theta_i}\right) = $$
+
+		$$ = \sndderivative{K_{nm}}{\theta_j}{\theta_i}K_{mm}^{-1} K_{mn} + K_{nm} K_{mm}^{-1}\sndderivative{K_{mn}}{\theta_j}{\theta_i}  - \derivative{K_{nm}}{\theta_i}K_{mm}^{-1} \derivative{K_{mm}}{\theta_j}K_{mm}^{-1}K_{mn} - $$
+		
+		$$- K_{nm} K_{mm}^{-1} \derivative{K_{mm}}{\theta_j}K_{mm}^{-1}\derivative{K_{mn}}{\theta_i} + \derivative{K_{nm}}{\theta_j}K_{mm}^{-1} \derivative{K_{mn}}{\theta_i} + \derivative{K_{nm}}{\theta_i} K_{mm}^{-1} \derivative{K_{mn}}{\theta_j} $$
+
+		$$- \derivative{K_{nm}}{\theta_j} K_{mm}^{-1} \derivative{K_{mm}}{\theta_i}K_{mm}^{-1} K_{mn} + K_{nm} K_{mm}^{-1}\derivative{K_{mm}}{\theta_j} K_{mm}^{-1}\derivative{K_{mm}}{\theta_i}K_{mm}^{-1} K_{mn}$$
+
+		$$ - K_{nm} K_{mm}^{-1} \sndderivative{K_{mm}}{\theta_j}{\theta_i}K_{mm}^{-1} K_{mn} + K_{nm} K_{mm}^{-1} \derivative{K_{mm}}{\theta_i}K_{mm}^{-1}\derivative{K_{mm}}{\theta_j}K_{mm}^{-1} K_{mn} - $$
+
+		$$- K_{nm} K_{mm}^{-1} \derivative{K_{mm}}{\theta_i}K_{mm}^{-1} \derivative{K_{mn}}{\theta_j}.$$
 
 
 	\pagebreak

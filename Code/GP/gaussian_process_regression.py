@@ -5,6 +5,7 @@ from copy import deepcopy
 
 import numpy as np
 from sklearn.cluster import KMeans
+from sklearn.metrics import r2_score
 
 from GP.covariance_functions import CovarianceFamily
 from GP.gaussian_process import GP
@@ -613,6 +614,16 @@ class GPR(GP):
         self.inducing_inputs = (inputs, mu, sigma)
         return GPRRes(deepcopy(w_list), time_lst=deepcopy(time_list))
 
+    def _svi_get_loss(self, params, data_points, target_values):
+        new_gp = deepcopy(self)
+        n = target_values.size
+        def fun(x):
+            fun, grad = new_gp._svi_elbo_batch_approx_oracle(data_points, target_values, new_gp.inducing_inputs[0],
+                                                             parameter_vec=x, indices=list(range(n)))
+            return -fun, -grad
+        return fun(params)[0][0,0]
+
+
     def _svi_elbo_batch_approx_oracle(self, data_points, target_values, inducing_inputs, parameter_vec,
                                        indices):
         """
@@ -765,7 +776,8 @@ class GPR(GP):
         new_gp.covariance_obj.set_params(theta)
         new_gp.inducing_inputs = (new_gp.inducing_inputs[0], mu, Sigma)
         predicted_y_test, _, _ = new_gp.predict(test_points)
-        return np.linalg.norm(predicted_y_test - test_targets)**2/test_targets.size
+        return r2_score(test_targets, predicted_y_test)
+        # return np.linalg.norm(predicted_y_test - test_targets)**2/test_targets.size
 
     def _inducing_points_predict(self, test_points):
         """
@@ -827,7 +839,7 @@ class GPR(GP):
         """
         Returns prediction quality on the test set for the given kernel (and inducing points) parameters
         :param params: parameters
-        :return: prediction MSE
+        :return: prediction r2
         """
         if self.method == 'means':
             return self._means_get_prediction_quality(*args, **kwargs)
@@ -837,3 +849,14 @@ class GPR(GP):
             return self._brute_get_prediction_quality(*args, **kwargs)
         else:
             raise ValueError('Wrong method')
+
+    def get_loss(self, *args, **kwargs):
+        """
+        Returns loss (ELBO) kernel (and inducing points) parameters
+        :return: loss
+        """
+        if self.method == 'svi':
+            return self._svi_get_loss(*args, **kwargs)
+        else:
+            raise ValueError('Wrong method')
+
