@@ -196,7 +196,7 @@ class GPR(GP):
         return  mu, A
         # self.inducing_inputs = (inputs, mu, A)
 
-    def _vi_means_fit(self, data_points, target_values, num_inputs, max_iter=None):
+    def _vi_means_fit(self, data_points, target_values, num_inputs, inputs=None, optimizer_options={}):
         """
         A procedure, fitting hyper-parameters and inducing points for both the 'means' and the 'vi' methods.
         :param data_points: data points
@@ -212,9 +212,6 @@ class GPR(GP):
 
         dim = data_points.shape[0]
         param_len = self.covariance_obj.get_params().size
-
-        if max_iter is None:
-            max_iter = np.inf
 
         def _vi_loc_fun(w):
             ind_points = (w[param_len:]).reshape((dim, num_inputs)) # has to be rewritten for multidimensional case
@@ -233,25 +230,14 @@ class GPR(GP):
             bnds = tuple(list(self.covariance_obj.get_bounds()) + [(1e-2, 1)] * num_inputs * dim)
 
         if self.method == 'means':
-            inputs = self._k_means_cluster_centers(data_points, num_inputs)
+            if inputs is None:
+                inputs = self._k_means_cluster_centers(data_points, num_inputs)
             loc_fun = _means_loc_fun
             w0 = self.covariance_obj.get_params()
             bnds = self.covariance_obj.get_bounds()
 
-        # f2, g2 = loc_fun(w0)
-        # print(w0)
-        # print(f2, g2)
-        # exit(0)
-        # print("Gradient:", g2)
-        # for i in range(w0.size):
-        #     diff = np.zeros(w0.shape)
-        #     diff[i] = 1e-8
-        #     f1, g1 = loc_fun(w0 + diff)
-        #     print("Difference:", (f1 - f2) * 1e8)
-        # exit(0)
         res, w_list, time_list = minimize_wrapper(loc_fun, w0, method='L-BFGS-B', mydisp=False, bounds=bnds,
-                                                           options={'maxiter': max_iter, 'disp': False})
-        # print('Number of function calls:', res['nfev'])
+                                                           options=optimizer_options)
 
         if self.method == 'vi':
             optimal_params = res.x[:-num_inputs*dim]
@@ -393,7 +379,8 @@ class GPR(GP):
         mu, Sigma = new_gp._vi_get_optimal_meancov(params, new_gp.inducing_inputs[0], data_points, data_targets)
         new_gp.inducing_inputs = (new_gp.inducing_inputs[0], mu, Sigma)
         predicted_y_test, _, _ = new_gp.predict(test_points)
-        return np.linalg.norm(predicted_y_test - test_targets)**2/test_targets.size
+        return r2_score(test_targets, predicted_y_test)
+        # return np.linalg.norm(predicted_y_test - test_targets)**2/test_targets.size
 
     @staticmethod
     def _k_means_cluster_centers(data_points, num_clusters):

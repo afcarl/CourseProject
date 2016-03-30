@@ -2,13 +2,13 @@ import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.datasets import load_svmlight_file
 
-from experiments_svi_variations import run_methods
+from vi_vs_svi import run_methods
 from GP.covariance_functions import SquaredExponential
 
 model_params = np.array([1.5, 1.5, 1.0])
 model_covariance_obj = SquaredExponential(model_params)
 ind_inputs_num = 100
-max_iter = 200
+max_iter = 30
 batch_size = 100
 file_name = 'small_real'
 metric = 'r2'
@@ -36,11 +36,8 @@ x_tr = x_tr[:, : int(x_tr.shape[1] * 0.8)]
 
 # Cholesky parametrization
 
-sag_options = {'maxiter':max_iter, 'batch_size': batch_size, 'print_freq': 100}
-fg_options = {'maxiter':max_iter, 'print_freq': 100}
 lbfgsb_options = {'maxiter': max_iter, 'disp': False}
-sg_options = {'maxiter':max_iter, 'batch_size': batch_size, 'print_freq': 100, 'step0': 1e-4, 'gamma': 0.55}
 
-optimizer_options = [sag_options, fg_options, lbfgsb_options, sg_options]
+optimizer_options = [lbfgsb_options] * 2
 
 run_methods(x_tr, y_tr, x_test, y_test, model_params, optimizer_options, file_name, ind_inputs_num, title, metric, True)

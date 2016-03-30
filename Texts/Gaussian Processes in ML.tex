@@ -398,8 +398,35 @@ Pavel Izmailov
 				}
 			}
 			\caption{Method's performance on medium datasets}
-			\label{hfn}
 		\end{figure}
+
+\subsection{Comparison of stochastic and non-stochastic variational inference methods}
+	In this section we compare the \lstinline{vi-means} method with \lstinline{svi-L-BFGS-B}. The \lstinline{vi-means} method is a variation of the method, described in section \ref{Titsias}. It does not optimize for the inducing point positions and does uses \lstinline{L-BFGS-B} to maximize the ELBO.
+
+	\begin{figure}[!h]
+			\centering
+			\subfloat{
+				\scalebox{0.9}{
+					\input{../Code/Experiments/Plots/vi_vs_svi/small_real.tikz}
+				}
+			}
+			\subfloat{
+				\scalebox{0.9}{
+		    		\input{../Code/Experiments/Plots/vi_vs_svi/medium_real.tikz}
+				}
+			}
+			
+			\caption{Method's performance on small and medium datasets}
+		\end{figure}
+	\begin{figure}[!h]
+		\centering
+		\subfloat{
+			\scalebox{0.9}{
+		    	\input{../Code/Experiments/Plots/vi_vs_svi/big_real.tikz}
+			}
+		}
+		\caption{Method's performance on a big dataset}
+	\end{figure}
 
 \pagebreak
 \begin{thebibliography}{99}
