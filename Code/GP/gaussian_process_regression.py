@@ -236,7 +236,7 @@ class GPR(GP):
             w0 = self.covariance_obj.get_params()
             bnds = self.covariance_obj.get_bounds()
 
-        res, w_list, time_list = minimize_wrapper(loc_fun, w0, method='L-BFGS-B', mydisp=False, bounds=bnds,
+        res, w_list, time_list = minimize_wrapper(loc_fun, w0, method='L-BFGS-B', mydisp=True, bounds=bnds,
                                                            options=optimizer_options)
 
         if self.method == 'vi':
