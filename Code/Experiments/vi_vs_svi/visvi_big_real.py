@@ -11,7 +11,7 @@ model_params = np.array([6.0, 5.0, 3.0])
 model_covariance_obj = SquaredExponential(model_params)
 ind_inputs_num = 1000
 # max_iter = 10
-batch_size = 5000
+batch_size = 2000
 
 x_tr, y_tr = load_svmlight_file('../../../../Programming/DataSets/Regression/yearprediction(463715, 90).txt')
 data_name = 'yearprediction'
@@ -34,7 +34,7 @@ x_tr = x_tr[:, :300000]
 print(x_tr.shape)
 
 lbfgsb_options = {'maxiter': 15, 'disp': True}
-sg_options = {'maxiter': 1, 'batch_size': batch_size, 'print_freq': 1, 'step0': 1e-9, 'gamma': 0.7}
+sg_options = {'maxiter': 20, 'batch_size': batch_size, 'print_freq': 1, 'step0': 5e-9, 'gamma': 0.7}
 optimizer_options = [sg_options, lbfgsb_options]
 
 start = time.time()

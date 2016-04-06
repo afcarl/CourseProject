@@ -54,14 +54,23 @@ if method == 'brute':
 elif method == 'means' or method == 'vi':
     model_covariance_obj = SquaredExponential(model_params)
     new_gp = GPR(model_covariance_obj, method=method)
-    res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, max_iter=max_iter)
+    res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num,  optimizer_options=lbfgsb_options)
     inducing_points, mean, cov = new_gp.inducing_inputs
     predicted_y_test, high, low = new_gp.predict(x_test)
 
 elif method == 'svi':
     model_covariance_obj = SquaredExponential(model_params)
+    if parametrization == 'natural':
+        opts = sg_options
+    else:
+        if optimizer == 'L-BFGS-B':
+            opts = lbfgsb_options
+        elif optimizer == 'SAG':
+            opts = sag_options
+        else:
+            opts = sg_options
     new_gp = GPR(model_covariance_obj, method=method, parametrization=parametrization, optimizer=optimizer)
-    res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, optimizer_options=lbfgsb_options)
+    res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, optimizer_options=opts)
     inducing_points, mean, cov = new_gp.inducing_inputs
     predicted_y_test, high, low = new_gp.predict(x_test)
 

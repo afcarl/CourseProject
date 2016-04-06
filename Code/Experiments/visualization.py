@@ -19,6 +19,7 @@ method = 'brute'  # possible methods: 'brute', 'vi', 'means', 'svi'
 parametrization = 'natural'  # possible parametrizations for svi method: cholesky, natural
 ind_inputs_num = 5
 max_iter = 100
+lbfgsb_options = {'maxiter': max_iter, 'disp': False}
 
 np.random.seed(seed)
 x_tr = np.random.rand(dim, num)
@@ -37,19 +38,12 @@ fig = plt.figure()
 gp_plot_reg_data(x_test, y_test, 'y-')
 
 means_gp = GPR(model_covariance_obj, method='means')
-# print(model_params)
-means_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, max_iter=max_iter)
-# model_params = np.array([1.5, 0.15, 0.1])
-# model_covariance_obj.set_params(model_params)
+means_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, optimizer_options=lbfgsb_options)
 print(model_covariance_obj.get_params())
-# exit(0)
 means_inducing_points, means_mean, means_cov = means_gp.inducing_inputs
 means_y_test, means_high, means_low = means_gp.predict(x_test)
-# exit(0)
 
-# print(model_covariance_obj.get_params())
 def onclick(event):
-    # global fig
     plt.close('all')
 
     point_x, point_y = event.xdata, event.ydata
