@@ -11,7 +11,7 @@ from GP.covariance_functions import CovarianceFamily
 from GP.gaussian_process import GP
 from GP.gpr_res import GPRRes
 from GP.optimization import gradient_descent, stochastic_gradient_descent, stochastic_average_gradient,\
-                         minimize_wrapper
+                         minimize_wrapper, projected_newton
 
 
 class GPR(GP):
@@ -236,15 +236,19 @@ class GPR(GP):
             w0 = self.covariance_obj.get_params()
             bnds = self.covariance_obj.get_bounds()
 
-        res, w_list, time_list = minimize_wrapper(loc_fun, w0, method='L-BFGS-B', mydisp=True, bounds=bnds,
-                                                           options=optimizer_options)
+        # res, w_list, time_list = minimize_wrapper(loc_fun, w0, method='L-BFGS-B', mydisp=True, bounds=bnds,
+        #                                                    options=optimizer_options)
+        # res = res.x
+
+        res, w_list, time_list =projected_newton(loc_fun, w0, bounds=bnds, options = optimizer_options)
 
         if self.method == 'vi':
             optimal_params = res.x[:-num_inputs*dim]
             inducing_points = res.x[-num_inputs*dim:]
             inducing_points = inducing_points.reshape((dim, num_inputs))
         if self.method == 'means':
-            optimal_params = res.x
+            # optimal_params = res.x
+            optimal_params = res
             inducing_points = inputs
         self.covariance_obj.set_params(optimal_params)
 

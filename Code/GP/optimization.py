@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import scipy.optimize as op
-
+import cvxopt
 
 def project_into_bounds(point, bounds):
     """
@@ -52,12 +52,16 @@ def _linesearch_armiho(fun, point, gradient, bounds=None, step_0=1.0, theta=0.5,
     step = step_0/theta
     while step > maxstep:
         step *= theta
+    # print(direction)
     new_point = point + step * direction
     new_point = project_into_bounds(new_point, bounds)
-    while fun(new_point) > current_loss + eps * step * direction.dot(gradient):
+    # print(new_point)
+    while fun(new_point) > current_loss + eps * step * direction.T.dot(gradient):
         step *= theta
         new_point = point + step * direction
         new_point = project_into_bounds(new_point, bounds)
+        # print(new_point)
+    # exit(0)
     return new_point, step
 
 
@@ -67,25 +71,26 @@ def gradient_descent(oracle, point, bounds=None, options=None):
     :param oracle: oracle function, returning the function value and it's gradient, given point
     :param point: point
     :param bounds: bounds on the variables
-    :param options: a dictionary, containing the following fields
+    :param options: a dictionary, containing some of the following fields
         'maxiter': maximum number of iterations
         'verbose': a boolean, showing weather or not to print the convergence info
         'print_freq': the frequency of the convergence messages
         'g_tol': the tolerance wrt gradient. If the gradient at the current point is
-        smaller than the tollerance, the method stops
-        'step_tol' the tolerance wrt the step length. If the step length at current
-        iteration is less than tollerance, the method stops.
-        'maxstep' is the maximum allowed step length
+        smaller than the tolerance, the method stops
+        'step_tol': tolerance wrt the step length. If the step length at current
+        iteration is less than tolerance, the method stops.
+        'maxstep': the maximum allowed step length
     default options: {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'g_tol': 1e-5, 'step_tol': 1e-16,
                        'maxstep': 1.0}
     :return: the point with the minimal function value found
     """
-    defaul_options = {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'g_tol': 1e-5, 'step_tol': 1e-16,
+    default_options = {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'g_tol': 1e-5, 'step_tol': 1e-16,
                        'maxstep': 1.0}
-    defaul_options.update(options)
-    if 'print_freq' in options.keys():
-        defaul_options['verbose'] = True
-    options = defaul_options
+    if not options is None:
+        default_options.update(options)
+        if 'print_freq' in options.keys():
+            default_options['verbose'] = True
+    options = default_options
 
     step = 1.0
     x = point
@@ -133,16 +138,17 @@ def stochastic_gradient_descent(oracle, point, n, bounds=None, options=None):
         'gamma': a parameter of the step length rule. It should be in (0.5, 1). The smaller it
         is, the more aggressive the method is
         'update_rate': the rate of shuffling the data points
-    defaul options: {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'batch_size': 1,
+    default options: {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'batch_size': 1,
                       'step0': 0.1, 'gamma': 0.55, 'update_rate':1}
     :return: optimal point
     """
-    defaul_options = {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'batch_size': 1,
+    default_options = {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'batch_size': 1,
                       'step0': 0.1, 'gamma': 0.55, 'update_rate':1}
-    defaul_options.update(options)
-    if 'print_freq' in options.keys():
-        defaul_options['verbose'] = True
-    options = defaul_options
+    if not options is None:
+        default_options.update(options)
+        if 'print_freq' in options.keys():
+            default_options['verbose'] = True
+    options = default_options
 
     batch_size = options['batch_size']
     step0 = options['step0']
@@ -180,22 +186,23 @@ def stochastic_gradient_descent(oracle, point, n, bounds=None, options=None):
     return x, x_lst, time_lst
 
 
-def check_gradient(oracle, point, print_diff=False):
+def check_gradient(oracle, point, hess=False, print_diff=False):
     """
     Prints the gradient, calculated with the provided function
     and approximated via a finite difference.
     :param oracle: a function, returning the loss and it's grad given point
     :param point: point of calculation
+    :param hess: a boolean, showing weather or not to check the hessian
     :param print_diff: a boolean. If true, the method prints all the entries of the true and approx.
     gradients
     :return:
     """
-    fun, grad = oracle(point)
+    fun, grad = oracle(point)[:2]
     app_grad = np.zeros(grad.shape)
     if print_diff:
+        print('Gradient')
         print('Approx.\t\t\t\t Calculated')
     for i in range(point.size):
-
         point_eps = np.copy(point)
         point_eps[i] += 1e-6
         app_grad[i] = (oracle(point_eps)[0] - fun) * 1e6
@@ -203,6 +210,30 @@ def check_gradient(oracle, point, print_diff=False):
             print(app_grad[i], '\t', grad[i])
     print('\nDifference between calculated and approximated gradients')
     print(np.linalg.norm(app_grad.reshape(-1) - grad.reshape(-1)))
+
+    if hess:
+        fun, grad, hess = oracle(point)
+        app_hess = _approximate_hessian(oracle, point)
+        if print_diff:
+            print('Hessian')
+            print('Approx.\t\t\t\t Calculated')
+        if print_diff:
+            for i in range(point.size):
+                print(app_hess[:, i], '\t', hess[:, i])
+        print('\nDifference between calculated and approximated hessians')
+        print(np.linalg.norm(app_hess.reshape(-1) - hess.reshape(-1)))
+
+def _approximate_hessian(oracle, point):
+    app_hess = np.zeros((point.size, point.size))
+    fun, grad = oracle(point)[:2]
+    for i in range(point.size):
+        point_eps = np.copy(point)
+        point_eps[i] += 1e-8
+        if len(grad.shape) == 2:
+            app_hess[:, i] = ((oracle(point_eps)[1] - grad) * 1e8)[:, 0]
+        else:
+            app_hess[:, i] = ((oracle(point_eps)[1] - grad) * 1e8)
+    return app_hess
 
 
 def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
@@ -221,16 +252,17 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
         'step0': initial step of the method
         'gamma': a parameter of the step length rule. It should be in (0.5, 1). The smaller it
         is, the more aggressive the method is
-    defaul options: {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'batch_size': 1,
+    default options: {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'batch_size': 1,
                       'step0': 0.1, 'gamma': 0.55}
     :return: optimal point
     """
-    defaul_options = {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'batch_size': 1,
+    default_options = {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'batch_size': 1,
                       'step0': 0.1, 'gamma': 0.55}
-    defaul_options.update(options)
-    if 'print_freq' in options.keys():
-        defaul_options['verbose'] = True
-    options = defaul_options
+    if not options is None:
+        default_options.update(options)
+        if 'print_freq' in options.keys():
+            default_options['verbose'] = True
+    options = default_options
 
     batch_size = options['batch_size']
     l = 1.0
@@ -331,3 +363,170 @@ def minimize_wrapper(func, x0, mydisp=False, jac=True, **kwargs):
     out = op.minimize(func, x0, jac=jac, callback=callback, **kwargs)
 
     return out, w_list, time_list
+
+
+def _generate_constraint_matrix(bounds, x_old=None):
+    """
+    Generates a constraint matrix and right-hand-side vector for the cvxopt qp-solver.
+    :param bounds: list of bounds on the optimization variables
+    :param x_old: the vector of values, that have to be substracted from the bounds
+    :return: the matrix G and the vector h, such that the constraints are equivalent to G x <= h.
+    """
+    if bounds is None:
+        return None, None
+    num_variables = len(bounds)
+    if x_old is None:
+        x_old = np.zeros((num_variables, 1))
+    elif len(x_old.shape) == 1:
+        x_old = x_old[:, None]
+    G = np.zeros((1, num_variables))
+    h = np.zeros((1, 1))
+    for i in range(num_variables):
+        bound = bounds[i]
+        a = bound[0]
+        b = bound[1]
+        if not (a is None):
+            new_line = np.zeros((1, num_variables))
+            new_line[0, i] = -1
+            G = np.vstack((G, new_line))
+            h = np.vstack((h, np.array([[-a + x_old[i, 0]]])))
+        if not (b is None):
+            new_line = np.zeros((1, num_variables))
+            new_line[0, i] = 1
+            G = np.vstack((G, new_line))
+            h = np.vstack((h, np.array([[b - x_old[i, 0]]])))
+    if G.shape[0] == 1:
+        return None, None
+    G = G[1:, :]
+    h = h[1:, 0]
+    return G, h
+
+
+def projected_newton(oracle, point, bounds=None, options=None):
+    """
+    Projected Newton method for bound-constrained problems.
+    :param oracle: Oracle function, returning the function value, the gradient and the hessian the given point. If it
+    doesn't provide a hessian, a finite difference is used to approximate it.
+    :param point: starting point for the method
+    :param bounds: bounds on the variables
+    :param options: a dictionary, containing some of the following fields
+        'maxiter': maximum number of iterations
+        'verbose': a boolean, showing weather or not to print the convergence info
+        'print_freq': the frequency of the convergence messages
+        'g_tol': the tolerance wrt gradient. If the gradient at the current point is
+        smaller than the tolerance, the method stops
+        'step_tol': the tolerance wrt the step length. If the step length at current
+        iteration is less than tolerance, the method stops.
+        'maxstep': the maximum allowed step length
+        'qp_abstol': the tolerance for the qp sub-problem
+    default options: {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'g_tol': 1e-5, 'step_tol': 1e-16,
+                       'maxstep': 1.0}
+    :return:
+    """
+    default_options = {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'g_tol': 1e-5, 'step_tol': 1e-16,
+                       'maxstep': 1, 'qp_abstol':1e-5}
+    if not options is None:
+        default_options.update(options)
+        if 'print_freq' in options.keys():
+            default_options['verbose'] = True
+    options = default_options
+
+    step = 1.0
+    x = np.copy(point)[:, None]
+    loss_fun = lambda w: oracle(w)[0]
+    x_lst = [np.copy(x)]
+    time_lst = [0]
+    start = time.time()
+
+    for i in range(options['maxiter']):
+        x = project_into_bounds(x, bounds)
+        oracle_answer = oracle(x)
+
+        if len(oracle_answer) == 3:
+            loss, grad, hess = oracle_answer
+        elif len(oracle_answer) == 2:
+            loss, grad = oracle_answer
+            # approximate the Hessian
+            # raise ValueError('Hessian approximation not yet implemented')
+            hess = _approximate_hessian(oracle, point)
+        else:
+            raise ValueError('Oracle must return 2 or 3 values')
+
+        if np.linalg.norm(grad) < options['g_tol']:
+            if options['verbose']:
+                print("Gradient norm reached the stopping criterion")
+            break
+
+        hess = hess.astype(float)
+        grad = grad.astype(float)
+        # Hessian correction
+        eig_vals = np.linalg.eigvals(hess)
+        # print(np.min(np.linalg.eigvals(hess)))
+        if np.min(eig_vals) < 1e-5:
+            hess += np.eye(hess.shape[0]) * (np.abs(np.min(eig_vals))*(1 + 1e-5) + 1e-5)
+        # print(np.min(np.linalg.eigvals(hess)))
+
+        # The qp-subproblem
+        P = hess
+        q = grad
+        G, h = _generate_constraint_matrix(bounds, x)
+        # print(P.shape)
+        # print(q.shape)
+        # print(G.shape)
+        # print(h.shape)
+        # exit(0)
+        P, q = cvxopt.matrix(P), cvxopt.matrix(q)
+        if not (G is None):
+            G, h = cvxopt.matrix(G), cvxopt.matrix(h)
+            # print(G)
+        cvxopt.solvers.options['show_progress'] = False
+        cvxopt.solvers.options['maxiters'] = options['maxiter']
+        cvxopt.solvers.options['abstol'] = options['qp_abstol']
+        if not (G is None):
+            solution = cvxopt.solvers.qp(P, q, G, h)
+        else:
+            solution = cvxopt.solvers.qp(P, q)
+        dir = np.array(solution['x'])
+
+        # step
+        x, step = _linesearch_armiho(fun=loss_fun, gradient=grad, point_loss=loss, bounds=bounds, point=x,
+                                     step_0=step, maxstep=options['maxstep'], direction=dir)
+        x_lst.append(np.copy(x))
+        time_lst.append(time.time() - start)
+        if step < options['step_tol']:
+            if options['verbose']:
+                print("Step length reached the stopping criterion")
+            break
+
+        if not (i % options['print_freq']) and options['verbose']:
+            print("Iteration ", i, ":")
+            print("\tGradient norm", np.linalg.norm(grad))
+            print("\tFunction value", loss)
+            print(x)
+
+    return x, x_lst, time_lst
+
+if __name__ == '__main__':
+    A = np.array([[2, -1, 0], [-1, 2, -1], [0, -1, 2]])
+    b = np.array([[1], [0], [2]])
+    def oracle(x):
+        fun = x.T.dot(A.dot(x))/2 + b.T.dot(x)
+        return fun, A.dot(x) + b#, A
+    point = np.array([[4], [2], [2]], dtype=float)
+    bounds = None
+    options = None
+
+    # def oracle(x):
+    #     fun = np.sin(x[0, 0])
+    #     grad = np.array([[np.cos(x[0, 0])]])
+    #     hess = np.array([[-np.sin(x[0, 0])]])
+    #     return fun, grad, hess
+    # point = np.array([[1.0]])
+    # bounds = [(0, None)]
+    # options = {'verbose': True, 'print_freq': 1}
+    # print(_generate_constraint_matrix(bounds))
+    # exit(0)
+    # exit(0)
+    w, w_lst, _ = projected_newton(oracle, point, bounds=bounds, options=options)
+    # w, w_lst, _ = gradient_descent(oracle, point, bounds=bounds, options=options)
+    print(w)

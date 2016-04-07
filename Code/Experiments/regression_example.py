@@ -11,14 +11,14 @@ from matplotlib.mlab import griddata
 
 data_params = np.array([1.0, 0.3, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
-model_params = np.array([5.1, 0.3, 0.1])
+model_params = np.array([0.7, 0.2, 0.1])
 model_covariance_obj = SquaredExponential(model_params)
 gp = GPR(data_covariance_obj)
-num = 1000
+num = 2000
 test_num = 500
 dim = 5
 seed = 10
-ind_inputs_num = 200
+ind_inputs_num = 100
 max_iter = 100
 batch_size = 100
 
@@ -30,6 +30,7 @@ sag_options = {'maxiter':max_iter, 'batch_size': batch_size, 'print_freq': 100}
 fg_options = {'maxiter':max_iter, 'print_freq': 100}
 lbfgsb_options = {'maxiter': max_iter, 'disp': False}
 sg_options = {'maxiter':max_iter, 'batch_size': batch_size, 'print_freq': 100, 'step0': 5e-3, 'gamma': 0.55}
+projected_newton_options = {'maxiter':max_iter, 'print_freq': 1}
 
 # Generating data points
 np.random.seed(seed)
@@ -54,7 +55,8 @@ if method == 'brute':
 elif method == 'means' or method == 'vi':
     model_covariance_obj = SquaredExponential(model_params)
     new_gp = GPR(model_covariance_obj, method=method)
-    res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num,  optimizer_options=lbfgsb_options)
+    # res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num,  optimizer_options=lbfgsb_options)
+    res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num,  optimizer_options=projected_newton_options)
     inducing_points, mean, cov = new_gp.inducing_inputs
     predicted_y_test, high, low = new_gp.predict(x_test)
 
