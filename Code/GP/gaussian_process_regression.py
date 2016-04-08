@@ -48,7 +48,7 @@ class GPR(GP):
             raise ValueError("Invalid method name")
         if not parametrization in ['natural', 'cholesky']:
             raise ValueError("Invalid parametrization name")
-        if not optimizer in ['SAG', 'L-BFGS-B', 'FG']:
+        if not optimizer in ['SAG', 'L-BFGS-B', 'FG', 'Projected Newton', 'SG']:
             raise ValueError("Invalid optimizer name")
 
         self.covariance_fun = cov_obj.covariance_function
@@ -236,11 +236,20 @@ class GPR(GP):
             w0 = self.covariance_obj.get_params()
             bnds = self.covariance_obj.get_bounds()
 
-        # res, w_list, time_list = minimize_wrapper(loc_fun, w0, method='L-BFGS-B', mydisp=True, bounds=bnds,
-        #                                                    options=optimizer_options)
-        # res = res.x
+        if self.optimizer == 'L-BFGS-B':
+            mydisp = False
+            if not optimizer_options is None:
+                if 'mydisp' in optimizer_options.keys():
+                    mydisp = optimizer_options['mydisp']
+                    del optimizer_options['mydisp']
+            res, w_list, time_list = minimize_wrapper(loc_fun, w0, method='L-BFGS-B', mydisp=mydisp, bounds=bnds,
+                                                      options=optimizer_options)
+            res = res.x
+        elif self.optimizer == 'Projected Newton':
+            res, w_list, time_list = projected_newton(loc_fun, w0, bounds=bnds, options=optimizer_options)
 
-        res, w_list, time_list =projected_newton(loc_fun, w0, bounds=bnds, options = optimizer_options)
+        else:
+            raise ValueError('Wrong optimizer for svi/means method:' + self.optimizer)
 
         if self.method == 'vi':
             optimal_params = res.x[:-num_inputs*dim]
@@ -279,7 +288,12 @@ class GPR(GP):
         K_mn = K_nm.T
         K_mnK_nm = K_mn.dot(K_nm)
         Q_nn_tr = np.trace(K_mm_inv.dot(K_mnK_nm))
-        anc_l = np.linalg.cholesky(K_mm + K_mnK_nm/sigma**2)
+        try:
+            anc_l = np.linalg.cholesky(K_mm + K_mnK_nm/sigma**2)
+        except:
+            # print(sigma)
+            print(params)
+            raise ValueError('Singular matrix encountered. Parameters: ' + str(params))
         anc_l_inv = np.linalg.inv(anc_l)
         anc_inv = anc_l_inv.T.dot(anc_l_inv)
         K_mn_y = K_mn.dot(targets)
@@ -553,18 +567,8 @@ class GPR(GP):
                 return -self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
                                                            indices=i)[1]
 
-            # def fun(x):
-            #     fun, grad = self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
-            #                                                indices=range(n))
-            #     return -fun, -grad
-            #
-            # check_gradient(fun, param_vec, True)
-            # exit(0)
-
             res, w_list, time_list = stochastic_gradient_descent(oracle=stoch_fun, n=n, point=param_vec, bounds=bnds,
                                                                  options=optimizer_options)
-                                              # options={'maxiter':max_iter, 'batch_size': 500, 'print_freq': 10,
-                                              #          'step0':1e-4, 'gamma':0.7})
 
             theta, eta_1, eta_2 = self._svi_get_parameters(res)
             sigma_inv = - 2 * eta_2
@@ -593,14 +597,11 @@ class GPR(GP):
                                                           bounds=bnds, jac=True, options=optimizer_options)
                 res = res['x']
             else:
-                raise ValueError('Wrong optimizer parameter')
+                raise ValueError('Wrong optimizer for svi method' + self.optimizer)
 
             theta, mu, sigma_L = self._svi_get_parameters(res)
             sigma = sigma_L.dot(sigma_L.T)
 
-        # theta = list(theta)
-        # theta.append(sigma_n)
-        # theta = np.array(theta)
         self.covariance_obj.set_params(theta)
         self.inducing_inputs = (inputs, mu, sigma)
         return GPRRes(deepcopy(w_list), time_lst=deepcopy(time_list))

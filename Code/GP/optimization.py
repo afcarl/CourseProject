@@ -228,11 +228,12 @@ def _approximate_hessian(oracle, point):
     fun, grad = oracle(point)[:2]
     for i in range(point.size):
         point_eps = np.copy(point)
-        point_eps[i] += 1e-8
+        point_eps[i] += 1e-6
         if len(grad.shape) == 2:
-            app_hess[:, i] = ((oracle(point_eps)[1] - grad) * 1e8)[:, 0]
+            app_hess[:, i] = ((oracle(point_eps)[1] - grad) * 1e6)[:, 0]
         else:
-            app_hess[:, i] = ((oracle(point_eps)[1] - grad) * 1e8)
+            app_hess[:, i] = ((oracle(point_eps)[1] - grad) * 1e6)
+        app_hess = (app_hess + app_hess.T)/2
     return app_hess
 
 
@@ -446,8 +447,6 @@ def projected_newton(oracle, point, bounds=None, options=None):
             loss, grad, hess = oracle_answer
         elif len(oracle_answer) == 2:
             loss, grad = oracle_answer
-            # approximate the Hessian
-            # raise ValueError('Hessian approximation not yet implemented')
             hess = _approximate_hessian(oracle, point)
         else:
             raise ValueError('Oracle must return 2 or 3 values')
@@ -460,25 +459,20 @@ def projected_newton(oracle, point, bounds=None, options=None):
         hess = hess.astype(float)
         grad = grad.astype(float)
         # Hessian correction
-        eig_vals = np.linalg.eigvals(hess)
-        # print(np.min(np.linalg.eigvals(hess)))
-        if np.min(eig_vals) < 1e-5:
-            hess += np.eye(hess.shape[0]) * (np.abs(np.min(eig_vals))*(1 + 1e-5) + 1e-5)
-        # print(np.min(np.linalg.eigvals(hess)))
+
+        w, v = np.linalg.eig(hess)
+        for j in range(w.size):
+            if w[j] < 1e-5:
+                w[j] = 1e-5
+        hess = v.dot(np.diag(w).dot(np.linalg.inv(v)))
 
         # The qp-subproblem
         P = hess
         q = grad
         G, h = _generate_constraint_matrix(bounds, x)
-        # print(P.shape)
-        # print(q.shape)
-        # print(G.shape)
-        # print(h.shape)
-        # exit(0)
         P, q = cvxopt.matrix(P), cvxopt.matrix(q)
         if not (G is None):
             G, h = cvxopt.matrix(G), cvxopt.matrix(h)
-            # print(G)
         cvxopt.solvers.options['show_progress'] = False
         cvxopt.solvers.options['maxiters'] = options['maxiter']
         cvxopt.solvers.options['abstol'] = options['qp_abstol']

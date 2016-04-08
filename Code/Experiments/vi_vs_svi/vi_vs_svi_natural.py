@@ -18,15 +18,15 @@ def run_methods(train_points, train_targets, test_points, test_targets,
     print('...found')
 
     method = 'svi'
-    parametrization = 'cholesky'
-    optimizer = 'L-BFGS-B'
-    color = '-go'
+    parametrization = 'natural'
+    # optimizer = 'L-BFGS-B'
+    color = '-yo'
     opts = optimizer_options[0]
-    print('svi-L-BFGS-B')
+    print('svi')
     model_covariance_obj = SquaredExponential(np.copy(model_parameters))
     new_gp = GPR(model_covariance_obj, method=method, parametrization=parametrization)
     res = new_gp.fit(train_points, train_targets, num_inputs=ind_num, optimizer_options=opts, inputs=inputs)
-    name = 'svi-L-BFGS-B'
+    name = 'svi-natural'
     if metric_name == 'r2':
         metric = lambda w: new_gp.get_prediction_quality(w, test_points, test_targets)
     else:
@@ -36,11 +36,10 @@ def run_methods(train_points, train_targets, test_points, test_targets,
 
     print('vi-means')
     method = 'means'
-    optimizer = 'L-BFGS-B'
     opt_options = optimizer_options[1]
 
     model_covariance_obj = SquaredExponential(np.copy(model_parameters))
-    new_gp = GPR(model_covariance_obj, method=method, optimizer=optimizer)
+    new_gp = GPR(model_covariance_obj, method=method)
     res = new_gp.fit(train_points, train_targets, num_inputs=ind_num, optimizer_options=opt_options, inputs=inputs)
     name = 'vi-means'
     if metric_name == 'r2':

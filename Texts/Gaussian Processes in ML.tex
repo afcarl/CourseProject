@@ -16,6 +16,7 @@
 \usepackage{pgfplots}
 \usepackage{tikz}
 \usepackage{amsthm}
+\usepackage{pgf,pgfarrows,pgfnodes}
 
 \lstset{
 language=Python,
@@ -428,6 +429,61 @@ Pavel Izmailov
 		\caption{Method's performance on a big dataset}
 	\end{figure}
 
+	We can see, that \lstinline{vi-means} beats it's oponent in all the experiments. One could expect these results, because \lstinline{vi-means} optimizes the exact same functional as it's oponent, but it uses exact optimal values for some of the parameters. Thus, on moderate problems the \lstinline{vi-means} method beats all the discussed \lstinline{svi} variations.
+
+	Finally, we will compare \lstinline{vi-means} with stochastic \lstinline{svi-natural} an \lstinline{svi-SAG} on a big dataset. The results can be found in fig. \ref{visvi_big}.
+
+	\begin{figure}[!h]
+	\centering
+	\subfloat{
+		\mbox{
+                		\includegraphics[width=0.45\textwidth]{../Code/Experiments/Plots/vi_vs_svi/big_sag.png}
+		}
+	}
+	\subfloat{
+		\mbox{
+                		\includegraphics[width=0.45\textwidth]{../Code/Experiments/Plots/vi_vs_svi/big_sg.png}
+		}
+	}
+	\caption{vi and svi methods comparison on a big dataset}
+	\label{visvi_big}
+\end{figure}
+
+
+\subsection{Variations of variational inference method}
+	In this section we compare several variations of the stochastic variational inference method. The method itself is described in section \ref{Titsias}. We compare two different optimization methods for minimizint the Titsias's ELBO.
+
+	The first variation is denoted by \lstinline{means-PN}. It uses Projected-Newton method for minimizing the ELBO. The second variation is denoted by \lstinline{means-L-BFGS-B} and uses L-BFGS-B optimization method.
+
+	The \lstinline{means-PN} uses finite-difference approximation of the hessian. It also makes hessian-correction in order to make it simmetric positive-definite.
+
+	We compare the methods on several different datasets. The results on a small and medium datasets can be found in fig. \ref{vi_small}. The results on a biger dataset can be found in fig. \ref{bi_big}
+
+	\begin{figure}[!h]
+		\centering
+		\subfloat{
+			\scalebox{0.9}{
+				\input{../Code/Experiments/Plots/vi_variations/small_real.tikz}
+			}
+		}
+		\subfloat{
+			\scalebox{0.9}{
+	    		\input{../Code/Experiments/Plots/vi_variations/medium_real.tikz}
+			}
+		}
+		\label{vi_small}
+		\caption{Method's performance on small and medium datasets}
+	\end{figure}
+	\begin{figure}[!h]
+		\centering
+		\subfloat{
+			\scalebox{0.9}{
+				\input{../Code/Experiments/Plots/vi_variations/big_real.tikz}
+			}
+		}
+		\label{vi_big}
+		\caption{Method's performance on a bigger dataset}
+	\end{figure}
 \pagebreak
 \begin{thebibliography}{99}
 

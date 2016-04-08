@@ -3,7 +3,7 @@ import time
 from sklearn.preprocessing import StandardScaler
 from sklearn.datasets import load_svmlight_file
 
-from vi_vs_svi import run_methods
+from vi_vs_svi_natural import run_methods
 from GP.covariance_functions import SquaredExponential
 
 file_name = 'really_big_real.tikz'

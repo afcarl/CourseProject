@@ -24,7 +24,11 @@ batch_size = 100
 
 method = 'means'  # possible methods: 'brute', 'vi', 'means', 'svi'
 parametrization = 'cholesky'  # possible parametrizations for svi method: cholesky, natural
-optimizer = 'L-BFGS-B' # possible optimizers: 'SAG', 'FG', 'L-BFGS-B'
+optimizer = 'Projected Newton'
+# possible optimizers: 'SAG', 'FG', 'L-BFGS-B' for cholesky-svi;
+# 'L-BFGS' and 'Projected Newton' for 'means' and 'vi'
+
+
 
 sag_options = {'maxiter':max_iter, 'batch_size': batch_size, 'print_freq': 100}
 fg_options = {'maxiter':max_iter, 'print_freq': 100}
@@ -54,7 +58,7 @@ if method == 'brute':
 
 elif method == 'means' or method == 'vi':
     model_covariance_obj = SquaredExponential(model_params)
-    new_gp = GPR(model_covariance_obj, method=method)
+    new_gp = GPR(model_covariance_obj, method=method, optimizer=optimizer)
     # res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num,  optimizer_options=lbfgsb_options)
     res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num,  optimizer_options=projected_newton_options)
     inducing_points, mean, cov = new_gp.inducing_inputs
