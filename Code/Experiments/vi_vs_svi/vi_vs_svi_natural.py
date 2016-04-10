@@ -46,19 +46,19 @@ def run_methods(train_points, train_targets, test_points, test_targets,
     inputs = means.cluster_centers_.T
     print('...found')
 
-    method = 'svi'
-    parametrization = 'natural'
-    # optimizer = 'L-BFGS-B'
-    color = '-yo'
-    opts = optimizer_options[0]
-    print('svi')
-    model_covariance_obj = SquaredExponential(np.copy(model_parameters))
-    new_gp = GPR(model_covariance_obj, method=method, parametrization=parametrization)
-    res = new_gp.fit(train_points, train_targets, num_inputs=ind_num, optimizer_options=opts, inputs=inputs)
-    name = 'svi-natural'
-    metric = lambda w: new_gp.get_prediction_quality(w, test_points, test_targets)
-    x_lst, y_lst = res.plot_performance(metric, 'i', freq=1)
-    plt.plot(x_lst, y_lst, color, label=name)
+    # method = 'svi'
+    # parametrization = 'natural'
+    # # optimizer = 'L-BFGS-B'
+    # color = '-yo'
+    # opts = optimizer_options[0]
+    # print('svi')
+    # model_covariance_obj = SquaredExponential(np.copy(model_parameters))
+    # new_gp = GPR(model_covariance_obj, method=method, parametrization=parametrization)
+    # res = new_gp.fit(train_points, train_targets, num_inputs=ind_num, optimizer_options=opts, inputs=inputs)
+    # name = 'svi-natural'
+    # metric = lambda w: new_gp.get_prediction_quality(w, test_points, test_targets)
+    # x_lst, y_lst = res.plot_performance(metric, 'i', freq=1)
+    # plt.plot(x_lst, y_lst, color, label=name)
 
     print('vi-means')
     method = 'means'
