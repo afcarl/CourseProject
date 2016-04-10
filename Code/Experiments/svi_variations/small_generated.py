@@ -14,17 +14,10 @@ test_num = 500
 dim = 2
 seed = 21
 ind_inputs_num = 100
-max_iter = 200
+max_iter = 300
 batch_size = 100
 title='generated dataset, n = 500, d = 2, m=100'
 file_name = 'small_generated'
-metric = 'loss'
-
-if metric == 'loss':
-    file_name += 'loss'
-file_name += '.tikz'
-
-
 
 # Generating data points
 np.random.seed(seed)
@@ -38,11 +31,11 @@ y_tr, y_test = gp.generate_data(x_tr, x_test, seed=seed)
 
 # Cholesky parametrization
 
-sag_options = {'maxiter':max_iter, 'batch_size': batch_size, 'print_freq': 100}
-fg_options = {'maxiter':max_iter, 'print_freq': 100}
+sag_options = {'maxiter':max_iter, 'batch_size': batch_size, 'print_freq': 10}
+fg_options = {'maxiter':max_iter, 'print_freq': 10}
 lbfgsb_options = {'maxiter': max_iter, 'disp': False}
-sg_options = {'maxiter':max_iter, 'batch_size': batch_size, 'print_freq': 100, 'step0': 1e-3, 'gamma': 0.55}
+sg_options = {'maxiter': max_iter, 'batch_size': batch_size, 'print_freq': 10, 'step0': 1e-3, 'gamma': 0.55}
 
 optimizer_options = [sag_options, fg_options, lbfgsb_options, sg_options]
 
-run_methods(x_tr, y_tr, x_test, y_test, model_params, optimizer_options, file_name, ind_inputs_num, title, metric, True)
+run_methods(x_tr, y_tr, x_test, y_test, model_params, optimizer_options, file_name, ind_inputs_num, title, False)

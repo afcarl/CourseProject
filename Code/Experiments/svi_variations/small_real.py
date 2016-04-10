@@ -1,4 +1,7 @@
 import numpy as np
+import matplotlib as mpl
+mpl.use('pgf')
+
 from sklearn.preprocessing import StandardScaler
 from sklearn.datasets import load_svmlight_file
 
@@ -8,23 +11,19 @@ from GP.covariance_functions import SquaredExponential
 model_params = np.array([1.5, 1.5, 1.0])
 model_covariance_obj = SquaredExponential(model_params)
 ind_inputs_num = 100
-max_iter = 200
+max_iter = 300
 batch_size = 100
 file_name = 'small_real'
-metric = 'r2'
-
-if metric == 'loss':
-    file_name += 'loss'
-file_name += '.tikz'
 
 x_tr, y_tr = load_svmlight_file('../../../../Programming/DataSets/Regression/bodyfat(252, 14).txt')
 data_name = 'bodyfat'
-title='bodyfat dataset, n = 201, d = 14, m=10'
+title='bodyfat dataset, n = 201, d = 14, m=100'
 
 x_tr = x_tr.T
 x_tr = x_tr.toarray()
 scaler = StandardScaler()
 x_tr = scaler.fit_transform(x_tr)
+y_tr = scaler.fit_transform(y_tr)
 
 
 x_tr = (x_tr + 1) / 2
@@ -43,4 +42,4 @@ sg_options = {'maxiter':max_iter, 'batch_size': batch_size, 'print_freq': 100, '
 
 optimizer_options = [sag_options, fg_options, lbfgsb_options, sg_options]
 
-run_methods(x_tr, y_tr, x_test, y_test, model_params, optimizer_options, file_name, ind_inputs_num, title, metric, True)
+run_methods(x_tr, y_tr, x_test, y_test, model_params, optimizer_options, file_name, ind_inputs_num, title, True)

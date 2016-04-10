@@ -3,6 +3,7 @@ import time
 import scipy.optimize as op
 import cvxopt
 
+
 def project_into_bounds(point, bounds):
     """
     Project the given point into the given bounds
@@ -52,16 +53,12 @@ def _linesearch_armiho(fun, point, gradient, bounds=None, step_0=1.0, theta=0.5,
     step = step_0/theta
     while step > maxstep:
         step *= theta
-    # print(direction)
     new_point = point + step * direction
     new_point = project_into_bounds(new_point, bounds)
-    # print(new_point)
     while fun(new_point) > current_loss + eps * step * direction.T.dot(gradient):
         step *= theta
         new_point = point + step * direction
         new_point = project_into_bounds(new_point, bounds)
-        # print(new_point)
-    # exit(0)
     return new_point, step
 
 
@@ -403,6 +400,21 @@ def _generate_constraint_matrix(bounds, x_old=None):
     return G, h
 
 
+def _eig_val_correction(mat, eps=1e-5):
+    """
+    Corrects the matrix, so that it becomes simmetric positive-definite, based on eigenvalue decomposition.
+    :param mat: matrix to be corrected
+    :param eps: the minimum eigenvalue allowed
+    :return: a positive-definite simmetric matrix
+    """
+    mat = (mat + mat.T)/2
+    w, v = np.linalg.eigh(mat)
+    for j in range(w.size):
+        if w[j] < eps:
+            w[j] = eps
+    new_mat = v.dot(np.diag(w).dot(np.linalg.inv(v)))
+    return (new_mat + new_mat.T)/2
+
 def projected_newton(oracle, point, bounds=None, options=None):
     """
     Projected Newton method for bound-constrained problems.
@@ -447,7 +459,7 @@ def projected_newton(oracle, point, bounds=None, options=None):
             loss, grad, hess = oracle_answer
         elif len(oracle_answer) == 2:
             loss, grad = oracle_answer
-            hess = _approximate_hessian(oracle, point)
+            hess = _eig_val_correction(_approximate_hessian(oracle, point), eps=1e-5)
         else:
             raise ValueError('Oracle must return 2 or 3 values')
 
@@ -458,13 +470,14 @@ def projected_newton(oracle, point, bounds=None, options=None):
 
         hess = hess.astype(float)
         grad = grad.astype(float)
+
         # Hessian correction
 
-        w, v = np.linalg.eig(hess)
-        for j in range(w.size):
-            if w[j] < 1e-5:
-                w[j] = 1e-5
-        hess = v.dot(np.diag(w).dot(np.linalg.inv(v)))
+        # w, v = np.linalg.eig(hess)
+        # for j in range(w.size):
+        #     if w[j] < 1e-5:
+        #         w[j] = 1e-5
+        # hess = v.dot(np.diag(w).dot(np.linalg.inv(v)))
 
         # The qp-subproblem
         P = hess
@@ -484,7 +497,7 @@ def projected_newton(oracle, point, bounds=None, options=None):
 
         # step
         x, step = _linesearch_armiho(fun=loss_fun, gradient=grad, point_loss=loss, bounds=bounds, point=x,
-                                     step_0=step, maxstep=options['maxstep'], direction=dir)
+                                     step_0=1.0, maxstep=options['maxstep'], direction=dir)
         x_lst.append(np.copy(x))
         time_lst.append(time.time() - start)
         if step < options['step_tol']:

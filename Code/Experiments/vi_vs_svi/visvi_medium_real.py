@@ -11,12 +11,7 @@ model_covariance_obj = SquaredExponential(model_params)
 ind_inputs_num = 60
 max_iter = 100
 batch_size = 200
-metric = 'r2'
 file_name = 'medium_real'
-
-if metric == 'loss':
-    file_name += 'loss'
-file_name += '.tikz'
 
 x_tr, y_tr = load_svmlight_file('../../../../Programming/DataSets/Regression/abalone(4177, 8).txt')
 data_name = 'abalone'
@@ -41,4 +36,4 @@ x_tr = x_tr[:, : int(x_tr.shape[1] * 0.8)]
 lbfgsb_options = {'maxiter': max_iter, 'disp': False}
 optimizer_options = [lbfgsb_options] * 2
 
-run_methods(x_tr, y_tr, x_test, y_test, model_params, optimizer_options, file_name, ind_inputs_num, title, metric, True)
+run_methods(x_tr, y_tr, x_test, y_test, model_params, optimizer_options, file_name, ind_inputs_num, title, False)

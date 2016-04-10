@@ -2,23 +2,34 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
-def gp_plot_reg_data(x, y, *args, **kwargs):
+def plot_reg_data(points, mean, *args, **kwargs):
     """
     :param x: points array
     :param y: target values array
     :param color: color
     :return: figure
     """
-    if (not isinstance(x, np.ndarray) or
-            not isinstance(y, np.ndarray)):
+    if (not isinstance(points, np.ndarray) or
+            not isinstance(mean, np.ndarray)):
         raise TypeError("The first two arguments must be numpy arrays")
 
-    loc_x = x.reshape((x.size, ))
-    loc_y = y.reshape((y.size, ))
-    plt.plot(loc_x, loc_y, *args, **kwargs)
+    points = points.reshape(-1)
+    mean = mean.reshape(-1)
+
+    plt.plot(points, mean, *args, **kwargs)
+
+def plot_predictive(points, mean, up, down):
+    points = points.reshape(-1)
+    mean = mean.reshape(-1)
+    up = up.reshape(-1)
+    down = down.reshape(-1)
+    plt.plot(points, mean, 'b')
+    plt.plot(points, up, '--b')
+    plt.plot(points, down, '--b')
+    plt.fill_between(points, down, up, facecolor='#82AFF3')
 
 
-def gp_plot_class_data(x, y, color1, color2):
+def plot_class_data(x, y, color1, color2):
     """
     :param x: points array
     :param y: target values array

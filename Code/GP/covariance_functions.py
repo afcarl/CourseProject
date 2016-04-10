@@ -135,7 +135,7 @@ class SquaredExponential(StationaryCovarianceFamily):
 
     @staticmethod
     def get_bounds():
-        return (1e-2, None), (1e-2, None), (1e-2, None)
+        return (1e-2, 1e3), (1e-2, 1e3), (1e-2, 1e3)
 
     def set_params(self, params):
         if params.size != 3:

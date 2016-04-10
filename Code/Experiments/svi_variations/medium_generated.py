@@ -19,11 +19,6 @@ max_iter = 100
 batch_size = 200
 title='generated dataset, n = 4000, d = 5, m=200'
 file_name = 'medium_generated'
-metric = 'loss'
-
-if metric == 'loss':
-    file_name += 'loss'
-file_name += '.tikz'
 
 # Generating data points
 np.random.seed(seed)
@@ -44,4 +39,4 @@ sg_options = {'maxiter':max_iter, 'batch_size': batch_size, 'print_freq': 10, 's
 
 optimizer_options = [sag_options, fg_options, lbfgsb_options, sg_options]
 
-run_methods(x_tr, y_tr, x_test, y_test, model_params, optimizer_options, file_name, ind_inputs_num, title, metric, True)
+run_methods(x_tr, y_tr, x_test, y_test, model_params, optimizer_options, file_name, ind_inputs_num, title, False)

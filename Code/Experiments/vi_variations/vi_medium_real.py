@@ -9,16 +9,11 @@ model_params = np.array([1.0, 0.1, 0.1])
 model_covariance_obj = SquaredExponential(model_params)
 ind_inputs_num = 50
 max_iter = 50
-metric = 'r2'
 file_name = 'medium_real'
-
-if metric == 'loss':
-    file_name += 'loss'
-file_name += '.tikz'
 
 x_tr, y_tr = load_svmlight_file('../../../../Programming/DataSets/Regression/abalone(4177, 8).txt')
 data_name = 'abalone'
-title='abalone dataset, n = 3342, d = 8, m=60'
+title='abalone dataset, n = 3342, d = 8, m=50'
 
 x_tr = x_tr.T
 x_tr = x_tr.toarray()
@@ -39,4 +34,4 @@ proj_newton_options = {'maxiter': max_iter, 'print_freq': 1}
 
 optimizer_options = [lbfgsb_options, proj_newton_options]
 
-run_methods(x_tr, y_tr, x_test, y_test, model_params, optimizer_options, file_name, ind_inputs_num, title, metric, True)
+run_methods(x_tr, y_tr, x_test, y_test, model_params, optimizer_options, file_name, ind_inputs_num, title, False)

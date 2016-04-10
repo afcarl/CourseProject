@@ -10,11 +10,6 @@ model_covariance_obj = SquaredExponential(model_params)
 ind_inputs_num = 50
 max_iter = 100
 file_name = 'small_real'
-metric = 'r2'
-
-if metric == 'loss':
-    file_name += 'loss'
-file_name += '.tikz'
 
 x_tr, y_tr = load_svmlight_file('../../../../Programming/DataSets/Regression/bodyfat(252, 14).txt')
 data_name = 'bodyfat'
@@ -24,7 +19,7 @@ x_tr = x_tr.T
 x_tr = x_tr.toarray()
 scaler = StandardScaler()
 x_tr = scaler.fit_transform(x_tr)
-
+y_tr = scaler.fit_transform(y_tr)
 
 x_tr = (x_tr + 1) / 2
 y_tr = y_tr.reshape((y_tr.size, 1))
@@ -38,4 +33,4 @@ proj_newton_options = {'maxiter': max_iter, 'print_freq': 1}
 
 optimizer_options = [lbfgsb_options, proj_newton_options]
 
-run_methods(x_tr, y_tr, x_test, y_test, model_params, optimizer_options, file_name, ind_inputs_num, title, metric, True)
+run_methods(x_tr, y_tr, x_test, y_test, model_params, optimizer_options, file_name, ind_inputs_num, title, False)

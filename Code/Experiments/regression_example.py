@@ -1,28 +1,60 @@
-import matplotlib.pyplot as plt
 import numpy as np
+# import matplotlib as mpl
+
+# def figsize(scale):
+#     fig_width_pt = 460.72124                          # Get this from LaTeX using \the\textwidth
+#     inches_per_pt = 1.0/72.27                       # Convert pt to inch
+#     golden_mean = (np.sqrt(5.0)-1.0)/2.0 + 0.2         # Aesthetic ratio (you could change this)
+#     fig_width = (fig_width_pt*inches_per_pt + 2.5)*scale    # width in inches
+#     fig_height = fig_width * golden_mean           # height in inches
+#     fig_size = [fig_width, fig_height]
+#     return fig_size
+#
+# pgf_with_latex = {                      # setup matplotlib to use latex for output
+#     "pgf.texsystem": "pdflatex",        # change this if using xetex or lautex
+#     "text.usetex": True,                # use LaTeX to write all text
+#     "font.family": "serif",
+#     "font.serif": [],                  # blank entries should cause plots to inherit fonts from the document
+#     "font.sans-serif": [],
+#     "font.monospace": [],
+#     "axes.labelsize": 10,               # LaTeX default is 10pt font.
+#     "text.fontsize": 10,
+#     "legend.fontsize": 8,               # Make the legend/label fonts a little smaller
+#     "xtick.labelsize": 8,
+#     "ytick.labelsize": 8,
+#     "figure.figsize": figsize(0.5),     # default fig size of 0.9 textwidth
+#     "pgf.preamble": [
+#         r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts because your computer can handle it :)
+#         r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
+#         ]
+#     }
+# mpl.rcParams.update(pgf_with_latex)
+
+from matplotlib import pyplot as plt
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.datasets import load_svmlight_file
 from sklearn.metrics import r2_score
 from GP.gaussian_process_regression import GPR
-from GP.plotting import gp_plot_reg_data
+from GP.plotting import plot_reg_data, plot_predictive
 from GP.covariance_functions import SquaredExponential
 from matplotlib.mlab import griddata
+from matplotlib2tikz import save
 
 data_params = np.array([1.0, 0.3, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
 model_params = np.array([0.7, 0.2, 0.1])
 model_covariance_obj = SquaredExponential(model_params)
 gp = GPR(data_covariance_obj)
-num = 2000
-test_num = 500
-dim = 5
+num = 200
+test_num = 100
+dim = 1
 seed = 10
 ind_inputs_num = 100
 max_iter = 100
 batch_size = 100
 
-method = 'means'  # possible methods: 'brute', 'vi', 'means', 'svi'
+method = 'brute'  # possible methods: 'brute', 'vi', 'means', 'svi'
 parametrization = 'cholesky'  # possible parametrizations for svi method: cholesky, natural
 optimizer = 'Projected Newton'
 # possible optimizers: 'SAG', 'FG', 'L-BFGS-B' for cholesky-svi;
@@ -43,10 +75,6 @@ if dim == 1:
     x_test = np.linspace(0, 1, test_num)
     x_test = x_test.reshape(1, test_num)
 else:
-    # x_test = np.zeros((dim, test_num))
-    # x_test[:, :] = np.linspace(0, 1, test_num)
-    # for i in range(dim):
-    #     x_test[i, :] = np.linspace(0, 1, test_num / dim)
     x_test = np.random.rand(dim, test_num)
 
 y_tr, y_test = gp.generate_data(x_tr, x_test, seed=seed)
@@ -84,32 +112,27 @@ print(new_gp.covariance_obj.get_params())
 print(r2_score(y_test, predicted_y_test))
 
 if dim == 1:
-    gp_plot_reg_data(x_tr, y_tr, 'yo')
-    gp_plot_reg_data(x_test, predicted_y_test, 'b')
-    gp_plot_reg_data(x_test, low, 'g-')
-    gp_plot_reg_data(x_test, high, 'r-')
-    gp_plot_reg_data(x_test, y_test, 'y-')
+    plot_reg_data(x_tr, y_tr, 'k+')
+    plot_predictive(x_test, predicted_y_test, high, low)
+    # plot_reg_data(x_test, y_test, 'g-')
     if method != 'brute':
-        gp_plot_reg_data(inducing_points, mean, 'ro', markersize=12)
+        plot_reg_data(inducing_points, mean, 'ro', markersize=12)
+    # plt.axis('off')
+    # plt.savefig('pictures/1dgp-regression.pgf')
     plt.show()
 
 elif dim == 2:
     xi = np.linspace(0, 1, 100)
     yi = np.linspace(0, 1, 100)
     zi = griddata(x_tr[0, :], x_tr[1, :], y_tr[:, 0], xi, yi, interp='linear')
-    plt.plot(x_tr[0], x_tr[1], 'yo')
+    plt.plot(x_tr[0], x_tr[1], 'k+')
     if method != 'brute':
-        gp_plot_reg_data(inducing_points[0, :], inducing_points[1, :], 'ro', markersize=12)
+        plot_reg_data(inducing_points[0, :], inducing_points[1, :], 'ro', markersize=12)
 
     plt.contour(xi, yi, zi, 15, linewidths=0.5, colors='k')
     plt.contourf(xi, yi, zi, 15, cmap=plt.cm.rainbow,
                       vmax=abs(zi).max(), vmin=-abs(zi).max())
-    plt.colorbar()
+    # plt.colorbar()
+    plt.axis('off')
+    # plt.savefig('pictures/2dgp-regression.pgf')
     plt.show()
-# else:
-#     x_test[1:, :] = 0
-#     print(x_test[:, 0])
-#     predicted_y_test, high, low = new_gp.predict(x_test)
-#     gp_plot_reg_data(x_test[0, :][:, None], predicted_y_test, 'bo')
-#     gp_plot_reg_data(x_test[0, :][:, None], y_test, 'yo')
-#     plt.show()

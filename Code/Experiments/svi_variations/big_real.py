@@ -20,6 +20,7 @@ x_tr = x_tr.T
 x_tr = x_tr.toarray()
 scaler = StandardScaler()
 x_tr = scaler.fit_transform(x_tr)
+y_tr = scaler.fit_transform(y_tr)
 
 
 x_tr = (x_tr + 1) / 2

@@ -11,7 +11,7 @@ from GP.covariance_functions import CovarianceFamily
 from GP.gaussian_process import GP
 from GP.gpr_res import GPRRes
 from GP.optimization import gradient_descent, stochastic_gradient_descent, stochastic_average_gradient,\
-                         minimize_wrapper, projected_newton
+                         minimize_wrapper, projected_newton, _eig_val_correction
 
 
 class GPR(GP):
@@ -292,8 +292,13 @@ class GPR(GP):
             anc_l = np.linalg.cholesky(K_mm + K_mnK_nm/sigma**2)
         except:
             # print(sigma)
-            print(params)
-            raise ValueError('Singular matrix encountered. Parameters: ' + str(params))
+            print('Warning, matrix is not positive definite', params)
+            new_mat = _eig_val_correction(K_mm + K_mnK_nm/sigma**2, eps=10)
+            # new_mat = (new_mat + new_mat.T)/2
+            # new_mat += np.eye(m) * (np.abs(np.min(np.linalg.eigvals(new_mat))) + 1e-4)
+            # print(np.linalg.eigvals(new_mat))
+            anc_l = np.linalg.cholesky(new_mat)
+            # raise ValueError('Singular matrix encountered. Parameters: ' + str(params))
         anc_l_inv = np.linalg.inv(anc_l)
         anc_inv = anc_l_inv.T.dot(anc_l_inv)
         K_mn_y = K_mn.dot(targets)

@@ -12,11 +12,12 @@
 \usepackage{subfig}
 \usepackage{listings}
 \usepackage{hyperref}
-%\usepackage{fontspec}
+% \usepackage{fontspec}
 \usepackage{pgfplots}
 \usepackage{tikz}
 \usepackage{amsthm}
 \usepackage{pgf,pgfarrows,pgfnodes}
+\usepackage{pgf}
 
 \lstset{
 language=Python,
@@ -86,11 +87,11 @@ Pavel Izmailov
 
 \section{Theory}
 
-\hspace{0.6cm}In this section an introduction to Gaussian process theory is provided.
+In this section an introduction to Gaussian process theory is provided.
 
 \subsection{Gaussian Process}
 
-	\hspace{0.6cm}Consider the following definition
+	Consider the following definition
 	\begin{definition}
 		A Gaussian process is a collection of random variables, any finite number of which have a joint Gaussian distribution.
 	\end{definition}
@@ -105,7 +106,7 @@ Pavel Izmailov
 	We will write the Gaussian process as $f(x) \sim \GP(m(x), k(x, x'))$.
 	
 \subsection{GP-regression}
-	\hspace{0.6cm}Consider the following task. We have a dataset $\{(x_i, f_i) | i = 1, \ldots, n\}$, generated from a Gaussian process $f \sim \GP(m(x), k(x, x'))$, let $x \in \R^d$.  We will denote the matrix comprised of points $x_1, \ldots, x_n$ by $X \in \R^{n \times d}$ and the vector of corresponding values $f_1, ..., f_n$ by $f \in \R^n$. We want to predict the values $f_* \in \R^m$ of this random process at a set of other m points $X_* \in \R^{m \times d}$. The joint distribution of $f$ and $f_*$ is given by
+	Consider the following task. We have a dataset $\{(x_i, f_i) | i = 1, \ldots, n\}$, generated from a Gaussian process $f \sim \GP(m(x), k(x, x'))$, let $x \in \R^d$.  We will denote the matrix comprised of points $x_1, \ldots, x_n$ by $X \in \R^{n \times d}$ and the vector of corresponding values $f_1, ..., f_n$ by $f \in \R^n$. We want to predict the values $f_* \in \R^m$ of this random process at a set of other m points $X_* \in \R^{m \times d}$. The joint distribution of $f$ and $f_*$ is given by
 	$$
 	\left [ \begin{array}{c} f\\ f_* \end{array} \right ]
 	\sim
@@ -121,16 +122,35 @@ Pavel Izmailov
 	$$\cov(f_* | f ) = \hat K = K(X_*, X_*) - K(X_*, X)K(X, X)^{-1}K(X, X_*).$$
 		
 	Thus, predicting the values of the Gaussian process at a new data point requires solving a linear system with a matrix of size $n \times n$ and thus scales as $O(n^3)$.
+
+	\begin{figure}[!h]
+		\centering
+		\subfloat{
+			\scalebox{0.7}{
+				\input{../Code/Experiments/pictures/1dgp-regression.pgf}
+			}
+		}
+		\subfloat{
+			\scalebox{0.7}{
+	    		\input{../Code/Experiments/pictures/2dgp-regression.pgf}
+			}
+		}
+		\caption{One and two-dimensional gaussian processes}
+		\label{brute_reg_example}
+	\end{figure}
+
+
+	In fig. \ref{brute_reg_example} you can see the examples of one and two-dimensional gaussian-processes, reconstructed from the data. The data points are shown by black `$+$' signs.
 	
 	\subsubsection{Noisy case}
-		\hspace{0.6cm}Consider the following model. We now have a dataset $\{(x_i, y_i)| i = 1, \ldots n\}$, where $y_i = f(x_i) + \varepsilon$, $\varepsilon \sim \N(0, \sigma_n)$. This means that we only have access to the noisy observations and not the true values of the process at data points. With the notation and logics similar to the one we used it the previous section we can find the conditional distribution for the values $f_*$ of the process at new points $X_*$ in this case:
+		Consider the following model. We now have a dataset $\{(x_i, y_i)| i = 1, \ldots n\}$, where $y_i = f(x_i) + \varepsilon$, $\varepsilon \sim \N(0, \sigma_n)$. This means that we only have access to the noisy observations and not the true values of the process at data points. With the notation and logics similar to the one we used it the previous section we can find the conditional distribution for the values $f_*$ of the process at new points $X_*$ in this case:
 		$$f_* | y \sim \N( \hat m, \hat K ),$$
 		$$\E[f_* | y] = \hat m = K(X_*, X) (K(X, X) + \sigma_n^2 I)^{-1} y,$$
 		$$\cov(f_* | y ) = \hat K = K(X_*, X_*) - K(X_*, X)(K(X, X) + \sigma_n^2 I)^{-1}K(X, X_*).$$
 		
 \subsection{GP-classification}
 	\label{gp-classification}
-	\hspace{0.6cm}Another important class of problems in machine learning is classification. We will consider the following problem. We have a dataset $\{(x_i, y_i) | i = 1, \ldots, n\}$, where $x_i \in \R^d$, $y_i \in \{-1, 1\}$. We want to predict the probabilities of new datapoints $x_*$ belonging to positive class.
+	Another important class of problems in machine learning is classification. We will consider the following problem. We have a dataset $\{(x_i, y_i) | i = 1, \ldots, n\}$, where $x_i \in \R^d$, $y_i \in \{-1, 1\}$. We want to predict the probabilities of new datapoints $x_*$ belonging to positive class.
 
 	We will consider the following model. We will introduce a latent function $f(x)$ and put a GP prior over it. The model is then
 	$$\pi(x) = p(y_* = +1 | x_*) = \sigma(f(x_*)),$$
@@ -181,10 +201,10 @@ Pavel Izmailov
 		or just use $\pi(x_*) = \sigma(\hat f)$, if we are only interested in the most probable classification and not the probabilities themselves (it's shown that for the most probable classifications the two approaches are equivalent).
 	
 \subsection{Kernel functions}
-	\hspace{0.6cm}To be wrritten.
+	To be wrritten.
 	
 \subsection{Hyper-parameter estimation}
-	\hspace{0.6cm}Bayesian paradigm provides a way of estimating the kernel hyper-parameters of the GP-model through maximizization of the marginal likelihood of the model. Marginal likelihood is given by
+	Bayesian paradigm provides a way of estimating the kernel hyper-parameters of the GP-model through maximizization of the marginal likelihood of the model. Marginal likelihood is given by
 	$$p(y | X) = \int p(y | f, X) p(f | X) df,$$
 	which is the likelihood, marginalized over the hidden values $f$ of the underlying process.
 
@@ -214,10 +234,10 @@ Pavel Izmailov
 \pagebreak
 \section{Review of existing methods}
 
-\hspace{0.6cm}It follows from the discussion above, that full Gaussian process regression scales as $O(n^3)$ and thus cannot be applied to big datasets. In this section we will review several approximate methods, that make Gaussian processes practical.
+It follows from the discussion above, that full Gaussian process regression scales as $O(n^3)$ and thus cannot be applied to big datasets. In this section we will review several approximate methods, that make Gaussian processes practical.
 
 \subsection{Methods, based on inducing inputs}
-	\hspace{0.6cm}Most of the existing methods are based on introducing a set of $m$ function points that are called inducing inputs. Using these inputs one can make approximate predictions of the values of the hidden process at test points with a complexity of $O(nm^3)$ instead of $O(n^3)$.
+	Most of the existing methods are based on introducing a set of $m$ function points that are called inducing inputs. Using these inputs one can make approximate predictions of the values of the hidden process at test points with a complexity of $O(nm^3)$ instead of $O(n^3)$.
 	
 	Consider the following situation. We have a dataset of $n$ examples $x_i$ with corresponding values $y_i$. We will denote the matrix of pairwise values of the covariance function by $K_{nn}$. Now we introduce a set of $m$ inducing inputs. We will denote the corresponding covariance matrix by $K_{mm}$ and the matrices of covariances between the inducing points and training points by $K_{nm}$ and $K_{mn}$. We will denote the vectors, comprised of noisy and true function values $y_i$ and $f_i$ at training points by $y$ and $f$ respectively. We will also introduce a distribution $q(u)$ over the hidden function values $u$ at the inducing inputs.
 	
@@ -236,7 +256,7 @@ Pavel Izmailov
 	\subsubsection{Variational learning of inducing points}
 		\label{Titsias}
 		
-		\hspace{0.6cm}The method discussed here was introduced in \cite{Titsias}. This method provides a way to find the optimal positions of the inducing points, as well as the optimal distribution of the process value at these points.
+		The method discussed here was introduced in \cite{Titsias}. This method provides a way to find the optimal positions of the inducing points, as well as the optimal distribution of the process value at these points.
 
 		Let $z$ denote a vector comprized of the process values at some new points. We can calculate the predictive distribution at these points as follows
 		$$p(z|y) = \int p(z|f) p(f|y) df.$$
@@ -330,7 +350,7 @@ Pavel Izmailov
 	\subsubsection{Stochastic variational inference}
 		\label{svi}
 	
-		\hspace{0.6cm}The method discussed here was proposed in \cite{BigData}. The method doesn't provide a way to choose the positions of inducing points. It provides a way to find the predictive distribution and optimize hyper-parameters for large datasets.
+		The method discussed here was proposed in \cite{BigData}. The method doesn't provide a way to choose the positions of inducing points. It provides a way to find the predictive distribution and optimize hyper-parameters for large datasets.
 		
 		For using stochastic variational inference, we have to provide a lower bound for the marginal likelihood, that factorizes over the training examples. To obtain such an ELBO (evidence lower bound) two ancillary lower bounds are found. 
 		
@@ -420,7 +440,11 @@ Pavel Izmailov
 
 	\pagebreak
 \section{Experiments}
-	In this section the results of the numerical experiments are provided.
+	In this section the results of the numerical experiments are provided. All of the provided plots has a title, that tells the number of training points $n$, the number of features $d$ and the number of inducing points $m$. The title also tells the name of the dataset.
+
+	The methods were compared on variaus datasets. Some of them are generated from a gaussian process and others are real. The $R^2$-score on a test set was used as a quality metric. 
+
+	The squared exponential kernel was used in all the experiments.
 
 	\subsection{Variations of the stochastic variational inference method}
 		In this section we compare several variations of the stochastic variational inference method.
@@ -431,68 +455,71 @@ Pavel Izmailov
 
 		Finally, the \lstinline{svi-SAG} method to minimize the ELBO. This method also uses Cholesky factorization.
 
-		We will compare the methods on datasets, generated from some gaussian process and on real data.
+		We will compare the methods on datasets, generated from some gaussian process and on real data. 
 
-		\subsubsection{Small data}
-			In this section we compare the methods performance on small datasets.
+		% The generated dataset consisted of $500$ train points with $2$ features. $100$ inducing inputs were used 
 
-		\begin{figure}[!h]
+		The results on small and medium datasets are shown in fig. \ref{svi_small} and fig. \ref{svi_medium}.
+
+		\begin{figure}[h!]
 			\centering
+
 			\subfloat{
-				\scalebox{0.9}{
-					\input{../Code/Experiments/Plots/svi_variations/small_generated.tikz}
+				\scalebox{0.75}{
+					\input{../Code/Experiments/Plots/svi_variations/small_generated.pgf}
 				}
 			}
 			\subfloat{
-				\scalebox{0.9}{
-		    		\input{../Code/Experiments/Plots/svi_variations/small_real.tikz}
+				\scalebox{0.75}{
+		    		\input{../Code/Experiments/Plots/svi_variations/small_real.pgf}
 				}
 			}
-			\caption{Method's performance on small datasets}
-			\label{hfn}
+			\vspace{0.1cm}
+			\caption{Svi methods' performance on small datasets}
+			\label{svi_small}
 		\end{figure}
 
-		\subsubsection{Medium data}
-			In this section we compare the methods performance on medium datasets.
 
-		\begin{figure}[!h]
+		\begin{figure}[h!]
 			\centering
 			\subfloat{
-				\scalebox{0.9}{
-					\input{../Code/Experiments/Plots/svi_variations/medium_generated.tikz}
+				\scalebox{0.75}{
+					\input{../Code/Experiments/Plots/svi_variations/medium_generated.pgf}
 				}
 			}
 			\subfloat{
-				\scalebox{0.9}{
-		    		\input{../Code/Experiments/Plots/svi_variations/medium_real.tikz}
+				\scalebox{0.75}{
+		    		\input{../Code/Experiments/Plots/svi_variations/medium_real.pgf}
 				}
 			}
-			\caption{Method's performance on medium datasets}
+			\label{svi_medium}
+			\caption{Svi methods' performance on medium datasets}
 		\end{figure}
 
 \subsection{Comparison of stochastic and non-stochastic variational inference methods}
 	In this section we compare the \lstinline{vi-means} method with \lstinline{svi-L-BFGS-B}. The \lstinline{vi-means} method is a variation of the method, described in section \ref{Titsias}. It does not optimize for the inducing point positions and does uses \lstinline{L-BFGS-B} to maximize the ELBO.
 
 	\begin{figure}[!h]
-			\centering
-			\subfloat{
-				\scalebox{0.9}{
-					\input{../Code/Experiments/Plots/vi_vs_svi/small_real.tikz}
-				}
+		\centering
+		\subfloat{
+			\scalebox{0.75}{
+				\input{../Code/Experiments/Plots/vi_vs_svi/small_real.pgf}
 			}
-			\subfloat{
-				\scalebox{0.9}{
-		    		\input{../Code/Experiments/Plots/vi_vs_svi/medium_real.tikz}
-				}
+		}
+		\subfloat{
+			\scalebox{0.75}{
+	    		\input{../Code/Experiments/Plots/vi_vs_svi/medium_real.pgf}
 			}
-			
-			\caption{Method's performance on small and medium datasets}
-		\end{figure}
+		}
+		
+		\caption{Method's performance on small and medium datasets}
+	\end{figure}
+
 	\begin{figure}[!h]
 		\centering
 		\subfloat{
-			\scalebox{0.9}{
-		    	\input{../Code/Experiments/Plots/vi_vs_svi/big_real.tikz}
+			\scalebox{0.75}{
+		    	\input{../Code/Experiments/Plots/vi_vs_svi/big_real.pgf}
 			}
 		}
 		\caption{Method's performance on a big dataset}
@@ -503,21 +530,20 @@ Pavel Izmailov
 	Finally, we will compare \lstinline{vi-means} with stochastic \lstinline{svi-natural} an \lstinline{svi-SAG} on a big dataset. The results can be found in fig. \ref{visvi_big}.
 
 	\begin{figure}[!h]
-	\centering
-	\subfloat{
-		\mbox{
-                		\includegraphics[width=0.45\textwidth]{../Code/Experiments/Plots/vi_vs_svi/big_sag.png}
+		\centering
+		\subfloat{
+			\mbox{
+	                		\includegraphics[width=0.45\textwidth]{../Code/Experiments/Plots/vi_vs_svi/big_sag.png}
+			}
 		}
-	}
-	\subfloat{
-		\mbox{
-                		\includegraphics[width=0.45\textwidth]{../Code/Experiments/Plots/vi_vs_svi/big_sg.png}
+		\subfloat{
+			\mbox{
+	                		\includegraphics[width=0.45\textwidth]{../Code/Experiments/Plots/vi_vs_svi/big_sg.png}
+			}
 		}
-	}
-	\caption{vi and svi methods comparison on a big dataset}
-	\label{visvi_big}
-\end{figure}
-
+		\caption{vi and svi methods comparison on a big dataset}
+		\label{visvi_big}
+	\end{figure}
 
 \subsection{Variations of variational inference method}
 	In this section we compare several variations of the stochastic variational inference method. The method itself is described in section \ref{Titsias}. We compare two different optimization methods for minimizint the Titsias's ELBO.
@@ -531,28 +557,30 @@ Pavel Izmailov
 	\begin{figure}[!h]
 		\centering
 		\subfloat{
-			\scalebox{0.9}{
-				\input{../Code/Experiments/Plots/vi_variations/small_real.tikz}
+			\scalebox{0.75}{
+				\input{../Code/Experiments/Plots/vi_variations/small_real.pgf}
 			}
 		}
 		\subfloat{
-			\scalebox{0.9}{
-	    		\input{../Code/Experiments/Plots/vi_variations/medium_real.tikz}
+			\scalebox{0.75}{
+	    		\input{../Code/Experiments/Plots/vi_variations/medium_real.pgf}
 			}
 		}
+
 		\label{vi_small}
 		\caption{Method's performance on small and medium datasets}
 	\end{figure}
 	\begin{figure}[!h]
 		\centering
 		\subfloat{
-			\scalebox{0.9}{
-				\input{../Code/Experiments/Plots/vi_variations/big_real.tikz}
+			\scalebox{0.75}{
+				\input{../Code/Experiments/Plots/vi_variations/big_real.pgf}
 			}
 		}
 		\label{vi_big}
 		\caption{Method's performance on a bigger dataset}
 	\end{figure}
+
 \pagebreak
 \begin{thebibliography}{99}
 
