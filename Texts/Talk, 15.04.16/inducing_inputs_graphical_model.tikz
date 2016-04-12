@@ -1,0 +1,10 @@
+\begin{tikzpicture}
+	\tikzstyle{u} = [circle, draw, fill=red!50, minimum size=1.2cm, text width=0.8cm, align=center, font=\large]
+	\input{base_graphical_model.tikz}
+	\pgfmathsetmacro{\layerpos}{\step/2}
+	\node[u] (inputs) at (7.5, \layerpos) {$u$};
+
+	\foreach \to in {f_1, f_2, f_n}
+		\draw[edge] (inputs) -- (\to);
+\end{tikzpicture}
+

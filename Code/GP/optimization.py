@@ -220,6 +220,7 @@ def check_gradient(oracle, point, hess=False, print_diff=False):
         print('\nDifference between calculated and approximated hessians')
         print(np.linalg.norm(app_hess.reshape(-1) - hess.reshape(-1)))
 
+
 def _approximate_hessian(oracle, point):
     app_hess = np.zeros((point.size, point.size))
     fun, grad = oracle(point)[:2]

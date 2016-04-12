@@ -1,0 +1,66 @@
+\documentclass{beamer}
+
+\usepackage{textcomp}
+% \usepackage{a4wide}
+\usepackage{caption}
+\usepackage{subfig}
+\usepackage{listings}
+\usepackage{hyperref}
+\usepackage{pgfplots}
+\usepackage{tikz}
+\usepackage{amsthm}
+\usepackage{pgf,pgfarrows,pgfnodes}
+
+\usepackage[T2A]{fontenc} 
+\usepackage{alltt}
+\usepackage[english]{babel}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{wrapfig}
+\usepackage{indentfirst}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{array}
+\usepackage[utf8]{inputenc}
+
+\newcommand{\GP}{\mathcal{GP}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathcal{N}}
+\newcommand{\cov}{\mbox{cov}}
+\newcommand{\Nystrom}{Nystr\"{o}m }
+\newcommand{\KL}[2]{\mbox{KL}\left(#1\mbox{ || }#2\right)}
+\newcommand{\tr}{\mbox{tr}}
+\newcommand{\derivative}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\sndderivative}[3]{\frac{\partial^2 #1}{\partial #2 \partial #3}}
+\AtBeginSection{\frame{\sectionpage}}
+
+% \newtheorem{definition}{Definition}
+% \newtheorem{theorem}{Theorem}
+
+\usetheme{Boadilla}
+\usecolortheme{lily}
+\title{Gaussian Processes for Machine Learning}
+\author{P. Izmailov}
+\date{April 15, 2016}
+%\institute{Lomonosov Moscow State University}
+
+\begin{document}
+	\begin{frame}
+		\maketitle
+	\end{frame}
+		\begin{frame}{Outline}
+			\tableofcontents[pausesections]
+		\end{frame}
+	\section{Gaussian Process}
+		\input{gaussian_process.tex}
+	\section{Gaussian Process Regression}
+		\input{regression.tex}
+	\section{Inducing Inputs}
+		\input{inducing_inputs.tex}
+
+
+
+\end{document}

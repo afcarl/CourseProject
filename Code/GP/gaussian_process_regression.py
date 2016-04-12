@@ -252,11 +252,10 @@ class GPR(GP):
             raise ValueError('Wrong optimizer for svi/means method:' + self.optimizer)
 
         if self.method == 'vi':
-            optimal_params = res.x[:-num_inputs*dim]
-            inducing_points = res.x[-num_inputs*dim:]
+            optimal_params = res[:-num_inputs*dim]
+            inducing_points = res[-num_inputs*dim:]
             inducing_points = inducing_points.reshape((dim, num_inputs))
         if self.method == 'means':
-            # optimal_params = res.x
             optimal_params = res
             inducing_points = inputs
         self.covariance_obj.set_params(optimal_params)

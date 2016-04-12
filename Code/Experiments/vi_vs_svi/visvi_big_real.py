@@ -15,7 +15,7 @@ batch_size = 2000
 
 x_tr, y_tr = load_svmlight_file('../../../../Programming/DataSets/Regression/yearprediction(463715, 90).txt')
 data_name = 'yearprediction'
-title='Year Prediction, n = 100000, d = 90, m=1000'
+title = 'Year Prediction, n = 100000, d = 90, m=1000'
 
 # print(x_tr.shape)
 x_tr = x_tr.T

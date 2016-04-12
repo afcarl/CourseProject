@@ -193,7 +193,7 @@ class GammaExponential(StationaryCovarianceFamily):
 
     @staticmethod
     def get_bounds():
-        return (1e-2, None), (1e-2, None), (1e-2, 2), (1e-5, None)
+        return (1e-2, None), (1e-2, None), (1e-2, 2), (1e-2, None)
 
     def set_params(self, params):
         self.sigma_f = params[0]
@@ -274,7 +274,7 @@ class Matern(StationaryCovarianceFamily):
 
     @staticmethod
     def get_bounds():
-        return (1e-2, None), (1e-2, None), (1e-2, None), (1e-5, None)
+        return (1e-2, None), (1e-2, None), (1e-2, None), (1e-2, None)
 
     @stationary_cov
     def _dm_dl(self, r):

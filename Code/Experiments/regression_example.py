@@ -1,34 +1,34 @@
 import numpy as np
-# import matplotlib as mpl
+import matplotlib as mpl
 
-# def figsize(scale):
-#     fig_width_pt = 460.72124                          # Get this from LaTeX using \the\textwidth
-#     inches_per_pt = 1.0/72.27                       # Convert pt to inch
-#     golden_mean = (np.sqrt(5.0)-1.0)/2.0 + 0.2         # Aesthetic ratio (you could change this)
-#     fig_width = (fig_width_pt*inches_per_pt + 2.5)*scale    # width in inches
-#     fig_height = fig_width * golden_mean           # height in inches
-#     fig_size = [fig_width, fig_height]
-#     return fig_size
-#
-# pgf_with_latex = {                      # setup matplotlib to use latex for output
-#     "pgf.texsystem": "pdflatex",        # change this if using xetex or lautex
-#     "text.usetex": True,                # use LaTeX to write all text
-#     "font.family": "serif",
-#     "font.serif": [],                  # blank entries should cause plots to inherit fonts from the document
-#     "font.sans-serif": [],
-#     "font.monospace": [],
-#     "axes.labelsize": 10,               # LaTeX default is 10pt font.
-#     "text.fontsize": 10,
-#     "legend.fontsize": 8,               # Make the legend/label fonts a little smaller
-#     "xtick.labelsize": 8,
-#     "ytick.labelsize": 8,
-#     "figure.figsize": figsize(0.5),     # default fig size of 0.9 textwidth
-#     "pgf.preamble": [
-#         r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts because your computer can handle it :)
-#         r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
-#         ]
-#     }
-# mpl.rcParams.update(pgf_with_latex)
+def figsize(scale):
+    fig_width_pt = 460.72124                          # Get this from LaTeX using \the\textwidth
+    inches_per_pt = 1.0/72.27                       # Convert pt to inch
+    golden_mean = (np.sqrt(5.0)-1.0)/2.0 + 0.2         # Aesthetic ratio (you could change this)
+    fig_width = (fig_width_pt*inches_per_pt + 2.5)*scale    # width in inches
+    fig_height = fig_width * golden_mean           # height in inches
+    fig_size = [fig_width, fig_height]
+    return fig_size
+
+pgf_with_latex = {                      # setup matplotlib to use latex for output
+    "pgf.texsystem": "pdflatex",        # change this if using xetex or lautex
+    "text.usetex": True,                # use LaTeX to write all text
+    "font.family": "serif",
+    "font.serif": [],                  # blank entries should cause plots to inherit fonts from the document
+    "font.sans-serif": [],
+    "font.monospace": [],
+    "axes.labelsize": 10,               # LaTeX default is 10pt font.
+    "text.fontsize": 10,
+    "legend.fontsize": 8,               # Make the legend/label fonts a little smaller
+    "xtick.labelsize": 8,
+    "ytick.labelsize": 8,
+    "figure.figsize": figsize(0.5),     # default fig size of 0.9 textwidth
+    "pgf.preamble": [
+        r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts because your computer can handle it :)
+        r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
+        ]
+    }
+mpl.rcParams.update(pgf_with_latex)
 
 from matplotlib import pyplot as plt
 
@@ -37,26 +37,32 @@ from sklearn.datasets import load_svmlight_file
 from sklearn.metrics import r2_score
 from GP.gaussian_process_regression import GPR
 from GP.plotting import plot_reg_data, plot_predictive
-from GP.covariance_functions import SquaredExponential
+from GP.covariance_functions import SquaredExponential, Matern, GammaExponential
 from matplotlib.mlab import griddata
 from matplotlib2tikz import save
 
-data_params = np.array([1.0, 0.3, 0.1])
+data_params = np.array([1.0, 0.15, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
-model_params = np.array([0.7, 0.2, 0.1])
+
+model_params = np.array([0.2, 0.2, 0.1])
 model_covariance_obj = SquaredExponential(model_params)
+# model_params = np.array([1.0, 0.1, 0.5, 0.1])
+# model_covariance_obj = GammaExponential(model_params)
+# model_params = np.array([1.0, 1., 1., 0.1])
+# model_covariance_obj = Matern(model_params)
+
 gp = GPR(data_covariance_obj)
-num = 200
+num = 100
 test_num = 100
 dim = 1
 seed = 10
-ind_inputs_num = 100
-max_iter = 100
+ind_inputs_num = 7
+max_iter = 200
 batch_size = 100
 
-method = 'brute'  # possible methods: 'brute', 'vi', 'means', 'svi'
+method = 'vi'  # possible methods: 'brute', 'vi', 'means', 'svi'
 parametrization = 'cholesky'  # possible parametrizations for svi method: cholesky, natural
-optimizer = 'Projected Newton'
+optimizer = 'L-BFGS-B'
 # possible optimizers: 'SAG', 'FG', 'L-BFGS-B' for cholesky-svi;
 # 'L-BFGS' and 'Projected Newton' for 'means' and 'vi'
 
@@ -87,8 +93,8 @@ if method == 'brute':
 elif method == 'means' or method == 'vi':
     model_covariance_obj = SquaredExponential(model_params)
     new_gp = GPR(model_covariance_obj, method=method, optimizer=optimizer)
-    # res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num,  optimizer_options=lbfgsb_options)
-    res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num,  optimizer_options=projected_newton_options)
+    res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num,  optimizer_options=lbfgsb_options)
+    # res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num,  optimizer_options=projected_newton_options)
     inducing_points, mean, cov = new_gp.inducing_inputs
     predicted_y_test, high, low = new_gp.predict(x_test)
 
@@ -116,23 +122,27 @@ if dim == 1:
     plot_predictive(x_test, predicted_y_test, high, low)
     # plot_reg_data(x_test, y_test, 'g-')
     if method != 'brute':
-        plot_reg_data(inducing_points, mean, 'ro', markersize=12)
+        plot_reg_data(inducing_points, mean, 'ro', markersize=8)
     # plt.axis('off')
-    # plt.savefig('pictures/1dgp-regression.pgf')
+    # plt.title("A one-dimensional gaussian process")
+    # plt.ylim(-2.5, 0.5)
+    plt.title("Predictive distribution, vi method")
+    plt.savefig('pictures/1dgp-regression_vi.pgf')
     plt.show()
 
 elif dim == 2:
     xi = np.linspace(0, 1, 100)
     yi = np.linspace(0, 1, 100)
     zi = griddata(x_tr[0, :], x_tr[1, :], y_tr[:, 0], xi, yi, interp='linear')
-    plt.plot(x_tr[0], x_tr[1], 'k+')
+    # plt.plot(x_tr[0], x_tr[1], 'k+')
     if method != 'brute':
-        plot_reg_data(inducing_points[0, :], inducing_points[1, :], 'ro', markersize=12)
+        plot_reg_data(inducing_points[0, :], inducing_points[1, :], 'ro', markersize=5)
 
     plt.contour(xi, yi, zi, 15, linewidths=0.5, colors='k')
     plt.contourf(xi, yi, zi, 15, cmap=plt.cm.rainbow,
                       vmax=abs(zi).max(), vmin=-abs(zi).max())
-    # plt.colorbar()
+    plt.title('A two-dimensional gaussian process')
+    plt.colorbar()
     plt.axis('off')
-    # plt.savefig('pictures/2dgp-regression.pgf')
+    # plt.savefig('pictures/')
     plt.show()

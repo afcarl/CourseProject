@@ -42,9 +42,11 @@ def run_methods(train_points, train_targets, test_points, test_targets,
                 model_parameters, optimizer_options, file_name, ind_num, title, show=False):
     method = 'means'
 
-    means = KMeans(n_clusters=ind_num)
+    print('Finding means...')
+    means = KMeans(n_clusters=ind_num, n_init=1, max_iter=20)
     means.fit(train_points.T)
     inputs = means.cluster_centers_.T
+    print('...found')
 
     for optimizer, color, opts in zip(['L-BFGS-B', 'Projected Newton'], ['-kx', '-mx'],
                                       optimizer_options):
