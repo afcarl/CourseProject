@@ -350,7 +350,9 @@ def minimize_wrapper(func, x0, mydisp=False, jac=True, **kwargs):
     def callback(w):
         aux['total'] += time.time() - aux['start']
         if mydisp:
-            print("Hyper-parameters at iteration", aux['it'], ":", w)
+            print("Hyper-parameters at iteration", aux['it'], ":", w.reshape(-1)[:5])
+            # if w.size > 5:
+            #     print('...')
         time_list.append(aux['total'])
         w_list.append(np.copy(w))
         aux['it'] += 1

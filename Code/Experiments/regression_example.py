@@ -41,10 +41,10 @@ from GP.covariance_functions import SquaredExponential, Matern, GammaExponential
 from matplotlib.mlab import griddata
 from matplotlib2tikz import save
 
-data_params = np.array([1.0, 0.15, 0.1])
+data_params = np.array([1.0, 0.5, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
 
-model_params = np.array([0.2, 0.2, 0.1])
+model_params = np.array([0.7, 0.3, 0.2])
 model_covariance_obj = SquaredExponential(model_params)
 # model_params = np.array([1.0, 0.1, 0.5, 0.1])
 # model_covariance_obj = GammaExponential(model_params)
@@ -52,15 +52,15 @@ model_covariance_obj = SquaredExponential(model_params)
 # model_covariance_obj = Matern(model_params)
 
 gp = GPR(data_covariance_obj)
-num = 100
+num = 500
 test_num = 100
-dim = 1
+dim = 5
 seed = 10
-ind_inputs_num = 7
+ind_inputs_num = 50
 max_iter = 200
 batch_size = 100
 
-method = 'vi'  # possible methods: 'brute', 'vi', 'means', 'svi'
+method = 'means'  # possible methods: 'brute', 'vi', 'means', 'svi'
 parametrization = 'cholesky'  # possible parametrizations for svi method: cholesky, natural
 optimizer = 'L-BFGS-B'
 # possible optimizers: 'SAG', 'FG', 'L-BFGS-B' for cholesky-svi;
@@ -70,7 +70,7 @@ optimizer = 'L-BFGS-B'
 
 sag_options = {'maxiter':max_iter, 'batch_size': batch_size, 'print_freq': 100}
 fg_options = {'maxiter':max_iter, 'print_freq': 100}
-lbfgsb_options = {'maxiter': max_iter, 'disp': False}
+lbfgsb_options = {'maxiter': max_iter, 'disp': False, 'mydisp': True}
 sg_options = {'maxiter':max_iter, 'batch_size': batch_size, 'print_freq': 100, 'step0': 5e-3, 'gamma': 0.55}
 projected_newton_options = {'maxiter':max_iter, 'print_freq': 1}
 
@@ -123,11 +123,9 @@ if dim == 1:
     # plot_reg_data(x_test, y_test, 'g-')
     if method != 'brute':
         plot_reg_data(inducing_points, mean, 'ro', markersize=8)
-    # plt.axis('off')
     # plt.title("A one-dimensional gaussian process")
-    # plt.ylim(-2.5, 0.5)
     plt.title("Predictive distribution, vi method")
-    plt.savefig('pictures/1dgp-regression_vi.pgf')
+    # plt.savefig('')
     plt.show()
 
 elif dim == 2:

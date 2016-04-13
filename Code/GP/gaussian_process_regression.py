@@ -238,12 +238,13 @@ class GPR(GP):
 
         if self.optimizer == 'L-BFGS-B':
             mydisp = False
+            options = copy.deepcopy(optimizer_options)
             if not optimizer_options is None:
                 if 'mydisp' in optimizer_options.keys():
                     mydisp = optimizer_options['mydisp']
-                    del optimizer_options['mydisp']
+                    del options['mydisp']
             res, w_list, time_list = minimize_wrapper(loc_fun, w0, method='L-BFGS-B', mydisp=mydisp, bounds=bnds,
-                                                      options=optimizer_options)
+                                                      options=options)
             res = res.x
         elif self.optimizer == 'Projected Newton':
             res, w_list, time_list = projected_newton(loc_fun, w0, bounds=bnds, options=optimizer_options)
