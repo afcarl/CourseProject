@@ -1,122 +1,148 @@
-\begin{frame}{Problem statement and notation}
-			\begin{itemize}
-				\item $\{(x_i, f_i) | i = 1, \ldots, n\}$ — dataset, considered to be generated from a Gaussian process $f \sim \GP(m(\cdot), k(\cdot, \cdot))$, let $x \in \R^d$. 
-				\item $X \in \R^{n \times d}$ — the matrix, comprised of data points $x_1, \ldots, x_n$.
-				\item $f \in \R^n$ — the vector of target values $f_1, \ldots, f_n$.
+\begin{frame}{Notation}
+	\begin{itemize}
+		\item $\{(x_i, f_i) | i = 1, \ldots, n\}$ — dataset, considered to be generated from a Gaussian process $f \sim \GP(m(\cdot), k(\cdot, \cdot))$, let $x \in \R^d$. 
+		\item $X \in \R^{n \times d}$ — the matrix, comprised of data points $x_1, \ldots, x_n$.
+		\item $f \in \R^n$ — the vector of target values $f_1, \ldots, f_n$.
 
-				\item $y \in \R^n$ — the noisy version of $f$: $y \sim \N(y | f, \sigma_n^2 I)$
+		\item $y \in \R^n$ — the noisy version of $f$: $y \sim \N(y | f, \sigma_n^2 I)$
 
-				\item $X_* \in \R^{k \times d}$ — new (test) data points.
+		\item $X_* \in \R^{k \times d}$ — new (test) data points.
 
-				\item $f_* \in \R^k$ — the desired vector of process values at new data points $X_*$.
+		\item $f_* \in \R^k$ — the desired vector of process values at new data points $X_*$.
 
-				\item $K(X, X) \in \R^{n \times n}$ — the matrix, comprised of pairvise values of the covariance function $k(\cdot, \cdot)$ of the underlying process:
-				$$K(X, X)_{ij} = k(x_i, x_j).$$
+		\item $K(X, X) \in \R^{n \times n}$ — the matrix, comprised of pairvise values of the covariance function $k(\cdot, \cdot)$ of the underlying process:
+		$$K(X, X)_{ij} = k(x_i, x_j).$$
 
-				\item $K(X, X_*) \in \R^{n \times k}$ — the matrix, defined similarly to the $K(X, X)$.
+		\item $K(X, X_*) \in \R^{n \times k}$ — the matrix, defined similarly to the $K(X, X)$.
 
-				\item $K(X_*, X) = K(X, X_*)$.
-			\end{itemize}
+		\item $K(X_*, X) = K(X, X_*)^T$.
+	\end{itemize}
 
-			\vspace{0.3cm}
-			We want to obtain the predictive distribution
-			$$p(f_* | X_*, X, y).$$
-		\end{frame}
+	% \vspace{0.3cm}
+	% We want to obtain the predictive distribution
+	
+\end{frame}
 
-		\begin{frame}{Noise-free case}
-			Let us consider the noise-free case first:
-			$$y = f.$$
+\begin{frame}{Problem statement}
+	The model is as follows. $f$ is a vector of unobserved samples from a gaussian process $\GP(m(\cdot), k(\cdot, \cdot))$ at data points $x_i$ and $y$ is it's noisy version we observe.
+	$$f \sim \N(m(X), K(X, X)),$$
+	$$y = f + \varepsilon, \hspace{0.5cm}\varepsilon \sim \N(0, \sigma_n^2 I).$$
+	What we want to obtain is the predictive distribution at a set of new data points $X_*$
+	$$p(f_* | X_*, X, y).$$
 
-			We put the following prior on our model: the data is generated from a zero-mean gaussian process with covariance function $k(\cdot, \cdot)$:
+	We put the following prior on our model: the data is generated from a zero-mean gaussian process with covariance function $k(\cdot, \cdot)$:
 
-			$$f \sim \GP(0, k(\cdot, \cdot)).$$
+	$$f \sim \GP(0, k(\cdot, \cdot)).$$
 
-			This prior is not limiting, because zero-mean prior does not imply a zero-mean predictive distribution.
+	This prior is not limiting, because zero-mean prior does not imply a zero-mean predictive distribution.
 
-			
+\end{frame}
 
-		\end{frame}
+% \begin{frame}{Noise-free case}
+% 	Let us consider the noise-free case first:
+% 	$$y = f.$$
 
-		\begin{frame}{Noise-free case}
+% 	
 
-			As $f$ and $f_{*}$ are assumed to be generated from the same gaussian proces, we have the following joint distribution
+	
 
-			$$\left [ \begin{array}{c} f\\ f_* \end{array} \right ]
-			\sim
-			\N \left ( 0, \left [\begin{array}{cc} K(X, X) & K(X, X_*)\\ K(X_*, X) & K(X_*, X_*) \end{array} \right] \right ).
-			$$
+% \end{frame}
 
-			Marginalizing this distribution, we obtain the predictive
-			% $$f_* | X_*, X, f $$
-			$$f_* | X_*, X, f \sim \N( \hat m, \hat K ),$$
-			where 
-			$$\E [f_* | f ] = \hat m = K(X_*, X) K(X, X)^{-1} f,$$
-			$$\cov(f_* | f ) = \hat K = K(X_*, X_*) - K(X_*, X)K(X, X)^{-1}K(X, X_*).$$
+% \begin{frame}{Noise-free case}
 
-			% \hspace{0.5cm}
-			% The computational complexity of this method is defined by the complexity of inversing the $K(X, X)$ matrix, and thus the method scales as $O(N^3)$.
-		\end{frame}
+% 	As $f$ and $f_{*}$ are assumed to be generated from the same gaussian proces, we have the following joint distribution
 
-		\begin{frame}{Noisy case}
-			In the noisy case, we have a slightly different model:
-			$$y = f + \varepsilon,$$
-			where $\varepsilon \sim \N(0, \sigma_n^2 I)$.
+% 	$$\left [ \begin{array}{c} f\\ f_* \end{array} \right ]
+% 	\sim
+% 	\N \left ( 0, \left [\begin{array}{cc} K(X, X) & K(X, X_*)\\ K(X_*, X) & K(X_*, X_*) \end{array} \right] \right ).
+% 	$$
 
-			We can then rewrite the joint distribution as
-			$$\left [ \begin{array}{c} y\\ f_* \end{array} \right ]
-			\sim
-			\N \left ( 0, \left [\begin{array}{cc} K(X, X) + \sigma_n^2 I & K(X, X_*)\\ K(X_*, X) & K(X_*, X_*) \end{array} \right] \right ).
-			$$
-			Marginalizing it once again we obtain the predictive
-			$$f_* | y \sim \N( \hat m, \hat K ),$$
-			$$\E[f_* | y] = \hat m = K(X_*, X) (K(X, X) + \sigma_n^2 I)^{-1} y,$$
-			$$\cov(f_* | y ) = \hat K = K(X_*, X_*) - K(X_*, X)(K(X, X) + \sigma_n^2 I)^{-1}K(X, X_*).$$
+% 	Marginalizing this distribution, we obtain the predictive
+% 	% $$f_* | X_*, X, f $$
+% 	$$f_* | X_*, X, f \sim \N( \hat m, \hat K ),$$
+% 	where 
+% 	$$\E [f_* | f ] = \hat m = K(X_*, X) K(X, X)^{-1} f,$$
+% 	$$\cov(f_* | f ) = \hat K = K(X_*, X_*) - K(X_*, X)K(X, X)^{-1}K(X, X_*).$$
 
+% 	% \hspace{0.5cm}
+% 	% The computational complexity of this method is defined by the complexity of inversing the $K(X, X)$ matrix, and thus the method scales as $O(N^3)$.
+% \end{frame}
 
-		\end{frame}
+\begin{frame}{GP-Regression}
+	% In the noisy case, we have a slightly different model:
+	% $$y = f + \varepsilon,$$
+	% where $\varepsilon \sim \N(0, \sigma_n^2 I)$.
 
-		\begin{frame}{Example}
-			\begin{figure}[!h]
-				\centering
-				\subfloat{
-					\scalebox{0.5}{
-						\input{../../Code/Experiments/pictures/1dgp-regression_noopt.pgf}
-					}
-				}
-			\end{figure}
+	The joint distribution for the process values $f$ and $f_*$ is given by
+	$$\left [ \begin{array}{c} f\\ f_* \end{array} \right ]
+	\sim
+	\N \left ( 0, \left [\begin{array}{cc} K(X, X) & K(X, X_*)\\ K(X_*, X) & K(X_*, X_*) \end{array} \right] \right ).
+	$$
 
-			As we can see, the method struggles to explain the data. In order to deal with this problem, we can tweak the covariance function. The covariance functions usualy have a set of parameters, which we will refer to as covariance (or kernel) hyper-parameters. Varying these parameters, we can find a better model for the data.
+	We slightly change the covariance matrix to obtain the joint distribution for $y$ and $f_*$.
+	$$\left [ \begin{array}{c} y\\ f_* \end{array} \right ]
+	\sim
+	\N \left ( 0, \left [\begin{array}{cc} K(X, X) + \sigma_n^2 I & K(X, X_*)\\ K(X_*, X) & K(X_*, X_*) \end{array} \right] \right ).
+	$$
+\end{frame}
 
-		\end{frame}
+\begin{frame}{Predictive distribution}
+	Conditioning the joint distribution, we obtain the predictive
+	$$f_* | y \sim \N( \hat m, \hat K ),$$
+	$$\E[f_* | y] = \hat m = K(X_*, X) (K(X, X) + \sigma_n^2 I)^{-1} y,$$
+	$$\cov(f_* | y ) = \hat K = K(X_*, X_*) - K(X_*, X)(K(X, X) + \sigma_n^2 I)^{-1}K(X, X_*).$$
+\end{frame}
 
-		\begin{frame}{Marginal likelihood}
-			In order to find the best set of kernel hyper-parameters, we maximize the marginal likelihood with respect to them. In the case of gaussian process regression, this likelihood is given by
-			$$p(y) = \N(y| 0, K(X, X) + \sigma_n^2 I) = $$
-			$$ = -\frac 1 2 y^{T} (K(X, X) + \sigma_n^2 I)^{-1} y - \frac 1 2 \log |K(X, X) + \sigma_n^2 I| - \frac n 2 \log 2 \pi.$$
+\begin{frame}{Example}
+	\begin{figure}[!h]
+		\centering
+		\subfloat{
+			\scalebox{0.5}{
+				\input{../../Code/Experiments/pictures/1dgp-regression_noopt.pgf}
+			}
+		}
+	\end{figure}
 
-			If $k(\cdot, \cdot)$ is a differentiable function of it's hyper-parameters (which is usually true), $p(y)$ also is, and can be maximized with gradient-based optimization methods.
-		\end{frame}
+	As we can see, the model does not explain the data very well. In order to deal with this problem, we can tweak the covariance function. The covariance functions usualy have a set of parameters, which we will refer to as covariance (or kernel) hyper-parameters. Varying these parameters, we can find a better model for the data.
 
-		\begin{frame}{Example}
+\end{frame}
 
-			\begin{figure}[!h]
-				\centering
-				\subfloat{
-					\scalebox{0.5}{
-						\input{../../Code/Experiments/pictures/1dgp-regression_noopt.pgf}
-					}
-				}
-				\subfloat{
-					\scalebox{0.5}{
-						\input{../../Code/Experiments/pictures/1dgp-regression_opt.pgf}
-					}
-				}
-				\caption{Predictive distribution before and after hyper-parameter adaptation}
-			\end{figure}
+\begin{frame}{Marginal likelihood}
+	In order to find the best set of kernel hyper-parameters, we maximize the marginal likelihood with respect to them. In the case of gaussian process regression, this likelihood is given by
+	$$\log p(y) = \log \int p(y | f) p(f) df = \log \N(y| 0, K(X, X) + \sigma_n^2 I) = $$
+	$$ = -\frac 1 2 y^{T} (K(X, X) + \sigma_n^2 I)^{-1} y - \frac 1 2 \log |K(X, X) + \sigma_n^2 I| - \frac n 2 \log 2 \pi.$$
 
-			As we can see, after adaptation of kernel hyper-parameters, the method does a better job, explaining the data.
-		\end{frame}
+	If $k(\cdot, \cdot)$ is a differentiable function of it's hyper-parameters (which is usually true), $p(y)$ also is, and can be maximized with gradient-based optimization methods.
+\end{frame}
 
-		\begin{frame}{Computational Complexity}
-			The computational complexity of the gaussian process regression is determined by the complexity of inversing the $K(X, X)$ matrix, and thus scales as $O(n^3)$. This complexity makes the method unaplicable to big problems and thus approximate aproaches are needed.
-		\end{frame}
+\begin{frame}{Example}
+
+	\begin{figure}[!h]
+		\centering
+		\subfloat{
+			\scalebox{0.5}{
+				\input{../../Code/Experiments/pictures/1dgp-regression_noopt.pgf}
+			}
+		}
+		\subfloat{
+			\scalebox{0.5}{
+				\input{../../Code/Experiments/pictures/1dgp-regression_opt.pgf}
+			}
+		}
+		\caption{Predictive distribution before and after hyper-parameter adaptation}
+	\end{figure}
+
+	As we can see, after adaptation of kernel hyper-parameters, the method does a better job, explaining the data.
+\end{frame}
+
+\begin{frame}{Computational Complexity}
+	
+	The predictive mean and covariance are given by
+	$$\E[f_* | y] = \hat m = K(X_*, X) (K(X, X) + \sigma_n^2 I)^{-1} y,$$
+	$$\cov(f_* | y ) = \hat K = K(X_*, X_*) - K(X_*, X)(K(X, X) + \sigma_n^2 I)^{-1}K(X, X_*).$$
+
+	Marginal likelihood is given by
+	$$\log p(y) = -\frac 1 2 y^{T} (K(X, X) + \sigma_n^2 I)^{-1} y - \frac 1 2 \log |K(X, X) + \sigma_n^2 I| - \frac n 2 \log 2 \pi.$$
+
+	The computational complexity of the gaussian process regression is determined by the complexity of inversing the $K(X, X)$ matrix and computing the detrminant of $K(X, X) + \sigma_n^2 I$, and thus scales as $O(n^3)$. This complexity makes the method inapplicable to big problems and thus approximate approaches are needed.
+\end{frame}

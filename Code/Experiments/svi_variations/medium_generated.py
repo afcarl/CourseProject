@@ -15,7 +15,7 @@ test_num = 500
 dim = 5
 seed = 21
 ind_inputs_num = 200
-max_iter = 100
+max_iter = 300
 batch_size = 200
 title='generated dataset, n = 4000, d = 5, m=200'
 file_name = 'medium_generated'

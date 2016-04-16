@@ -56,7 +56,7 @@ def run_methods(train_points, train_targets, test_points, test_targets,
         res = new_gp.fit(train_points, train_targets, num_inputs=ind_num, optimizer_options=opts, inputs=inputs)
         name = 'svi-' + optimizer
         metric = lambda w: new_gp.get_prediction_quality(w, test_points, test_targets)
-        x_lst, y_lst = res.plot_performance(metric, 'i', freq=10)
+        x_lst, y_lst = res.plot_performance(metric, 'i', freq=5)
         plt.plot(x_lst, y_lst, color, label=name)
 
     parametrization = 'natural'
@@ -69,7 +69,7 @@ def run_methods(train_points, train_targets, test_points, test_targets,
     res = new_gp.fit(train_points, train_targets, num_inputs=ind_num, optimizer_options=opt_options, inputs=inputs)
     name = 'svi-natural'
     metric = lambda w: new_gp.get_prediction_quality(w, test_points, test_targets)
-    x_lst, y_lst = res.plot_performance(metric, 'i', freq=10)
+    x_lst, y_lst = res.plot_performance(metric, 'i', freq=5)
     plt.plot(x_lst, y_lst, '-yo', label=name)
 
     plt.xlabel('Epoch')

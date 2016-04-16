@@ -41,10 +41,10 @@ from GP.covariance_functions import SquaredExponential, Matern, GammaExponential
 from matplotlib.mlab import griddata
 from matplotlib2tikz import save
 
-data_params = np.array([1.0, 0.5, 0.1])
+data_params = np.array([1.0, 0.15, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
 
-model_params = np.array([0.7, 0.3, 0.2])
+model_params = np.array([1.0, 0.75, 0.1])
 model_covariance_obj = SquaredExponential(model_params)
 # model_params = np.array([1.0, 0.1, 0.5, 0.1])
 # model_covariance_obj = GammaExponential(model_params)
@@ -52,15 +52,15 @@ model_covariance_obj = SquaredExponential(model_params)
 # model_covariance_obj = Matern(model_params)
 
 gp = GPR(data_covariance_obj)
-num = 500
+num = 100
 test_num = 100
-dim = 5
+dim = 1
 seed = 10
 ind_inputs_num = 50
 max_iter = 200
 batch_size = 100
 
-method = 'means'  # possible methods: 'brute', 'vi', 'means', 'svi'
+method = 'brute'  # possible methods: 'brute', 'vi', 'means', 'svi'
 parametrization = 'cholesky'  # possible parametrizations for svi method: cholesky, natural
 optimizer = 'L-BFGS-B'
 # possible optimizers: 'SAG', 'FG', 'L-BFGS-B' for cholesky-svi;
@@ -118,14 +118,13 @@ print(new_gp.covariance_obj.get_params())
 print(r2_score(y_test, predicted_y_test))
 
 if dim == 1:
-    plot_reg_data(x_tr, y_tr, 'k+')
+    plot_reg_data(x_tr, y_tr, 'k+', mew=1, ms=8)
     plot_predictive(x_test, predicted_y_test, high, low)
     # plot_reg_data(x_test, y_test, 'g-')
     if method != 'brute':
         plot_reg_data(inducing_points, mean, 'ro', markersize=8)
-    # plt.title("A one-dimensional gaussian process")
-    plt.title("Predictive distribution, vi method")
-    # plt.savefig('')
+    plt.title("Predictive distribution")
+    plt.savefig('pictures/')
     plt.show()
 
 elif dim == 2:

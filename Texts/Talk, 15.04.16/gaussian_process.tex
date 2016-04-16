@@ -3,7 +3,7 @@
 				A Gaussian process is a collection of random variables, any finite number of which have a joint Gaussian distribution.
 			\end{definition}
 
-			$$f \sim \GP(m(\cdot), k(\cdot, \cdot)) \Leftrightarrow f(t_1, \ldots, t_n) \sim \N(\mu, K),$$
+			$$f \sim \GP(m(\cdot), k(\cdot, \cdot)) \Leftrightarrow \forall t_1, \ldots, t_n \hspace{0.5cm} (f(t_1), \ldots, f(t_n)) \sim \N(\mu, K),$$
 			where $\mu = (m(t_1), \ldots, m(t_n))^T$, $K \in \R^{n \times n}$, $K_{ij} = k(t_i, t_j)$.
 
 			$m: \R \rightarrow \R$ is called the mean function of the gaussian process $f$.
@@ -35,27 +35,38 @@
 		\begin{frame}{Covariance functions}
 			\begin{figure}[!h]
 				\centering
-				\subfloat{
-					\scalebox{0.3}{
-						\input{../../Code/Experiments/pictures/1dgp-regression_gamma_05.pgf}
-					}
-				}
-				\subfloat{
-					\scalebox{0.3}{
-						\input{../../Code/Experiments/pictures/1dgp-regression_gamma_1.pgf}
-					}
-				}
-				\subfloat{
-					\scalebox{0.3}{
-						\input{../../Code/Experiments/pictures/1dgp-regression_gamma_2.pgf}
-					}
-				}
-				% \caption{Gamma-exponential covariance function, different $\gamma$}
-			% \end{figure}
+				% \subfloat{
+				% 	\scalebox{0.3}{
+				% 		\input{../../Code/Experiments/pictures/1dgp-regression_gamma_05.pgf}
+				% 	}
+				% }
+				% \subfloat{
+				% 	\scalebox{0.3}{
+				% 		\input{../../Code/Experiments/pictures/1dgp-regression_gamma_1.pgf}
+				% 	}
+				% }
+				% \subfloat{
+				% 	\scalebox{0.3}{
+				% 		\input{../../Code/Experiments/pictures/1dgp-regression_gamma_2.pgf}
+				% 	}
+				% }
 
-			% \begin{figure}[!h]
-			% 	\centering
-				% \\
+				\subfloat{
+					\scalebox{0.3}{
+						\input{../../Code/Experiments/pictures/1dgp-regression_se_01.pgf}
+					}
+				}
+				\subfloat{
+					\scalebox{0.3}{
+						\input{../../Code/Experiments/pictures/1dgp-regression_se_05.pgf}
+					}
+				}
+				\subfloat{
+					\scalebox{0.3}{
+						\input{../../Code/Experiments/pictures/1dgp-regression_se_1.pgf}
+					}
+				}
+
 				\subfloat{
 					\scalebox{0.3}{
 						\input{../../Code/Experiments/pictures/1dgp-regression_matern_01.pgf}
@@ -71,6 +82,6 @@
 						\input{../../Code/Experiments/pictures/1dgp-regression_matern_1.pgf}
 					}
 				}
-				\caption{Gamma-exponential and Matern covariance functions}
+				\caption{Squared-exponential and Matern covariance functions}
 			\end{figure}
 		\end{frame}
