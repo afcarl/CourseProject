@@ -3,7 +3,7 @@ import numpy as np
 
 from GP.covariance_functions import SquaredExponential
 from GP.gaussian_process_classification import GPC
-from GP.plotting import gp_plot_class_data
+from GP.plotting import plot_class_data
 
 data_params = np.array([1.0, 0.25, 0.05])
 data_covariance_obj = SquaredExponential(data_params)
@@ -41,7 +41,7 @@ mistake_lst = [i for i in range(len(y_test)) if predicted_y_test[i] != y_test[i]
 
 print("Mistakes: ", np.sum(predicted_y_test != y_test))
 if dim == 2:
-    gp_plot_class_data(x_tr, y_tr, 'bo', 'ro')
+    plot_class_data(x_tr, y_tr, 'bo', 'ro')
     plt.contour(np.linspace(0, 1, test_density), np.linspace(0, 1, test_density),
                 y_test.reshape((test_density, test_density)), levels=[0], colors=['g'])
     plt.contour(np.linspace(0, 1, test_density), np.linspace(0, 1, test_density),
