@@ -1,0 +1,90 @@
+\label{Titsias}
+		
+		The method discussed here was introduced in \cite{Titsias}. This method provides a way to find the optimal positions of the inducing points, as well as the optimal distribution of the process value at these points.
+
+		Let $z$ denote a vector comprized of the process values at some new points. We can calculate the predictive distribution at these points as follows
+		$$p(z|y) = \int p(z|f) p(f|y) df.$$
+		Let's fix the inducing point positions $x_1, \ldots, x_m$. As above, $u$ is the vector compised of the process values at these points. We can rewrite the above equation
+		\begin{equation}
+			\label{predictive1}
+			p(z|y) = \iint p(z|u, f) p(f| u, y) p(u|y)df du,
+		\end{equation}
+		% $$p(z | y) = \iint p(z | u, f) p(f | u, y)df du,$$
+		as $p(z|u, f, y) = p(z|u, f)$. 
+
+		Suppose for a moment, that $u$ is a sufficient statistics for the parameter $f$ in the scence that $z$ and $f$ are conditionally independent given $u$. Then we have 
+		$$p(z|f, u) = \frac {p(z, f|u)} {p(f|u)} = \frac {p(z | u) p(f | u)}{p(f|u)} = p(z|u),$$
+		$$p(z|y, u) = \frac {p(z, y, u)}{p(y, u)} = \frac {\int p(y|f)p(f, z, u) du}{\iint p(y|f) p(f, z, u) df dz} = \frac {\int p(y|f) p(z|u) p(u|f) p(f)df}{\iint p(y|f) p(z|u) p(u|f) p(f)df dz} = $$
+		$$= \frac {\int p(y|f)p(f)p(u|f)df \cdot p(z|u)} {\int p(y|f)p(f)p(u|f)df \cdot \int p(z|u) dz} = \frac{\int p(y, f) p(u|f) df} {\int p(y, f) p(u|f) df} p(z|u) = p(z|u).$$
+
+		So, $p(z|y, u) = p(z|u)$. If we set the points, corrwsponding to the process values $z$, to the traing points, we will have $z = f$, and thus $p(f|y, u) = p(f|u)$.
+
+		Substituting these formulas into (\ref{predictive1}) we achieve
+		$$q(z) = p(z|y) = \iint p(z|u) p(f|u) p(u|y)df du = \iint p(z|u) p(u|y) du = $$
+		\begin{equation}
+			\label{predictive2}
+			= \int p(z|u)\varphi(u) du  = \int q(z, u) du, 
+		\end{equation}
+		where $\varphi(u) = p(u|y)$, $q(z, u) = p(z|u)\varphi(u)$.
+
+		In practice however it's difficult to guarantee that $u$ is a sufficient statistics. Thus we can only expect $q(z)$ to be an approximation to $p(z|y)$. In such case we can choose $\varphi(u)$ to be a variational distribution, where in general $\varphi(u) \ne p(u | y)$. We will consider $\varphi(u)$ to be Gaussian with a mean vector $\mu$ and covariance matrix $\Sigma$.
+
+		By using the eq. (\ref{predictive2}) we can calculate the approximate posterior GP mean at point $x$ and covariance at points $x, x'$
+		$$\E[z(x)] = K_{xm} K_{mm}^{-1} \mu,$$ 
+		$$\cov(z(x), z(x')) = k(x, x') - K_{xm} K_{mm}^{-1} K_{mx'} + K_{xm} A K_{mx'},$$
+		where $A = K_{mm}^{-1} \Sigma K_{mm}^{-1}$.
+
+		Now we have to specify a way to find the variational distribution parameters $\mu$ and $\Sigma$, and the inducing input positions $X_m$ and a way to optimize the kernel hyper-parameters. 
+		% In order to do so, we will form the variational distribution $q(f)$ and the exact posterior $p(f|y)$ on the training function values, and then minimize the distance between this two distributions. Equivalently, we can minimize a distance, between the augmented true posterior $p(f, u|y)$ and $q(f, u)$.
+		In order to do so, we will form the variational distribution $q(f, u)$ and the exact posterior $p(f, u|y)$ on the training function values and the values at the inducing points, and then minimize the KL-divergence between these two distributions. This minimization is equivalently expressed as the maximization of the following lower bound of the true marginal likelihood:
+		$$F_V(X_m, \varphi) = \iint p(f|u) \varphi(u) \log \frac{p(y|f) p(u)}{\varphi(u)} df du.$$
+		This bound can be optimized analytically with respect to $\phi$. The optimal distribution $\varphi(u) \sim \N(u|\hat u, \Lambda^{-1})$, where
+		$$\Lambda = \frac 1 {\sigma_n} K_{mm}^{-1} K_{mn} K_{nm} K_{mm}^{-1} + K_{mm}^{-1},$$
+		$$\hat u = \frac 1 {\sigma_n} \Lambda^{-1} K_{mm}^{-1} K_{mn} y.$$
+		Substituting the optimal values of variational parameters into the $F_V$ we obtain the following bound
+		$$F_V(X_m) = \log \N(y|0, \sigma_n^2 I + K_{nm} K_{mm}^{-1} K_{mn}) - \frac 1 {2\sigma_n^2} \tr(\tilde K).$$
+
+		Another derivation of this lower bound is provided in section (\ref{svi}).
+
+		The bound $F_V(X_m)$ is computed in $o(nm^2)$ time. Now we will calculate it's gradient in order to be able to maximize it with respect to $X_m$ and kernel hyper-parameters. We will denote $B = \sigma_n^2 I + K_{nm} K_{mm}^{-1} K_{mn}$. Then
+		$$F_V(X_m, \theta, \sigma_n) = -\frac 1 2 \left(n \log 2\pi + \log |B| + y^T B^{-1} y + \frac 1 {\sigma_n^2} \tr(\tilde K)\right),$$
+		$$\derivative{F_V}{\theta} = \frac 1 2 \left( -\tr \left(B^{-1} \derivative{B}{\theta}\right) + y^T B^{-1} \derivative{B}{\theta} B^{-1} y - \right.$$    
+		$$- \left. \frac 1 {\sigma_n^2} \tr\left(\derivative{K_{nn}}{\theta} - \left(\derivative{K_{nm}}{\theta}K_{mm}^{-1} - K_{nm} K_{mm}^{-1} \derivative{K_{mm}}{\theta}K_{mm}^{-1}\right) K_{mn} - K_{nm} K_{mm}^{-1} \derivative{K_{mn}}{\theta}\right)\right),$$
+		where
+		$$\derivative{B}{\theta} = \left(\derivative{K_{nm}}{\theta}K_{mm}^{-1} - K_{nm} K_{mm}^{-1} \derivative{K_{mm}}{\theta}K_{mm}^{-1}\right) K_{mn} +  K_{nm} K_{mm}^{-1} \derivative{K_{mn}}{\theta}.$$
+
+		We can rewrite
+		$$\derivative{F_V}{\theta} = \frac 1 2 \left( -\tr \left(B^{-1} \derivative{B}{\theta}\right) + y^T B^{-1} \derivative{B}{\theta} B^{-1} y - \frac 1 {\sigma_n^2} \tr \left(\derivative {K_{nn}} {\theta} - \derivative {B}{\theta}\right) \right).$$
+
+		Now we can optimize $F_V$ with respect to kernel hyper-parameters. Similarly, we can take derivatives with respect to $X_m$ and $\sigma_n$ and opptimize $F_V$ with respect to them as well.
+
+		However, if we compute $F_v$ and it's derivatives as they are, it takes $O(n^3)$ time which is not faster, than recovering the full Gaussian process. So, we have to rewrite these values in a form that allows for faster computation.
+
+		First of all, let's deal with $\log|B|$ and $B^{-1}$. Using the matrix determinant lemma we obtain
+		$$|B| = |\sigma_n^2 I + K_{nm} K_{mm}^{-1} K_{mn}| = \frac{\left|K_{mm} + \cfrac{K_{mn} K_{nm}}{\sigma_n^2}\right| \sigma_n^2}{|K_{mm}|}.$$
+		So, denoting $A = K_{mm} + \cfrac{K_{mn} K_{nm}}{\sigma_n^2}$, we obtain
+		$$\log |B| = \log |A| + 2 \log \sigma_n - \log |K_{mm}|.$$
+		Note tha this is computed in $O(n m^2)$ instead of $O(n^3)$.
+
+		Using the Woodbury identity, we obtain
+		$$B^{-1} = (\sigma_n^2 I + K_{nm} K_{mm}^{-1} K_{mn})^{-1} = \frac I {\sigma_n^2} - \frac{K_{nm} A^{-1} K_{mn}}{\sigma^{4}},$$
+		which allows for computing $y^T B^{-1} y$ in $O(n m)$.
+
+		Similarly, we can compute the gradient in $O(nm^2)$. In order to do so, we need to rewrite every trace $\tr(M_{nm} M_{mm} M_{mn})$, where $M_{kl} \in \R^{k \times l}$, in the form $\tr(M_{mm} M_{mn} M_{nm})$, which is computed in $O(nm^2)$, and use the derived formulas for $B^{-1}$.
+
+		Now let's try to compute the second order derivatives.
+		$$\frac{\partial^2 F_V} {\partial \theta_j \partial\theta_i} = \derivative{}{\theta_j} \left(\derivative{F_V}{\theta_i}\right) = \frac 1 2 \derivative{}{\theta_j} \left( -\tr \left(B^{-1} \derivative{B}{\theta_i}\right) + y^T B^{-1} \derivative{B}{\theta_i} B^{-1} y - \frac 1 {\sigma_n^2} \tr \left(\derivative {K_{nn}} {\theta_i} - \derivative {B}{\theta_i}\right)\right) = $$
+		$$ = \frac 1 2 \left(\tr\left( B^{-1} \derivative{B}{\theta_j} B^{-1}\derivative{B}{\theta_i} - B^{-1} \sndderivative{B}{\theta_j}{\theta_i}\right) + y^T \left(B^{-1} \sndderivative{B}{\theta_j} {\theta_i} B^{-1}  - 2 B^{-1} \derivative{B}{\theta_j} B^{-1} \derivative{B}{\theta_i} B^{-1} \right) y \right. - $$
+		$$ \left.- \frac 1 {\sigma_n^2} \tr\left(\sndderivative{K_{nn}}{\theta_j}{\theta_i} - \sndderivative{B}{\theta_j}{\theta_i}\right)\right),$$
+		where
+		$$\sndderivative{B}{\theta_j}{\theta_i} = \derivative{}{\theta_j} \left(\derivative{K_{nm}}{\theta_i}K_{mm}^{-1} K_{mn} - K_{nm} K_{mm}^{-1} \derivative{K_{mm}}{\theta_i}K_{mm}^{-1} K_{mn} +  K_{nm} K_{mm}^{-1} \derivative{K_{mn}}{\theta_i}\right) = $$
+
+		$$ = \sndderivative{K_{nm}}{\theta_j}{\theta_i}K_{mm}^{-1} K_{mn} + K_{nm} K_{mm}^{-1}\sndderivative{K_{mn}}{\theta_j}{\theta_i}  - \derivative{K_{nm}}{\theta_i}K_{mm}^{-1} \derivative{K_{mm}}{\theta_j}K_{mm}^{-1}K_{mn} - $$
+		
+		$$- K_{nm} K_{mm}^{-1} \derivative{K_{mm}}{\theta_j}K_{mm}^{-1}\derivative{K_{mn}}{\theta_i} + \derivative{K_{nm}}{\theta_j}K_{mm}^{-1} \derivative{K_{mn}}{\theta_i} + \derivative{K_{nm}}{\theta_i} K_{mm}^{-1} \derivative{K_{mn}}{\theta_j} $$
+
+		$$- \derivative{K_{nm}}{\theta_j} K_{mm}^{-1} \derivative{K_{mm}}{\theta_i}K_{mm}^{-1} K_{mn} + K_{nm} K_{mm}^{-1}\derivative{K_{mm}}{\theta_j} K_{mm}^{-1}\derivative{K_{mm}}{\theta_i}K_{mm}^{-1} K_{mn}$$
+
+		$$ - K_{nm} K_{mm}^{-1} \sndderivative{K_{mm}}{\theta_j}{\theta_i}K_{mm}^{-1} K_{mn} + K_{nm} K_{mm}^{-1} \derivative{K_{mm}}{\theta_i}K_{mm}^{-1}\derivative{K_{mm}}{\theta_j}K_{mm}^{-1} K_{mn} - $$
+
+		$$- K_{nm} K_{mm}^{-1} \derivative{K_{mm}}{\theta_i}K_{mm}^{-1} \derivative{K_{mn}}{\theta_j}.$$

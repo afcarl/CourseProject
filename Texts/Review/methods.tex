@@ -1,0 +1,22 @@
+It follows from the discussion above, that full Gaussian process regression scales as $O(n^3)$ and thus cannot be applied to big datasets. In this section we will review several approximate methods, that make Gaussian processes practical.
+
+\subsection{Methods, based on inducing inputs}
+	Most of the existing methods are based on introducing a set of $m$ function points that are called inducing inputs. Using these inputs one can make approximate predictions of the values of the hidden process at test points with a complexity of $O(nm^3)$ instead of $O(n^3)$.
+	
+	Consider the following situation. We have a dataset of $n$ examples $x_i$ with corresponding values $y_i$. We will denote the matrix of pairwise values of the covariance function by $K_{nn}$. Now we introduce a set of $m$ inducing inputs. We will denote the corresponding covariance matrix by $K_{mm}$ and the matrices of covariances between the inducing points and training points by $K_{nm}$ and $K_{mn}$. We will denote the vectors, comprised of noisy and true function values $y_i$ and $f_i$ at training points by $y$ and $f$ respectively. We will also introduce a distribution $q(u)$ over the hidden function values $u$ at the inducing inputs.
+	
+	It's easy to see, that
+	$$p(y|f) = \N (y|f, \sigma_n I),$$
+	$$p(f|u) = \N (f|K_{nm} K_{mm}^{-1}u, \tilde K),$$
+	$$p(u) = \N(u|0, K_{mm}),$$
+	where $\tilde K = K_{nn} - K_{nm} K_{mm}^{-1} K_{mn}.$
+		
+	\subsubsection{Variational learning of inducing points}
+		\input{titsias.tex}
+
+	\pagebreak
+	\subsubsection{Stochastic variational inference}
+		\input{svi.tex}
+
+	\subsection{Stochastic variational inference for classification}
+		\input{svi_classification}

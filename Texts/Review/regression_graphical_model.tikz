@@ -1,0 +1,4 @@
+\begin{tikzpicture}
+	\input{base_graphical_model.tikz}
+\end{tikzpicture}
+

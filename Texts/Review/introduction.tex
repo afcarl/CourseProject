@@ -1,0 +1,13 @@
+Consider the following definition
+	\begin{definition}
+		A Gaussian process is a collection of random variables, any finite number of which have a joint Gaussian distribution.
+	\end{definition}
+	A Gaussian process is completely specified by it's mean function and covariance function. These functions are defined as follows
+	\begin{definition}
+		Let $f(x)$ be a real-valued Gaussian process. Then the functions
+		$$m(x) = \E[f(x)],$$
+		$$k(x, x') = \E[(f(x) - m(x)) (f(x') - m(x'))],$$
+		are the mean function and the covariance function of the process $f$ respectively. 
+	\end{definition}
+	
+	We will write the Gaussian process as $f(x) \sim \GP(m(x), k(x, x'))$.

@@ -1,0 +1,41 @@
+Consider the following task. We have a dataset $\{(x_i, f_i) | i = 1, \ldots, n\}$, generated from a Gaussian process $f \sim \GP(m(x), k(x, x'))$, let $x \in \R^d$.  We will denote the matrix comprised of points $x_1, \ldots, x_n$ by $X \in \R^{n \times d}$ and the vector of corresponding values $f_1, ..., f_n$ by $f \in \R^n$. We want to predict the values $f_* \in \R^m$ of this random process at a set of other m points $X_* \in \R^{m \times d}$. The joint distribution of $f$ and $f_*$ is given by
+	$$
+	\left [ \begin{array}{c} f\\ f_* \end{array} \right ]
+	\sim
+	\N \left ( 0, \left [\begin{array}{cc} K(X, X) & K(X, X_*)\\ K(X_*, X) & K(X_*, X_*) \end{array} \right] \right ),
+	$$
+	where $K(X, X) \in \R^{n \times n}$, $K(X, X_*) = K(X^*, X)^T \in \R^{n \times m}$, $K(X^*, X^*) \in \R^{m \times m}$ are the matrices comprised of pairwise values of the covariance function $k$ for the given sets.
+	
+	The conditional distribution
+	
+	$$f_* | X_*, X, f \sim \N( \hat m, \hat K ),$$
+	where 
+	$$\E [f_* | f ] = \hat m = K(X_*, X) K(X, X)^{-1} f,$$
+	$$\cov(f_* | f ) = \hat K = K(X_*, X_*) - K(X_*, X)K(X, X)^{-1}K(X, X_*).$$
+		
+	Thus, predicting the values of the Gaussian process at a new data point requires solving a linear system with a matrix of size $n \times n$ and thus scales as $O(n^3)$.
+
+	\begin{figure}[!h]
+		\centering
+		\subfloat{
+			\scalebox{0.7}{
+				\input{../../Code/Experiments/pictures/1dgp-regression.pgf}
+			}
+		}
+		\subfloat{
+			\scalebox{0.7}{
+	    		\input{../../Code/Experiments/pictures/2dgp-regression.pgf}
+			}
+		}
+		\caption{One and two-dimensional gaussian processes}
+		\label{brute_reg_example}
+	\end{figure}
+
+
+	In fig. \ref{brute_reg_example} you can see the examples of one and two-dimensional gaussian-processes, reconstructed from the data. The data points are shown by black `$+$' signs.
+	
+	\subsubsection{Noisy case}
+		Consider the following model. We now have a dataset $\{(x_i, y_i)| i = 1, \ldots n\}$, where $y_i = f(x_i) + \varepsilon$, $\varepsilon \sim \N(0, \sigma_n)$. This means that we only have access to the noisy observations and not the true values of the process at data points. With the notation and logics similar to the one we used it the previous section we can find the conditional distribution for the values $f_*$ of the process at new points $X_*$ in this case:
+		$$f_* | y \sim \N( \hat m, \hat K ),$$
+		$$\E[f_* | y] = \hat m = K(X_*, X) (K(X, X) + \sigma_n^2 I)^{-1} y,$$
+		$$\cov(f_* | y ) = \hat K = K(X_*, X_*) - K(X_*, X)(K(X, X) + \sigma_n^2 I)^{-1}K(X, X_*).$$

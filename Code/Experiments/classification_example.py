@@ -14,6 +14,11 @@ num = 100
 test_density = 20
 dim = 2
 seed = 21
+ind_num = 3
+method = 'svi'
+maxiter = 50
+
+opts = {'maxiter':maxiter, 'mydisp': True}
 
 np.random.seed(seed)
 x_tr = np.random.rand(dim, num)
@@ -32,18 +37,24 @@ y_tr, y_test = gp.generate_data(x_tr, x_test, seed=seed)
 
 print("Data generated")
 
-new_gp = GPC(model_covariance_obj)
-new_gp.find_hyper_parameters(x_tr, y_tr, max_iter=50, alternate=False)
+new_gp = GPC(model_covariance_obj, method=method, hermgauss_deg=100)
+new_gp.fit(x_tr, y_tr, num_inputs=ind_num, optimizer_options=opts)
 
 print(new_gp.covariance_obj.get_params())
-predicted_y_test = new_gp.predict(x_test, x_tr, y_tr)
+if method == 'brute':
+    predicted_y_test = new_gp.predict(x_test, x_tr, y_tr)
+elif method == 'svi':
+    predicted_y_test = new_gp.predict(x_test)
+inducing_points, mean, cov = new_gp.inducing_inputs
 mistake_lst = [i for i in range(len(y_test)) if predicted_y_test[i] != y_test[i]]
 
 print("Mistakes: ", np.sum(predicted_y_test != y_test))
 if dim == 2:
-    plot_class_data(x_tr, y_tr, 'bo', 'ro')
+    plot_class_data(x_tr, y_tr, 'bo', 'mx')
     plt.contour(np.linspace(0, 1, test_density), np.linspace(0, 1, test_density),
                 y_test.reshape((test_density, test_density)), levels=[0], colors=['g'])
     plt.contour(np.linspace(0, 1, test_density), np.linspace(0, 1, test_density),
                 predicted_y_test.reshape((test_density, test_density)), levels=[0], colors=['y'])
+    if method != 'brute':
+        plt.plot(inducing_points[0, :], inducing_points[1, :], 'ro', markersize=10)
     plt.show()

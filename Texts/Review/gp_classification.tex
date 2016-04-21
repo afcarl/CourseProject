@@ -1,0 +1,50 @@
+\label{gp-classification}
+	Another important class of problems in machine learning is classification. We will consider the following problem. We have a dataset $\{(x_i, y_i) | i = 1, \ldots, n\}$, where $x_i \in \R^d$, $y_i \in \{-1, 1\}$. We want to predict the probabilities of new datapoints $x_*$ belonging to positive class.
+
+	We will consider the following model. We will introduce a latent function $f(x)$ and put a GP prior over it. The model is then
+	$$\pi(x) = p(y_* = +1 | x_*) = \sigma(f(x_*)),$$
+	where $f \sim \GP(m(\cdot), k(\cdot, \cdot))$, and $\sigma(z) = (1 + \exp(-z))^{-1}$ (one can use other sigmoid functions as well).
+
+	Now inference can be done in two steps. First, we should find the conditional distribution of the value of the latent process $f$ at the new data point $x_*$. This can be computed as follows
+	\begin{equation}
+		\label{classification_conditional}
+		p(f_* | X, y, x_*) = \int p(f_* | X, x_*, f) p(f | X, y) df.
+	\end{equation}
+	Now, the probability of the positive class is given by marginalizing over the latent variable $f_*$.
+	\begin{equation}
+		\label{classification_class_probability}
+		\pi(x_*) = p(y = +1 | X, y, x_*) = \int \sigma(f_*) p(f_* | X, y, x_*) df_*.
+	\end{equation}
+
+	Unfortunantely, both the integrals in \ref{classification_conditional} and \ref{classification_class_probability} are intractable. Thus, we have to use various techniques to approximate these integrals. We will describe a method, based on Laplace approximation below.
+
+	\subsubsection{Laplace approximation}
+		Laplace approximation for approximating the integral \ref{classification_conditional} utilizes a Gaussian approximation $q(f| X, y)$ to the posterior $p(f | X, y)$. This approximation is obtained via Taylor expansion of $\log p(f| X, y)$ around it's maximum.
+
+		In order to find the maximum of the posterior, we first use the Bayes rule.
+		$$p(f | X, y) = \frac{p(y | f) p(f | X)}{p(y | X)}.$$
+		However, the denomenator does not depend on $X$, so the maximum of the posterior can be found as the maximum of the function
+		$$\Psi(f) = \log(p(y | f) p(f | X)) = \log p(y | f) + \log p(f | X) = \log p(y | f) - \frac 1 2 f^T K^{-1} f - \frac 1 2 \log |K| - \frac n 2 \log 2 \pi,$$
+		where $K = K(X, X)$. Note, that $p(y | f) = \prod_{i = 1}^n p(y_i | f_i)$
+
+		Now, differentiating $\Psi$ wrt $f$ we obtain
+		$$\derivative{\Psi} {f} = \derivative{\log p(y | f)} {f} - K^{-1} f,$$
+		$$\frac{\partial^2\Psi}{\partial f^2} = \frac{\partial^2 \log p(y | f)}{\partial f^2} - K^{-1}.$$
+
+		For the logistic likelihood $\log p(y_i | f_i) = -\log (1 + \exp(-y_i f_i))$ we obtain
+		$$\derivative{\log p(y_i | f_i)} {f_i} = \frac {y_i + 1} 2 - p(y_i = +1 | f_i),$$
+		$$\frac{\partial^2 \log p(y | f)}{\partial f^2} = - p(y_i = +1 | f_i)(1 - p(y_i = +1 | f_i)).$$
+		Setting the gradient of $\Psi$ to zero we obtain
+		\begin{equation}
+			\label{laplace_method_opt_derivative}
+			\left.\derivative{\Psi(f)} {f}\right|_{f = \hat f} = 0 \Rightarrow K\left(\left.\derivative{\log p(y_i | f_i)} {f_i}\right|_{f = \hat f}\right).
+		\end{equation}
+
+		This equation is not analytically solvable, but might be useful later. In order to find the optimum of $\Psi$ we use the Newton method.
+
+		Having found the maximum $\hat f$ of the posterior, we can now specify the Laplace approximation to the posterior as 
+		$$q(f | X, y) = \N \left(\hat f, - \left(\left. \frac{\partial^2 \Psi(f)}{\partial f^2} \right|_{f = \hat f}\right)^{-1}\right).$$
+
+		Now, we can estimate the probabilities by
+		$\pi(x_*) = \int \sigma(f_*) q(f_* | X, y, x_*) df,$
+		or just use $\pi(x_*) = \sigma(\hat f)$, if we are only interested in the most probable classification and not the probabilities themselves (it's shown that for the most probable classifications the two approaches are equivalent).

@@ -60,8 +60,8 @@ ind_inputs_num = 50
 max_iter = 200
 batch_size = 100
 
-method = 'brute'  # possible methods: 'brute', 'vi', 'means', 'svi'
-parametrization = 'cholesky'  # possible parametrizations for svi method: cholesky, natural
+method = 'svi'  # possible methods: 'brute', 'vi', 'means', 'svi'
+parametrization = 'natural'  # possible parametrizations for svi method: cholesky, natural
 optimizer = 'L-BFGS-B'
 # possible optimizers: 'SAG', 'FG', 'L-BFGS-B' for cholesky-svi;
 # 'L-BFGS' and 'Projected Newton' for 'means' and 'vi'
@@ -124,7 +124,7 @@ if dim == 1:
     if method != 'brute':
         plot_reg_data(inducing_points, mean, 'ro', markersize=8)
     plt.title("Predictive distribution")
-    plt.savefig('pictures/')
+    # plt.savefig('pictures/')
     plt.show()
 
 elif dim == 2:

@@ -599,7 +599,7 @@ class GPR(GP):
                                                           options=optimizer_options)
             elif self.optimizer == 'L-BFGS-B':
                 res, w_list, time_list = minimize_wrapper(fun, param_vec, method='L-BFGS-B', mydisp=False,
-                                                          bounds=bnds, jac=True, options=optimizer_options)
+                                                           bounds=bnds, jac=True, options=optimizer_options)
                 res = res['x']
             else:
                 raise ValueError('Wrong optimizer for svi method' + self.optimizer)
@@ -625,13 +625,13 @@ class GPR(GP):
                                        indices):
         """
         The approximation of Evidence Lower Bound (L3 from the article 'Gaussian process for big data') and it's derivative wrt
-        kernel hyper-parameters. The approximation is found using just one data point.
+        kernel hyper-parameters and variational parameters. The approximation is found using a mini-batch.
         :param data_points: the array of data points
         :param target_values: the target values at these points
         :param inducing_inputs: an array of inducing inputs
         :param mu: the current mean of the process at the inducing points
         :param sigma: the current covariance of the process at the inducing points
-        :param theta: a vector of hyper-parameters, the point of evaluation
+        :param theta: a vector of hyper-parameters and variational parameters, the point of evaluation
         :param indices: a list of indices of the data points in the mini-batch
         :return: ELBO and it's gradient approximation in a tuple
         """
@@ -650,9 +650,6 @@ class GPR(GP):
             sigma = sigma_L.dot(sigma_L.T)
 
         old_params = self.covariance_obj.get_params()
-        # theta = list(theta)
-        # theta.append(np.copy(old_params[-1]))
-        # theta = np.array(theta)
         self.covariance_obj.set_params(theta)
 
         # Data point for gradient estimation
@@ -667,7 +664,6 @@ class GPR(GP):
         # Covariance function and it's parameters
         cov_fun = self.covariance_fun
         params = self.covariance_obj.get_params()
-        # sigma_n = self.covariance_obj.get_params()[-1]
         sigma_n = parameter_vec[len(self.covariance_obj.get_params())-1]
 
         # Covariance matrices
@@ -688,7 +684,7 @@ class GPR(GP):
         d_K_mm__d_theta_lst.append(d_K_mm__d_sigma_n)
         d_k_i__d_theta_lst.append(d_k_i__d_sigma_n)
 
-        # Variational Lower Bound, estimated by one data point
+        # Variational Lower Bound, estimated by a mini-batch
         loss = -np.log(sigma_n) * l - np.linalg.norm(y_i - k_i.T.dot(K_mm_inv.dot(mu)))**2 / (2 * sigma_n**2)
         loss += - tilde_K_ii / (2 * sigma_n**2)
         loss += - np.trace(sigma.dot(Lambda_i))/2
@@ -721,9 +717,6 @@ class GPR(GP):
             grad[param] += np.trace(sigma.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv)))) * l / (2*N)
             grad[param] += mu.T.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv.dot(mu)))) * l / (2*N)
 
-        # print(l)
-        # print(sigma_n)
-        # exit(0)
         grad[-1] += (
             tilde_K_ii / (sigma_n**3) -
             l / (sigma_n) +
