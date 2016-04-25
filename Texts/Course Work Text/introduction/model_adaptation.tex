@@ -1,7 +1,7 @@
 In the previous two sections, we described, how to fit a Gaussian process to the data in the regression and in the classification problem. However, we only considered the Gaussian processes with fixed covariance functions. This model can be rather limiting.
 
 Most of the popular covariance functions have a set of parameters, which we will refer to as covariance (or kernel) hyper-parameters. For example, the squared exponential covariance function
-$$k_{SE}(x, x') = \sigma \exp{ - \frac{||x - x'||^2}{l^2}}$$
+$$k_{SE}(x, x') = \sigma^2 \exp{ - \frac{||x - x'||^2}{l^2}}$$
 has two parameters — variance $\sigma$ and length-scale $l$. An example of a more complicated popular covariance function is the Matern function, given by
 $$k_{Matern}(x, x') = \frac{2^{1 - \nu}} {\Gamma(\nu)} \left(\frac{\sqrt{2 \nu}||x - x'||}{l}\right)^{\nu} K_{\nu} \left( \frac{\sqrt{2 \nu}}{||x - x'||}{l}\right),$$ 
 with two positive parameters $\nu$ and $l$. Here $K_{\nu}$ is a modified Bessel function.
@@ -40,14 +40,13 @@ with two positive parameters $\nu$ and $l$. Here $K_{\nu}$ is a modified Bessel 
 			\input{../../Code/Experiments/pictures/1dgp-regression_matern_1.pgf}
 		}
 	}
-	\label{cov_examples}
 	\caption{Gaussian processes with squared-exponential and Matern covariance functions, reconstructed from the same data for different values of hyper-parameters}
+	\label{cov_examples}
 \end{figure}
 
 In fig. \ref{cov_examples} you can see the predictive distributions of the Gaussian-process regression for the same dataset for different values of kernel hyper-parameters of the squared exponential and Matern covariance functions. It can be seen from these plots, that in order to get a good model for the data, one should find a good set of kernel hyper-parameters.
 
 \begin{figure}[!h]
-	\label{model_adaptation}
 	\centering
 	\subfloat{
 		\scalebox{0.75}{
@@ -60,22 +59,23 @@ In fig. \ref{cov_examples} you can see the predictive distributions of the Gauss
 		}
 	}
 	\caption{Predictive distribution before and after hyper-parameter adaptation}
+	\label{model_adaptation}
 \end{figure}
 
 Bayesian paradigm provides a way of tuning the kernel hyper-parameters of the GP-model through maximizization of the evidence, or marginal likelihood of the model. Marginal likelihood is given by
 $$p(y | X) = \int p(y | f, X) p(f | X) df,$$
 which is the likelihood, marginalized over the latent values $f$ of the underlying process.
 
-For the GP-regression the marginal likelihood can be computed in claused form and is given by
+For the GP-regression the marginal likelihood can be computed in closed form and is given by
 \begin{equation}
 	\label{regression_ml}
 	\log p(y | X) = -\frac 1 2 y^{T} (K + \sigma_n^2 I)^{-1} y - \frac 1 2 \log |K + \sigma_n^2 I| - \frac n 2 \log 2 \pi.
 \end{equation}
 
-For the laplace approximation method, the marginal likelihhod is also availible in the closed form. 
+For the laplace approximation method, the marginal likelihhod is also available in the closed form. 
 
 Thus, for the regression problem, we should first maximize the evidence, given by (\ref{regression_ml}) with respect to covariance hyper-parameters and then use the predictive distribution, derived in section \ref{gp_regression}, to make predictions for the new data points.
 
-For the laplace approximation method for the classification problem, the procedure is slightly more complicated and is described in \cite{GPinML}.
+For the Laplace approximation method for the classification problem, the procedure is slightly more complicated and is described in \cite{GPinML}.
 
 Fig. \ref{model_adaptation} provides an example of the GP-regression predictive distribution for the same dataset before and after tuning the kernel hyper-parameters. It can be seen from the plots, that the model with tuned hyper-parameters, describes the data much better.

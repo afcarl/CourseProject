@@ -1,11 +1,11 @@
 \label{gp_regression}
 Consider the regression problem. We have a dataset $\{(x_i, f_i) | i = 1, \ldots, n\}$, which is considered to be generated from an unknown Gaussian process $f \sim \GP(m(\cdot), k(\cdot, \cdot))$, let $x \in \R^d$.  We will denote the matrix comprised of points $x_1, \ldots, x_n$ by $X \in \R^{n \times d}$ and the vector of corresponding target values $f_1, ..., f_n$ by $f \in \R^n$. We want to predict the values $f_* \in \R^l$ of the unknown process at a set of other $l$ points $X_* \in \R^{l \times d}$.
 
-We will also consider the case, when we can't directly observe the values $f$ of the process at points$X$. Instead, we will use their noisy versions $y$, which are distibuted as
+We will also consider the case, when we can't directly observe the values $f$ of the process at points $X$. Instead, we will use their noisy versions $y$, which are distributed as
 $$y \sim \N(f, \sigma_n^2 I),$$
 for some noise variance $\sigma_n \in \R$. The graphical model for this setting is provided in fig. \ref{gp_graphical_model}.
 
-We will use the following notaion. We will denote the matrix, comprised of pairwise values, of covariance functions on two sets of points $A = (a_1, \ldots, a_n)^T$ and $B = (b_1, \ldots, b_m)$ by
+We will use the following notaion. We will denote the matrix, comprised of pairwise values, of covariance functions on two sets of points $A = (a_1, \ldots, a_n)^T \in \R^{n \times d}$ and $B = (b_1, \ldots, b_m)^T \in \R^{m \times d}$ by
 $$K(A, B) = 
 \left (\begin{array}{cccc} 
 	k(a_1, b_1) & k(a_1, b_2) & \ldots & k(a_1, b_m) \\
@@ -27,7 +27,7 @@ $$
 	\scalebox{0.9}{
 		\input{../pictures/full_gp_gm.tikz}
 	}
-	\caption{The graphical model for gaussian process regression and classification}
+	\caption{The graphical model for Gaussian process regression and classification}
 	\label{gp_graphical_model}
 \end{figure}
 
@@ -61,11 +61,11 @@ Thus, the complexity of obtaining the predictive distribution, is determined by 
     		\input{../../Code/Experiments/pictures/2dgp-regression.pgf}
 		}
 	}
-	\caption{One and two-dimensional gaussian processes, reconstructed from data}
+	\caption{One and two-dimensional Gaussian processes, reconstructed from data}
 	\label{brute_reg_example}
 \end{figure}
 
 
-In fig. \ref{brute_reg_example} you can see the examples of one and two-dimensional gaussian-processes, reconstructed from the data. The data points are shown by black `$+$' signs. 
+In fig. \ref{brute_reg_example} you can see the examples of one and two-dimensional Gaussian processes, reconstructed from the data. The data points are shown by black `$+$' signs. 
 
 For more detailed description of Gaussian process regression see \cite{GPinML}.
