@@ -1,23 +1,23 @@
 Bayesian paradigm provides a way of estimating the kernel hyper-parameters of the GP-model through maximizization of the marginal likelihood of the model. Marginal likelihood is given by
-	$$p(y | X) = \int p(y | f, X) p(f | X) df,$$
-	which is the likelihood, marginalized over the hidden values $f$ of the underlying process.
+$$p(y | X) = \int p(y | f, X) p(f | X) df,$$
+which is the likelihood, marginalized over the hidden values $f$ of the underlying process.
 
-	For the GP-regression the marginal likelihood can be computed in claused form and is given by
-	\begin{equation}
-		\label{regression_ml}
-		\log p(y | X) = -\frac 1 2 y^{T} (K + \sigma_n^2 I)^{-1} y - \frac 1 2 \log |K + \sigma_n^2 I| - \frac n 2 \log 2 \pi.
-	\end{equation}
+For the GP-regression the marginal likelihood can be computed in claused form and is given by
+\begin{equation}
+	\label{regression_ml}
+	\log p(y | X) = -\frac 1 2 y^{T} (K + \sigma_n^2 I)^{-1} y - \frac 1 2 \log |K + \sigma_n^2 I| - \frac n 2 \log 2 \pi.
+\end{equation}
 
-	For the method, described in section \ref{gp-classification} the marginal likelihood can be computed as follows.
-	$$p(y | X) = \int p(y | f, X) p(f | X) df = \int \exp{\Psi(f)} df,$$
-	where we use the notation from section \ref{gp-classification}. Using the Taylor expansion, locally near $\hat f$ we have $\Psi(f) \simeq \Psi(\hat f) + \frac 1 2(f - \hat f)^T A (f - \hat f)$, where $A$ is the hessian of $\Psi$ at $\hat f$. Using this approximation we obtain
-	$$p(y | X) \simeq q(y | X) = \exp(\Psi(\hat f)) \int \exp( - \frac 1 2 (f - \hat f)^T A (f - \hat f)) df.$$
-	This last integral can be calculated analytically to obtain a closed form approximation to the log marginal likelihood. 
-	\begin{equation}
-		\label{classification_ml}
-		\log q(y|X) = -\frac 1 2 \hat f^T K^{-1} \hat f + \log p(y|\hat f) - \frac 1 2 \log|B|,
-	\end{equation}
-	where 
-	$$|B| = |K| \left|- \left. \frac{\partial^2 \log p(y | f)}{\partial f^2} \right|_{f = \hat f} \right|.$$ 
+For the method, described in section \ref{gp-classification} the marginal likelihood can be computed as follows.
+$$p(y | X) = \int p(y | f, X) p(f | X) df = \int \exp{\Psi(f)} df,$$
+where we use the notation from section \ref{gp-classification}. Using the Taylor expansion, locally near $\hat f$ we have $\Psi(f) \simeq \Psi(\hat f) + \frac 1 2(f - \hat f)^T A (f - \hat f)$, where $A$ is the hessian of $\Psi$ at $\hat f$. Using this approximation we obtain
+$$p(y | X) \simeq q(y | X) = \exp(\Psi(\hat f)) \int \exp( - \frac 1 2 (f - \hat f)^T A (f - \hat f)) df.$$
+This last integral can be calculated analytically to obtain a closed form approximation to the log marginal likelihood. 
+\begin{equation}
+	\label{classification_ml}
+	\log q(y|X) = -\frac 1 2 \hat f^T K^{-1} \hat f + \log p(y|\hat f) - \frac 1 2 \log|B|,
+\end{equation}
+where 
+$$|B| = |K| \left|- \left. \frac{\partial^2 \log p(y | f)}{\partial f^2} \right|_{f = \hat f} \right|.$$ 
 
-	Using the derived formulas \ref{classification_ml} and \ref{regression_ml} we can find the optimal values of hyper-parameters through maximization of the marginal likelihood of the corresponding model.
+Using the derived formulas \ref{classification_ml} and \ref{regression_ml} we can find the optimal values of hyper-parameters through maximization of the marginal likelihood of the corresponding model.

@@ -1,0 +1,37 @@
+\begin{tikzpicture}
+	\tikzstyle{x_i} = [circle, draw, fill=green!50, minimum size=1.2cm, text width=0.8cm, align=center, font=\large]
+	\tikzstyle{f_i} = [circle, draw, fill=blue!30, minimum size=1.2cm, inner sep=2pt, outer sep=2pt, font=\small, align=center]
+	\tikzstyle{y_i} = [circle, draw, fill=yellow!30, minimum size=1.2cm, inner sep=2pt, outer sep=2pt, font=\small, align=center]
+	\tikzstyle{edge_label} = [font=\small, label={[label distance = -4pt]90:$\text$}]
+	\tikzstyle{edge} = [thick, >=stealth]
+	\tikzstyle{biedge} = [thick, >=stealth]
+	\def\step{-3}
+	\def\layerpos{3}
+
+	\foreach \name/\x in {f_1/-2.5, f_2/2.5, f_n/5} 
+	  	\node[f_i] (\name) at (\x, \layerpos) {$\name$};
+
+	\draw[biedge] (f_1)++(0.6,-0.2) -- ++(3.8,0); %(f_2);
+	\draw[biedge] (f_2)++(0.6,-0.2) -- +(1.3,0);% ++ (f_n);
+	\draw [biedge] (f_1) to [out=-30,in=-150] (f_n);
+	\node (other^2) at (0, \layerpos) {$\ldots$};
+
+	%observables
+	\pgfmathsetmacro{\layerpos}{\layerpos + \step}
+
+	\foreach \name/\x in {y_1/-2.5, y_2/2.5, y_n/5} 
+	  	\node[y_i] (\name) at (\x, \layerpos) {$\name$};
+
+	\node (other^3) at (0, \layerpos) {$\ldots$};
+	\foreach \from/\to in {f_1/y_1, f_2/y_2, f_n/y_n}
+		\draw[edge] (\from) -- (\to);
+
+	\tikzstyle{u} = [circle, draw, fill=red!50, minimum size=1.2cm, text width=0.8cm, align=center, font=\large]
+
+	\pgfmathsetmacro{\layerpos}{\step/2}
+	\node[u] (inputs) at (1.25, 6) {$u$};
+
+	\foreach \to in {f_1, f_2, f_n}
+		\draw[edge] (inputs) -- (\to);
+
+\end{tikzpicture}

@@ -52,7 +52,7 @@ model_covariance_obj = SquaredExponential(model_params)
 # model_covariance_obj = Matern(model_params)
 
 gp = GPR(data_covariance_obj)
-num = 100
+num = 50
 test_num = 100
 dim = 1
 seed = 10
@@ -60,7 +60,7 @@ ind_inputs_num = 50
 max_iter = 200
 batch_size = 100
 
-method = 'svi'  # possible methods: 'brute', 'vi', 'means', 'svi'
+method = 'brute'  # possible methods: 'brute', 'vi', 'means', 'svi'
 parametrization = 'natural'  # possible parametrizations for svi method: cholesky, natural
 optimizer = 'L-BFGS-B'
 # possible optimizers: 'SAG', 'FG', 'L-BFGS-B' for cholesky-svi;
@@ -118,7 +118,7 @@ print(new_gp.covariance_obj.get_params())
 print(r2_score(y_test, predicted_y_test))
 
 if dim == 1:
-    plot_reg_data(x_tr, y_tr, 'k+', mew=1, ms=8)
+    # plot_reg_data(x_tr, y_tr, 'k+', mew=1, ms=8)
     plot_predictive(x_test, predicted_y_test, high, low)
     # plot_reg_data(x_test, y_test, 'g-')
     if method != 'brute':

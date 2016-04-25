@@ -1,0 +1,33 @@
+A Gaussian process is a collection of random variables, any finite number of which have a joint Gaussian distribution.
+
+We will only consider processes, that take place in a finite dimensional real space $\R^d$. In this case, $f$ is a gaussian process, if for any $t_1, t_2, \ldots, t_k \in \R^d$ the joint distribution
+$$(f(t_1), f(t_2), \ldots, f(t_k)) \sim \N(m_t, K_t)$$
+for some $m$ and $K$.
+
+The mean $m_t$ of this distribution is defined by the mean function $m: \R^d \rightarrow \R$:
+$$m_t = (m(t_1), m(t_2), \ldots, m(t_k))^T.$$
+
+Similarly, the covariance matrix $K$ is defined by the covariance function $k: \R^d \times \R^d \rightarrow \R$:
+$$K_t = 
+\left (\begin{array}{cccc} 
+k(t_1, t_1) & k(t_1, t_2) & \ldots & k(t_1, t_n) \\
+k(t_2, t_1) & k(t_2, t_2) & \ldots & k(t_2, t_n) \\
+\ldots & \ldots & \ldots & \ldots \\
+k(t_n, t_1) & k(t_n, t_2) & \ldots & k(t_n, t_n) \\
+\end{array} \right).
+$$
+
+It's straightforward then, that a gaussian process is completely defined by it's mean and covariance functions. We will use the following notation. 
+$$f \sim \GP(m(\cdot), k(\cdot, \cdot))$$
+means that $f$ is a Gaussian process with mean function $m$ and covariance function $k$. While the mean function can be an arbitrary real-valued function, the covariance function has to be a kernel, so that the covariance matrices it implies are symmetric and positive definite.
+
+In the fig. \ref{reg_example} two examples of gaussian processes are provided. In the one-dimensional case, the darker blue line is the mean of the process, and the lighter blue region is the $3\sigma$-region, drawn at each point.
+
+% In the two-dimensional case only the mean function is plotted. Mean function, of course, can be arbitratry, but the one in the figure, is tipical in the sence, that it is the mea from a few data points,  
+
+\begin{figure}[!h]
+	\centering
+		\input{../../Code/Experiments/pictures/1dgp-regression_nodata.pgf}
+	\caption{One-dimensional gaussian processes}
+	\label{reg_example}
+\end{figure}

@@ -1,0 +1,32 @@
+\label{gp-classification}
+Another important class of problems in machine learning is classification. We will consider the following problem. We have a dataset $\{(x_i, y_i) | i = 1, \ldots, n\}$, where $x_i \in \R^d$, $y_i \in \{-1, 1\}$. We want to predict the probabilities of new datapoints $x_*$ belonging to positive class.
+
+We will consider the following model. We will introduce a latent function $f: \R^d \rightarrow \R$ and put a zero-mean GP prior over it. 
+$$f \sim \GP(0, k(\cdot, \cdot)).$$
+We will then consider the probability of the object $x_*$ belonging to positiva class, to be equal to $\sigma(f(x_*))$ for the chosen sigmoid function $\sigma$.
+$$p(y_* = +1 | x_*) = \sigma(f(x_*)).$$
+
+Note, that the graphical for this model is exactly the same, as for regression problem and is given in fig. \ref{gp_graphical_model}.
+
+We will use the logistic function $\sigma(z) = (1 + \exp(-z))^{-1}$, however one can use other sigmoid functions as well.
+
+Now inference can be done in two steps. First, for the new data point $x_*$ we should find the conditional distribution of the value of the latent process $f$ at the new data point $x_*$. This can be computed as follows
+\begin{equation}
+	\label{classification_conditional}
+	p(f_* | X, y, x_*) = \int p(f_* | X, x_*, f) p(f | X, y) df.
+\end{equation}
+Now, the probability of the positive class is given by marginalizing over the latent variable $f_*$.
+\begin{equation}
+	\label{classification_class_probability}
+	p(y_* = +1 | X, y, x_*) = \int \sigma(f_*) p(f_* | X, y, x_*) df_*.
+\end{equation}
+
+Unfortunantely, both the integrals in (\ref{classification_conditional}) and (\ref{classification_class_probability}) are intractable. Thus, we have to use various techniques to approximate these integrals. 
+
+For example, one can use laplace approximation method, which builds a Gaussian approximation $q(f | X, y)$ to the true posterior $p(f | X, y)$. This approximation is obtained, by performing the Taylor expansion of the function $\log p(f | X, y)$ around it's maximum $\hat f$. 
+
+Substituting this Gaussian approximation back into (\ref{classification_conditional}) and (\ref{classification_class_probability}), we obtain tractable integrals, and can compute the predictive distribution in a closed form. The more detailed derivation of this algorithm and another algorithm, based on Expectation Propagation can be found in \cite{GPinML}.
+
+We will also describe another method for GP-classification below.
+
+Computational complexity of computing the predictive distribution for this method scales as $\bigO(n^3)$.

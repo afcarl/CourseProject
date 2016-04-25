@@ -1,0 +1,58 @@
+\documentclass[12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[russian]{babel}
+\usepackage[T2A]{fontenc}
+\usepackage{textcomp}
+\usepackage{a4wide}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{wrapfig}
+\usepackage{caption}
+\usepackage{subfig}
+\usepackage{listings}
+\usepackage{hyperref}
+% \usepackage{fontspec}
+\usepackage{pgfplots}
+\usepackage{tikz}
+\usepackage{amsthm}
+\usepackage{pgf,pgfarrows,pgfnodes}
+\usepackage{pgf}
+
+
+\begin{document}
+	
+\renewcommand{\contentsname}{\centerline{\bf Contents}}
+\renewcommand{\refname}{\centerline{\bf Literature}}
+
+\newcommand{\GP}{\mathcal{GP}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\N}{\mathcal{N}}
+\newcommand{\bigO}{\mathcal{O}}
+\newcommand{\cov}{\mbox{cov}}
+\newcommand{\Nystrom}{Nystr\"{o}m }
+\newcommand{\KL}[2]{\mbox{KL}\left(#1\mbox{ || }#2\right)}
+\newcommand{\tr}{\mbox{tr}}
+\newcommand{\derivative}[2]{\frac{\partial #1}{\partial #2}}
+\newcommand{\sndderivative}[3]{\frac{\partial^2 #1}{\partial #2 \partial #3}}
+
+\newlength{\arrayrulewidthOriginal}
+\newcommand{\Cline}[2]{%
+  \noalign{\global\setlength{\arrayrulewidthOriginal}{\arrayrulewidth}}%
+  \noalign{\global\setlength{\arrayrulewidth}{#1}}\cline{#2}%
+  \noalign{\global\setlength{\arrayrulewidth}{\arrayrulewidthOriginal}}}
+
+\newtheorem{definition}{Definition}
+\newtheorem{theorem}{Theorem}
+
+
+\input{title_page.tex}
+\pagebreak
+\section{Introduction}
+	
+	\input{introduction/introduction.tex}
+	
+\pagebreak
+\input{bibliography.tex}
+\end{document}

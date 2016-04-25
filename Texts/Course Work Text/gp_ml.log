@@ -1,9 +1,9 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.10.4)  25 APR 2016 21:40
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.10.4)  25 APR 2016 21:29
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**"Gaussian Processes in ML.tex"
-(./Gaussian Processes in ML.tex
+**gp_ml.tex
+(./gp_ml.tex
 LaTeX2e <2015/01/01>
 Babel <3.9l> and hyphenation patterns for 79 languages loaded.
 (/usr/local/texlive/2015/texmf-dist/tex/latex/base/article.cls
@@ -1351,37 +1351,33 @@ Package: pgfnodes 2006/10/11 v3.0.0 (rcs-revision 1.3)
 Package pgfnodes Warning: This package is obsolete. pgf.sty will load node mana
 gement automatically on input line 17.
 
-) (/usr/local/texlive/2015/texmf-dist/tex/latex/listings/lstlang1.sty
-File: lstlang1.sty 2014/09/06 1.5e listings language file
-)
-(./Gaussian Processes in ML.aux)
-\openout1 = `"Gaussian Processes in ML.aux"'.
+) (./gp_ml.aux)
+\openout1 = `gp_ml.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 33.
-LaTeX Font Info:    ... okay on input line 33.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 33.
-LaTeX Font Info:    ... okay on input line 33.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 33.
-LaTeX Font Info:    ... okay on input line 33.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 33.
-LaTeX Font Info:    ... okay on input line 33.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 33.
-LaTeX Font Info:    ... okay on input line 33.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 33.
-LaTeX Font Info:    ... okay on input line 33.
-LaTeX Font Info:    Checking defaults for T2A/cmr/m/n on input line 33.
-LaTeX Font Info:    ... okay on input line 33.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 33.
-LaTeX Font Info:    Try loading font information for TS1+cmr on input line 33.
-
-(/usr/local/texlive/2015/texmf-dist/tex/latex/base/ts1cmr.fd
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for T2A/cmr/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 23.
+LaTeX Font Info:    Try loading font information for TS1+cmr on input line 23.
+ (/usr/local/texlive/2015/texmf-dist/tex/latex/base/ts1cmr.fd
 File: ts1cmr.fd 2014/09/29 v2.5h Standard LaTeX font definitions
 )
-LaTeX Font Info:    ... okay on input line 33.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 33.
-LaTeX Font Info:    ... okay on input line 33.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 33.
-LaTeX Font Info:    ... okay on input line 33.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
 
 (/usr/local/texlive/2015/texmf-dist/tex/context/base/supp-pdf.mkii
 [Loading MPS to PDF converter (version 2006.09.02).]
@@ -1418,7 +1414,7 @@ Package caption Info: listings package is loaded.
 Package caption Info: End \AtBeginDocument code.
 \c@lstlisting=\count161
 \AtBeginShipoutBox=\box44
-Package hyperref Info: Link coloring OFF on input line 33.
+Package hyperref Info: Link coloring OFF on input line 23.
 
 (/usr/local/texlive/2015/texmf-dist/tex/latex/hyperref/nameref.sty
 Package: nameref 2012/10/27 v2.43 Cross-referencing by name of section
@@ -1428,513 +1424,261 @@ Package: gettitlestring 2010/12/03 v1.4 Cleanup title references (HO)
 )
 \c@section@level=\count162
 )
-LaTeX Info: Redefining \ref on input line 33.
-LaTeX Info: Redefining \pageref on input line 33.
-LaTeX Info: Redefining \nameref on input line 33.
+LaTeX Info: Redefining \ref on input line 23.
+LaTeX Info: Redefining \pageref on input line 23.
+LaTeX Info: Redefining \nameref on input line 23.
 
-(./Gaussian Processes in ML.out) (./Gaussian Processes in ML.out)
+(./gp_ml.out) (./gp_ml.out)
 \@outlinefile=\write4
-\openout4 = `"Gaussian Processes in ML.out"'.
+\openout4 = `gp_ml.out'.
 
-
-ABD: EveryShipout initializing macros
+ ABD: EveryShipout initializing macros
 
 Package pgfplots Warning: running in backwards compatibility mode (unsuitable t
 ick labels; missing features). Consider writing \pgfplotsset{compat=1.12} into 
 your preamble.
- on input line 33.
+ on input line 23.
 
 \arrayrulewidthOriginal=\skip55
 \c@definition=\count163
 \c@theorem=\count164
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 87.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 87.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 87.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 87.
-[1
+(./title_page.tex <pictures/msu.jpg, id=27, 187.902pt x 101.178pt>
+File: pictures/msu.jpg Graphic file (type jpg)
 
-{/usr/local/texlive/2015/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
+<use pictures/msu.jpg>
+Package pdftex.def Info: pictures/msu.jpg used on input line 3.
+(pdftex.def)             Requested size: 187.90154pt x 101.17773pt.
 Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 88.
+(babel)             in language  on input line 22.
 Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 88.
+(babel)             in language  on input line 22.
 Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 92.
+(babel)             in language  on input line 22.
 Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 92.
+(babel)             in language  on input line 22.
+ [1
 
-(./introduction.tex
-Overfull \hbox (1.86844pt too wide) in paragraph at lines 5--6
-[]\T2A/cmr/m/n/12 A Gaussian process is completely specified by it's mean funct
-ion and covariance function.
+{/usr/local/texlive/2015/texmf-var/fonts/map/pdftex/updmap/pdftex.map} <./pictu
+res/msu.jpg>])
+Package babel Info: Redefining russian shorthand "|
+(babel)             in language  on input line 52.
+Package babel Info: Redefining russian shorthand "~
+(babel)             in language  on input line 52.
+ (./introduction/introduction.tex
+Overfull \hbox (3.29045pt too wide) in paragraph at lines 1--2
+\T2A/cmr/m/n/12 This approach leads to a highly interpretable model and allows 
+using the bayesian framework
  []
 
-LaTeX Font Info:    Try loading font information for U+msa on input line 7.
+Package babel Info: Redefining russian shorthand "|
+(babel)             in language  on input line 4.
+Package babel Info: Redefining russian shorthand "~
+(babel)             in language  on input line 4.
+(./introduction/gp_definition.tex
+LaTeX Font Info:    Try loading font information for U+msa on input line 3.
+
 (/usr/local/texlive/2015/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Try loading font information for U+msb on input line 7.
+LaTeX Font Info:    Try loading font information for U+msb on input line 3.
 
 (/usr/local/texlive/2015/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
+)
+(../../Code/Experiments/pictures/1dgp-regression_nodata.pgf)
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+)
+Package babel Info: Redefining russian shorthand "|
+(babel)             in language  on input line 6.
+Package babel Info: Redefining russian shorthand "~
+(babel)             in language  on input line 6.
+ (./introduction/gp_regression.tex
+Overfull \hbox (9.89273pt too wide) in paragraph at lines 2--3
+\T2A/cmr/m/n/12 Consider the regression problem. We have a dataset $\OMS/cmsy/m
+/n/12 f\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 x[]; f[]\OT1/cmr/m/n/12 )\OMS/cmsy/m/n
+/12 j\OML/cmm/m/it/12 i \OT1/cmr/m/n/12 = 1\OML/cmm/m/it/12 ; [] ; n\OMS/cmsy/m
+/n/12 g$\T2A/cmr/m/n/12 , which is considered
+ []
+
+Package babel Info: Redefining russian shorthand "|
+(babel)             in language  on input line 5.
+Package babel Info: Redefining russian shorthand "~
+(babel)             in language  on input line 5.
+Package babel Info: Redefining russian shorthand "|
+(babel)             in language  on input line 5.
+Package babel Info: Redefining russian shorthand "~
+(babel)             in language  on input line 5.
+pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has 
+been already used, duplicate ignored
+<to be read again> 
+                   \relax 
+l.5 $$y \sim \N(f, \sigma_n^2 I),$$
+                                    [1] (../pictures/full_gp_gm.tikz)
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+Package babel Info: Redefining russian shorthand "|
+(babel)             in language  on input line 45.
+Package babel Info: Redefining russian shorthand "~
+(babel)             in language  on input line 45.
+Package babel Info: Redefining russian shorthand "|
+(babel)             in language  on input line 45.
+Package babel Info: Redefining russian shorthand "~
+(babel)             in language  on input line 45.
+[2] (../../Code/Experiments/pictures/1dgp-regression.pgf)
+(../../Code/Experiments/pictures/2dgp-regression.pgf)
+Overfull \hbox (19.94012pt too wide) in paragraph at lines 58--64
+ [][][][] 
+ []
+
+)
+Package babel Info: Redefining russian shorthand "|
+(babel)             in language  on input line 8.
+Package babel Info: Redefining russian shorthand "~
+(babel)             in language  on input line 8.
+ (./introduction/gp_classification.tex
+Package babel Info: Redefining russian shorthand "|
+(babel)             in language  on input line 3.
+Package babel Info: Redefining russian shorthand "~
+(babel)             in language  on input line 3.
+Package babel Info: Redefining russian shorthand "|
+(babel)             in language  on input line 3.
+Package babel Info: Redefining russian shorthand "~
+(babel)             in language  on input line 3.
+ [3])
+Package babel Info: Redefining russian shorthand "|
+(babel)             in language  on input line 10.
+Package babel Info: Redefining russian shorthand "~
+(babel)             in language  on input line 10.
+
+(./introduction/model_adaptation.tex
+Package babel Info: Redefining russian shorthand "|
+(babel)             in language  on input line 4.
+Package babel Info: Redefining russian shorthand "~
+(babel)             in language  on input line 4.
+Package babel Info: Redefining russian shorthand "|
+(babel)             in language  on input line 4.
+Package babel Info: Redefining russian shorthand "~
+(babel)             in language  on input line 4.
+ [4]
+(../../Code/Experiments/pictures/1dgp-regression_se_01.pgf)
+(../../Code/Experiments/pictures/1dgp-regression_se_05.pgf)
+(../../Code/Experiments/pictures/1dgp-regression_se_1.pgf)
+Overfull \hbox (54.21259pt too wide) in paragraph at lines 16--27
+ [][][][][][] 
+ []
+
+(../../Code/Experiments/pictures/1dgp-regression_matern_01.pgf)
+(../../Code/Experiments/pictures/1dgp-regression_matern_05.pgf)
+(../../Code/Experiments/pictures/1dgp-regression_matern_1.pgf)
+Overfull \hbox (54.21259pt too wide) in paragraph at lines 32--44
+ [][][][][][][] 
+ []
+
+
+Package caption Warning: \label without proper \caption on input line 43.
+See the caption package documentation for explanation.
+
+
+LaTeX Warning: Reference `cov_examples' on page 5 undefined on input line 47.
+
+(../../Code/Experiments/pictures/1dgp-regression_noopt.pgf)
+(../../Code/Experiments/pictures/1dgp-regression_opt.pgf)
+Overfull \hbox (46.38118pt too wide) in paragraph at lines 56--62
+ [][][][] 
+ []
+
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+
+Overfull \hbox (3.6216pt too wide) in paragraph at lines 65--66
+\T2A/cmr/m/n/12 model through maximizization of the evidence, or marginal likel
+ihood of the model. Marginal
+ []
+
+Package babel Info: Redefining russian shorthand "|
+(babel)             in language  on input line 66.
+Package babel Info: Redefining russian shorthand "~
+(babel)             in language  on input line 66.
+Package babel Info: Redefining russian shorthand "|
+(babel)             in language  on input line 66.
+Package babel Info: Redefining russian shorthand "~
+(babel)             in language  on input line 66.
+[5]
+
+Package caption Warning: \label without proper \caption on input line 50.
+See the caption package documentation for explanation.
+
+
+LaTeX Warning: Reference `model_adaptation' on page 6 undefined on input line 8
+1.
+
 ))
 Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 95.
+(babel)             in language  on input line 57.
 Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 95.
-
-(./gp_regression.tex (../../Code/Experiments/pictures/1dgp-regression.pgf)
-(../../Code/Experiments/pictures/2dgp-regression.pgf)
-Overfull \hbox (19.94012pt too wide) in paragraph at lines 24--30
- [][][][] 
- []
-
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
+(babel)             in language  on input line 57.
 Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 37.
+(babel)             in language  on input line 57.
 Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 37.
+(babel)             in language  on input line 57.
+ [6] (./bibliography.tex)
 Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 39.
+(babel)             in language  on input line 58.
 Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 39.
+(babel)             in language  on input line 58.
 Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 39.
+(babel)             in language  on input line 58.
 Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 39.
-[2])
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 98.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 98.
- (./gp_classification.tex
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 12.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 12.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 12.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 12.
- [3]
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 21.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 21.
-
-Overfull \hbox (33.18187pt too wide) detected at line 27
-\OT1/cmr/m/n/12 	(\OML/cmm/m/it/12 f\OT1/cmr/m/n/12 ) = [](\OML/cmm/m/it/12 p\O
-T1/cmr/m/n/12 (\OML/cmm/m/it/12 y\OMS/cmsy/m/n/12 j\OML/cmm/m/it/12 f\OT1/cmr/m
-/n/12 )\OML/cmm/m/it/12 p\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 f\OMS/cmsy/m/n/12 j\
-OML/cmm/m/it/12 X\OT1/cmr/m/n/12 )) = [] \OML/cmm/m/it/12 p\OT1/cmr/m/n/12 (\OM
-L/cmm/m/it/12 y\OMS/cmsy/m/n/12 j\OML/cmm/m/it/12 f\OT1/cmr/m/n/12 ) + [] \OML/
-cmm/m/it/12 p\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 f\OMS/cmsy/m/n/12 j\OML/cmm/m/it
-/12 X\OT1/cmr/m/n/12 ) = [] \OML/cmm/m/it/12 p\OT1/cmr/m/n/12 (\OML/cmm/m/it/12
- y\OMS/cmsy/m/n/12 j\OML/cmm/m/it/12 f\OT1/cmr/m/n/12 ) \OMS/cmsy/m/n/12 ^^@ []
-\OML/cmm/m/it/12 f[]K[]f \OMS/cmsy/m/n/12 ^^@ [] [] j\OML/cmm/m/it/12 K\OMS/cms
-y/m/n/12 j ^^@ [] [] \OT1/cmr/m/n/12 2\OML/cmm/m/it/12 ^^Y;
- []
-
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 45.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 45.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 45.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 45.
-[4]
-Overfull \hbox (24.03488pt too wide) in paragraph at lines 45--46
-[]\T2A/cmr/m/n/12 Having found the maximum $[]$ of the posterior, we can now sp
-ecify the Laplace approximation
- []
-
-)
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 101.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 101.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 104.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 104.
- (./hyperparameter_estimation.tex
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 19.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 19.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 19.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 19.
- [5])
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 107.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 107.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 111.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 111.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 111.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 111.
- [6]
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 111.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 111.
- (./methods.tex
-Overfull \hbox (2.70673pt too wide) in paragraph at lines 1--2
-\T2A/cmr/m/n/12 and thus cannot be applied to big datasets. In this section we 
-will review several approximate
- []
-
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 3.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 3.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 14.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 14.
-(./titsias.tex
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 17.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 17.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 17.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 17.
+(babel)             in language  on input line 58.
  [7]
-Overfull \hbox (15.20213pt too wide) in paragraph at lines 37--40
-\T2A/cmr/m/n/12 minimize the KL-divergence between these two distributions. Thi
-s minimization is equivalently
- []
-
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 45.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 45.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 45.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 45.
-[8]
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 73.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 73.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 73.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 73.
- [9]
-Overfull \hbox (21.82271pt too wide) detected at line 76
-[] \OT1/cmr/m/n/12 = [] [] = [][] [] =
- []
-
-
-Overfull \hbox (15.17978pt too wide) detected at line 77
-\OT1/cmr/m/n/12 = [] [] \OMS/cmsy/m/n/12 ^^@
- []
-
-)
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 18.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 18.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 18.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 18.
- [10]
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 18.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 18.
- (./svi.tex
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 30.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 30.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 30.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 30.
- [11]
-Overfull \hbox (15.2409pt too wide) detected at line 32
-\OML/cmm/m/it/12 L[] \OT1/cmr/m/n/12 = [] [] \OMS/cmsy/m/n/12 ^^@ [] [] \OT1/cm
-r/m/n/12 =
- []
-
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 56.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 56.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 56.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 56.
-[12]
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 74.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 74.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 74.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 74.
- [13])
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 21.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 21.
- (./svi_classification.tex (../pictures/full_gp_gm.tikz)
-(../pictures/inducing_input_gp_gm.tikz)
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 25.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 25.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 25.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 25.
- [14]
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 62.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 62.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 62.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 62.
- [15]
-Overfull \hbox (64.97954pt too wide) detected at line 80
-[] [] \OT1/cmr/m/n/12 = [] [] [] + [] [] [] =
- []
-
-
-Overfull \hbox (26.32921pt too wide) in paragraph at lines 83--84
-[]\T2A/cmr/m/n/12 In order to compute the expectations in the derivatives, we c
-an use the integral approximation
- []
-
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 97.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 97.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 97.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 97.
-[16]))
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 114.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 114.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 114.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 114.
- [17]
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 115.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 115.
- (./experiments.tex
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 7.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 7.
-LaTeX Font Info:    Try loading font information for T2A+cmtt on input line 10.
-
-
-(/usr/local/texlive/2015/texmf-dist/tex/latex/cyrillic/t2acmtt.fd
-File: t2acmtt.fd 2001/08/11 v1.0a Computer Modern Cyrillic font definitions
-)
-
-Package caption Warning: \label without proper \caption on input line 53.
-See the caption package documentation for explanation.
-
-
-LaTeX Warning: Reference `svi_medium' on page 18 undefined on input line 20.
-
-(../../Code/Experiments/Plots/svi_variations/small_generated.pgf)
-(../../Code/Experiments/Plots/svi_variations/small_real.pgf)
-Overfull \hbox (47.05855pt too wide) in paragraph at lines 29--36
- [][][][] 
- []
-
-(../../Code/Experiments/Plots/svi_variations/medium_generated.pgf)
-(../../Code/Experiments/Plots/svi_variations/medium_real.pgf)
-Overfull \hbox (46.38118pt too wide) in paragraph at lines 47--54
- [][][][][] 
- []
-
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-
-Overfull \hbox (20.05748pt too wide) in paragraph at lines 57--57
-[]\T2A/cmr/bx/n/14.4 Comparison of stochastic and non-stochastic variational in
-ference
- []
-
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 57.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 57.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 59.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 59.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 59.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 59.
-[18] (../../Code/Experiments/Plots/vi_vs_svi/small_real.pgf)
-(../../Code/Experiments/Plots/vi_vs_svi/medium_real.pgf)
-Overfull \hbox (46.38118pt too wide) in paragraph at lines 66--72
- [][][][] 
- []
-
-(../../Code/Experiments/Plots/vi_vs_svi/big_real.pgf)
-
-LaTeX Warning: `!h' float specifier changed to `!ht'.
-
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 87.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 87.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 87.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 87.
-[19] (../../Code/Experiments/Plots/vi_vs_svi/1e5_sg_lbfgs.pgf)
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 101.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 101.
-
-Overfull \hbox (15.6996pt too wide) in paragraph at lines 104--105
-[]\T2A/cmr/m/n/12 The first variation is denoted by [][][][][]. It uses Project
-ed-Newton method for minimizing
- []
-
-
-Overfull \hbox (21.97668pt too wide) in paragraph at lines 104--105
-\T2A/cmr/m/n/12 the ELBO. The second variation is denoted by [][][][][][][][][]
- and uses L-BFGS-B optimization
- []
-
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 105.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 105.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 105.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 105.
-[20]
-
-Package caption Warning: \label without proper \caption on input line 123.
-See the caption package documentation for explanation.
-
-
-LaTeX Warning: Reference `vi_small' on page 21 undefined on input line 108.
-
-
-LaTeX Warning: Reference `bi_big' on page 21 undefined on input line 108.
-
-(../../Code/Experiments/Plots/vi_variations/small_real.pgf)
-(../../Code/Experiments/Plots/vi_variations/medium_real.pgf)
-Overfull \hbox (46.38118pt too wide) in paragraph at lines 116--122
- [][][][] 
- []
-
-(../../Code/Experiments/Plots/vi_variations/big_real.pgf)
-(../../Code/Experiments/Plots/vi_variations/huge_real.pgf)
-Overfull \hbox (46.38118pt too wide) in paragraph at lines 132--139
- [][][][][] 
- []
-
-)
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 119.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 119.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 119.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 119.
- [21]
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 132.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 132.
-Package babel Info: Redefining russian shorthand "|
-(babel)             in language  on input line 132.
-Package babel Info: Redefining russian shorthand "~
-(babel)             in language  on input line 132.
- [22]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 132.
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 132.
- (./Gaussian Processes in ML.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 132.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 132.
-Package rerunfilecheck Info: File `"Gaussian Processes in ML".out' has not chan
-ged.
-(rerunfilecheck)             Checksum: 14E0C6B6F8668D32DE61E31D0C2F347A;3718.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 58.
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 58.
+ (./gp_ml.aux)
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 58.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 58.
+Package rerunfilecheck Info: File `gp_ml.out' has not changed.
+(rerunfilecheck)             Checksum: 5F7EF1132BC192CD967224B0FB3C2906;837.
 
 
 LaTeX Warning: There were undefined references.
 
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 132.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 58.
  ) 
 Here is how much of TeX's memory you used:
- 32901 strings out of 493089
- 706828 string characters out of 6134842
- 1101746 words of memory out of 5000000
- 35716 multiletter control sequences out of 15000+600000
- 21845 words of font info for 64 fonts, out of 8000000 for 9000
+ 32319 strings out of 493089
+ 700046 string characters out of 6134842
+ 981302 words of memory out of 5000000
+ 35201 multiletter control sequences out of 15000+600000
+ 21024 words of font info for 54 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 62i,13n,77p,739b,1176s stack positions out of 5000i,500n,10000p,200000b,80000s
+ 62i,10n,77p,718b,812s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2015/texmf-dist/fonts/enc/dvips/cm-super/cm-super-t2a.enc
 }</usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb>
 </usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><
 /usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></
-usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></us
-r/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/
-local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/lo
-cal/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local
-/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/local/te
-xlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texli
-ve/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texliv
-e/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></usr/local/texlive/
-2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/20
-15/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/local/texliv
-e/2015/texmf-dist/fonts/type1/public/cm-super/sfbx1200.pfb></usr/local/texlive/
-2015/texmf-dist/fonts/type1/public/cm-super/sfbx1440.pfb></usr/local/texlive/20
-15/texmf-dist/fonts/type1/public/cm-super/sfbx1728.pfb></usr/local/texlive/2015
-/texmf-dist/fonts/type1/public/cm-super/sfrm0800.pfb></usr/local/texlive/2015/t
-exmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr/local/texlive/2015/tex
-mf-dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/local/texlive/2015/texmf
--dist/fonts/type1/public/cm-super/sfrm1728.pfb></usr/local/texlive/2015/texmf-d
-ist/fonts/type1/public/cm-super/sfti1200.pfb></usr/local/texlive/2015/texmf-dis
-t/fonts/type1/public/cm-super/sftt1095.pfb>
-Output written on "Gaussian Processes in ML.pdf" (22 pages, 405130 bytes).
+usr/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></us
+r/local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/
+local/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/loc
+al/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/loca
+l/texlive/2015/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/
+texlive/2015/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb></usr/lo
+cal/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfbx1200.pfb></usr/loca
+l/texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfbx1440.pfb></usr/local/
+texlive/2015/texmf-dist/fonts/type1/public/cm-super/sfbx1728.pfb></usr/local/te
+xlive/2015/texmf-dist/fonts/type1/public/cm-super/sfbx2074.pfb></usr/local/texl
+ive/2015/texmf-dist/fonts/type1/public/cm-super/sfcc1200.pfb></usr/local/texliv
+e/2015/texmf-dist/fonts/type1/public/cm-super/sfcc1440.pfb></usr/local/texlive/
+2015/texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/local/texlive/20
+15/texmf-dist/fonts/type1/public/cm-super/sfrm1440.pfb></usr/local/texlive/2015
+/texmf-dist/fonts/type1/public/cm-super/sfti1200.pfb>
+Output written on gp_ml.pdf (8 pages, 297725 bytes).
 PDF statistics:
- 360 PDF objects out of 1000 (max. 8388607)
- 310 compressed objects within 4 object streams
- 84 named destinations out of 1000 (max. 500000)
- 157 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 185 PDF objects out of 1000 (max. 8388607)
+ 154 compressed objects within 2 object streams
+ 36 named destinations out of 1000 (max. 500000)
+ 58 words of extra memory for PDF output out of 10000 (max. 10000000)
 
