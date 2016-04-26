@@ -18,7 +18,11 @@
 \usepackage{amsthm}
 \usepackage{pgf,pgfarrows,pgfnodes}
 \usepackage{pgf}
-
+\lstset{
+	language=Python,
+	basicstyle=\ttfamily\small,
+	otherkeywords={self},                   
+}
 
 \begin{document}
 	
@@ -50,9 +54,10 @@
 
 \input{title_page.tex}
 \pagebreak
-\section{Introduction}
-	
+\section{Introduction}	
 	\input{introduction/introduction.tex}
+\section{Approximate methods}
+	\input{inducing_inputs/inducing_inputs.tex}
 
 \pagebreak
 \input{bibliography.tex}

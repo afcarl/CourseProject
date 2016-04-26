@@ -1,0 +1,13 @@
+\label{inducing_input_methods}
+In the previous section, we've described two methods for applying the Gaussian processes to the regression and binary classification problems. Both these methods scaled as $\bigO(n^3)$, where $n$ is the size of the training set. The computational complexity makes these methods inapplicable to big data problems, and thus approximation methods are needed.
+
+We will consider the approach, based on the concept of inducing inputs. There are several methods for both regression and classification problems, based on this approach, which we will derive and compare in the following sections.
+
+\subsection{Evidence lower bound}
+	\input{inducing_inputs/elbo.tex}
+\subsection{VI method}
+	\input{inducing_inputs/titsias.tex}
+\subsection{SVI method}
+	\input{inducing_inputs/svi.tex}
+\subsection{SVI-classification method}
+	\input{inducing_inputs/svi_classification.tex}
