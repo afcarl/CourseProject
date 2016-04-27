@@ -1,3 +1,4 @@
+\label{svi_classification}
 Finally, we can apply the bound (\ref{main_elbo}) to the classification problem. In this case, we can't analytically compute the expectations $\E_{q(f_i)} \log p(y_i | f_i)$. However, this expectations are one-dimensional Gaussian integrals and can thus be approximated with a wide range of techniques. 
 
 The method was proposed in \cite{SVIclassification}. The authors suggest to use Gauss-Hermite quadratures in order to approximate the expectations in (\ref{main_elbo}) and their derivatives. 

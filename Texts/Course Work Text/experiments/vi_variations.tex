@@ -1,0 +1,34 @@
+\begin{figure}[t!]
+	\centering
+	\subfloat{
+		\scalebox{0.75}{
+			\input{../../Code/Experiments/Plots/vi_variations/small_real.pgf}
+		}
+	}
+	\subfloat{
+		\scalebox{0.75}{
+    		\input{../../Code/Experiments/Plots/vi_variations/medium_real.pgf}
+		}
+	}
+
+	\subfloat{
+		\scalebox{0.75}{
+			\input{../../Code/Experiments/Plots/vi_variations/big_real.pgf}
+		}
+	}
+	\subfloat{
+		\scalebox{0.75}{
+			\input{../../Code/Experiments/Plots/vi_variations/huge_real.pgf}
+		}
+	}
+	\caption{Method's performance on a bigger dataset}
+	\label{vi_results}
+\end{figure}
+
+In this section we compare the two optimization methods for the \lstinline{vi-means} method.
+
+The first variation is denoted by \lstinline{Projected Newton}. It uses Projected-Newton method for minimizing the ELBO (\ref{titsias_elbo}). The second variation is denoted by \lstinline{means-L-BFGS-B} and uses L-BFGS-B optimization method.
+
+The \lstinline{Projected Newton} method uses finite-difference approximation of the hessian. It also makes hessian-correction in order to make it symmetric and positive-definite. The optimization method itself makes a Newton step and then projects the result to the feasible set in the metric, determined by the hessian. For more information about the method see for example \cite{ProjNewton}.
+
+The results are provided in fig. \ref{vi_results}. As we can see, on different datasets the results are different and it's hard to say, which of the methods is better. In the big experiment the methods seem to have converged to different optimums. In the further experiments we use the L-BFGS-B method.

@@ -1,0 +1,24 @@
+In this section we compare the methods, described above, for both regression and classification problems. We will compare the methods, that use inducing points with the standard methods and also compare the different versions of \lstinline{vi} and \lstinline{svi} methods to each other.
+
+All of the plots, apart from the plots in the next subsection, have title of the following format.
+$$\mbox{[name of the dataset]}, n = \mbox{[number of objects in the training set]},$$
+$$d = \mbox{[number of features]}, m = \mbox{[number of inducing inputs]}$$
+
+The plots in the next subsection do not have the $m$ in the title, because this parameter is not fixed in the corresponding experiments. If the name of the dataset is ``generated'', it means that the dataset was sampled from some Gaussian process.
+
+For the regression problem we use the $R^2$ score, which is given by
+$$R^2(y, \hat y) = 1 - \frac{\sum_{i = 1}^{n} y_i - \hat y_i}{\sum_{i = 1}^{n} y_i - \bar y_i},$$
+where $\bar y_i = \frac 1 n \sum_{i = 1}^n y_i$. Here $y$ is the vector of true answers on the test set, and $\hat y$ is the vector of predicted answers.
+
+For the classification problem we use accuracy score.
+
+In all the experiments we used the squared exponential covariance function. 
+
+\subsection{Inducing input methods and standard methods}
+	\input{experiments/inducing_inputs.tex}
+\subsection{SVI method variations}
+	\input{experiments/svi_variations.tex}
+\subsection{VI method variations}
+	\input{experiments/vi_variations.tex}
+\subsection{Comparison of VI and SVI methods}
+	\input{experiments/vi_vs_svi.tex}

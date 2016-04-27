@@ -1,68 +1,68 @@
 \begin{frame}{Experiments}
-			\begin{figure}[!h]
-				\centering
-				\subfloat{
-					\scalebox{0.4}{
-						\input{../../Code/Experiments/plots/inducing_inputs/d1_n500.pgf}
-					}
-				}
-				\subfloat{
-					\scalebox{0.4}{
-						\input{../../Code/Experiments/plots/inducing_inputs/d5_n500.pgf}
-					}
-				}
-				\caption{Comparison of the Titsias's method with and without optimization with respect to inducing point positions}
-			\end{figure}
-			As we can see, for these small problems optimization with respect to positions of inducing points does not affect the quality too much. However, this optimization dramaticly increases the number of optimized parameters, and makes the optimization much harder. Thus, we didn't perform this optimization in further experiments.
-		\end{frame}
+	\begin{figure}[!h]
+		\centering
+		\subfloat{
+			\scalebox{0.4}{
+				\input{../../Code/Experiments/plots/inducing_inputs/d1_n500.pgf}
+			}
+		}
+		\subfloat{
+			\scalebox{0.4}{
+				\input{../../Code/Experiments/plots/inducing_inputs/d5_n500.pgf}
+			}
+		}
+		\caption{Comparison of the Titsias's method with and without optimization with respect to inducing point positions}
+	\end{figure}
+	As we can see, for these small problems optimization with respect to positions of inducing points does not affect the quality too much. However, this optimization dramaticly increases the number of optimized parameters, and makes the optimization much harder. Thus, we didn't perform this optimization in further experiments.
+\end{frame}
 
-		\begin{frame}{Experiments}
-			\begin{figure}[!h]
-				\centering
-				\subfloat{
-					\scalebox{0.4}{
-						\input{../../Code/Experiments/plots/inducing_inputs/d10_n4000.pgf}
-					}
-				}
-				\subfloat{
-					\scalebox{0.4}{
-						\input{../../Code/Experiments/plots/inducing_inputs/abalone.pgf}
-					}
-				}
-				\caption{The dependence between quality and number of inducing points for slightly bigger datasets}
-			\end{figure}
-		\end{frame}
+\begin{frame}{Experiments}
+	\begin{figure}[!h]
+		\centering
+		\subfloat{
+			\scalebox{0.4}{
+				\input{../../Code/Experiments/plots/inducing_inputs/d10_n4000.pgf}
+			}
+		}
+		\subfloat{
+			\scalebox{0.4}{
+				\input{../../Code/Experiments/plots/inducing_inputs/abalone.pgf}
+			}
+		}
+		\caption{The dependence between quality and number of inducing points for slightly bigger datasets}
+	\end{figure}
+\end{frame}
 
-		\begin{frame}{Experiments}
-			\begin{figure}[!h]
-				\centering
-				\subfloat{
-					\scalebox{0.4}{
-						\input{../../Code/Experiments/Plots/svi_variations/medium_generated.pgf}
-					}
-				}
-				\subfloat{
-					\scalebox{0.4}{
-						\input{../../Code/Experiments/Plots/svi_variations/medium_real.pgf}
-					}
-				}
-				\caption{Comparison of variaous optimization methods for svi lower bound}
-			\end{figure}
-		\end{frame}
+\begin{frame}{Experiments}
+	\begin{figure}[!h]
+		\centering
+		\subfloat{
+			\scalebox{0.4}{
+				\input{../../Code/Experiments/Plots/svi_variations/medium_generated.pgf}
+			}
+		}
+		\subfloat{
+			\scalebox{0.4}{
+				\input{../../Code/Experiments/Plots/svi_variations/medium_real.pgf}
+			}
+		}
+		\caption{Comparison of variaous optimization methods for svi lower bound}
+	\end{figure}
+\end{frame}
 
-		\begin{frame}{Experiments}
-			\begin{figure}[!h]
-				\centering
-				\subfloat{
-					\scalebox{0.4}{
-						\input{../../Code/Experiments/Plots/vi_vs_svi/medium_real.pgf}
-					}
-				}
-				\subfloat{
-					\scalebox{0.4}{
-						\input{../../Code/Experiments/Plots/vi_vs_svi/1e5_sg_lbfgs.pgf}
-					}
-				}
-				\caption{Comparison of vi and svi methods}
-			\end{figure}
-		\end{frame}
+\begin{frame}{Experiments}
+	\begin{figure}[!h]
+		\centering
+		\subfloat{
+			\scalebox{0.4}{
+				\input{../../Code/Experiments/Plots/vi_vs_svi/medium_real.pgf}
+			}
+		}
+		\subfloat{
+			\scalebox{0.4}{
+				\input{../../Code/Experiments/Plots/vi_vs_svi/1e5_sg_lbfgs.pgf}
+			}
+		}
+		\caption{Comparison of vi and svi methods}
+	\end{figure}
+\end{frame}

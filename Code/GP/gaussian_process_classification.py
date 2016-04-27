@@ -171,7 +171,7 @@ class GPC(GP):
 
         return marginal_likelihood, gradient
 
-    def _brute_fit(self, points, labels, max_iter=10):
+    def _brute_fit(self, points, labels, max_iter=10, alternate=False):
         """
         optimizes the self.covariance_obj hyper-parameters
         :param points: data points
@@ -451,16 +451,13 @@ class GPC(GP):
 
         # Initializing required variables
         y = target_values
-        m = num_inputs
+        m = inputs.shape[1]
         n = y.size
 
 
         # Initializing variational (normal) distribution parameters
-        # mu = np.zeros((m, 1))
-        mu = np.array([1, 2, 3])[:, None]
+        mu = np.zeros((m, 1))
         sigma_L = np.eye(m)  # Cholesky factor of sigma
-        # sigma_L = np.array([[1, 0, 0], [1, 2, 0], [1, 2, 3]])
-        sigma = sigma_L.dot(sigma_L.T)
 
         theta = self.covariance_obj.get_params()
         param_vec = self._svi_get_parameter_vector(theta, mu, sigma_L)
@@ -473,14 +470,14 @@ class GPC(GP):
                                        indices=range(target_values.size))
             return -fun, -grad[:, 0]
         mydisp = False
+        opts = copy.deepcopy(optimizer_options)
         if not optimizer_options is None:
-            if 'mydisp' in optimizer_options.keys():
-                mydisp = optimizer_options['mydisp']
-                del options['mydisp']
+            if 'mydisp' in opts.keys():
+                mydisp = opts['mydisp']
+                del opts['mydisp']
         res, w_list, time_list = minimize_wrapper(fun, param_vec, method='L-BFGS-B', mydisp=mydisp,
-                                                          bounds=bnds, jac=True, options=optimizer_options)
-        # print(res)
-        # exit(0)
+                                                          bounds=bnds, jac=True, options=opts)
+
         res = res['x']
         theta, mu, sigma_L = self._svi_get_parameters(res)
         sigma = sigma_L.dot(sigma_L.T)
