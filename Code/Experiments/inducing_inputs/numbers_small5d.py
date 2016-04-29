@@ -13,8 +13,9 @@ model_covariance_obj = SquaredExponential(model_params)
 gp = GPR(data_covariance_obj)
 num = 500
 test_num = 100
-input_nums = [5, 10, 15, 20, 30, 50]
-dim = 5
+input_nums = [5, 10, 30, 50, 60]
+# input_nums = [40, 50]#, 60]
+dim = 4
 seed = 10
 
 file_name = 'd5_n500'
@@ -30,5 +31,5 @@ else:
     x_test = np.random.rand(dim, test_num)
 
 y_tr, y_test = gp.generate_data(x_tr, x_test, seed=seed)
-run_methods(x_tr, y_tr, x_test, y_test, model_params, input_nums, file_name, title, True)
+run_methods(x_tr, y_tr, x_test, y_test, model_params, input_nums, file_name, title, vi=True, full=True, show=True)
 

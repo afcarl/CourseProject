@@ -22,7 +22,7 @@ pgf_with_latex = {                      # setup matplotlib to use latex for outp
     "legend.fontsize": 8,               # Make the legend/label fonts a little smaller
     "xtick.labelsize": 8,
     "ytick.labelsize": 8,
-    "figure.figsize": figsize(0.5),     # default fig size of 0.9 textwidth
+    "figure.figsize": figsize(0.35),     # default fig size of 0.9 textwidth
     "pgf.preamble": [
         r"\usepackage[utf8x]{inputenc}",    # use utf8 fonts because your computer can handle it :)
         r"\usepackage[T1]{fontenc}",        # plots will be generated using this preamble
@@ -44,19 +44,19 @@ from matplotlib2tikz import save
 data_params = np.array([1.0, 0.15, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
 
-model_params = np.array([1.0, 0.75, 0.1])
-model_covariance_obj = SquaredExponential(model_params)
+# model_params = np.array([1.0, 1., 0.1])
+# model_covariance_obj = SquaredExponential(model_params)
 # model_params = np.array([1.0, 0.1, 0.5, 0.1])
 # model_covariance_obj = GammaExponential(model_params)
-# model_params = np.array([1.0, 1., 1., 0.1])
-# model_covariance_obj = Matern(model_params)
+model_params = np.array([0.2, 0.5, 1., 0.1])
+model_covariance_obj = Matern(model_params)
 
 gp = GPR(data_covariance_obj)
 num = 50
 test_num = 100
 dim = 1
 seed = 10
-ind_inputs_num = 50
+ind_inputs_num = 20
 max_iter = 200
 batch_size = 100
 
@@ -87,7 +87,7 @@ y_tr, y_test = gp.generate_data(x_tr, x_test, seed=seed)
 
 if method == 'brute':
     new_gp = GPR(model_covariance_obj)
-    res = new_gp.fit(x_tr, y_tr, max_iter=max_iter)
+    # res = new_gp.fit(x_tr, y_tr, max_iter=max_iter)
     predicted_y_test, high, low = new_gp.predict(x_test, x_tr, y_tr)
 
 elif method == 'means' or method == 'vi':
@@ -118,12 +118,13 @@ print(new_gp.covariance_obj.get_params())
 print(r2_score(y_test, predicted_y_test))
 
 if dim == 1:
-    # plot_reg_data(x_tr, y_tr, 'k+', mew=1, ms=8)
+    plot_reg_data(x_tr, y_tr, 'k+', mew=1, ms=8)
     plot_predictive(x_test, predicted_y_test, high, low)
     # plot_reg_data(x_test, y_test, 'g-')
     if method != 'brute':
         plot_reg_data(inducing_points, mean, 'ro', markersize=8)
-    plt.title("Predictive distribution")
+    # plt.title("Predictive distribution")
+    # plt.title("Matern covariance function, $\\nu = 1$")
     # plt.savefig('pictures/')
     plt.show()
 

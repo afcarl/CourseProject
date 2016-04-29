@@ -1,10 +1,12 @@
-In this section we compare the \lstinline{vi-means} method (with L-BFGS-B optimization method) with \lstinline{svi-L-BFGS-B} and \lstinline{svi-natural}. We've described this methods above. 
+In this section we compare the \lstinline{vi-means} method (with L-BFGS-B optimization method) with \lstinline{svi-L-BFGS-B} and \lstinline{svi-natural}. We've described these methods above. 
+
+We've seen, that the computational complexity of one epoch of the \lstinline{vi-means} method is better method than it is for the \lstinline{svi-natural} and \lstinline{svi-L-BFGS-B}. However, the \lstinline{svi-natural} method uses stochastic optimization, which might lead to faster convergence in big data problems.
 
 \begin{figure}[!h]
 	\centering
 	\subfloat{
 		\scalebox{0.75}{
-	    	\input{../../Code/Experiments/Plots/vi_vs_svi/big_real.pgf}
+	    	\input{../../Code/Experiments/Plots/vi_vs_svi/medium_real.pgf}
 		}
 	}
 	\subfloat{
@@ -12,10 +14,10 @@ In this section we compare the \lstinline{vi-means} method (with L-BFGS-B optimi
 			\input{../../Code/Experiments/Plots/vi_vs_svi/1e5_sg_lbfgs.pgf}
 		}
 	}
-	\caption{VI and SVI methods comparison}
+	\caption{\lstinline{vi} and \lstinline{svi} methods comparison}
 	\label{visvi_results}
 \end{figure}
 
-The results are provided in fig. \ref{visvi_results}. In the first experiment of these two we didn't run the \lstinline{svi-natural}, because we've already compared it to the \lstinline{svi-L-BFGS-B} method on this exact dataset and it proved to be worse (see fig. \ref{svi_results}).
+Fig. \ref{visvi_results} shows the results of the experimental comparison of \lstinline{vi} and \lstinline{svi} methods. In the first experiment of these two we didn't run the \lstinline{svi-natural}, because we've already compared it to the \lstinline{svi-L-BFGS-B} method on this exact dataset and it proved to be worse (see fig. \ref{svi_results}).
 
-We can see, that \lstinline{vi-means} beats i\lstinline{svi} in all the experiments. One could expect these results, because \lstinline{vi-means} optimizes the exact same functional as it's oponent, but it uses exact optimal values for some of the parameters. However, the \lstinline{svi-natural} method uses stochastic optimization which should help it in big data problems. We can see, that it performs slightly better, then the deterministic \lstinline{svi-L-BFGS-B}, but can't beat the \lstinline{vi-means}. The reason for that is that the optimization problem for the \lstinline{svi} method is much harder then the one, solved by the \lstinline{vi} method. Indeed, for $m = 1000$ and squared exponential kernel we have about $5 \cdot 10^5$ optimization parameters for \lstinline{svi} methods and just $3$ parameters for the \lstinline{vi} method.
+We can see, that \lstinline{svi-natural} performs slightly better, then the deterministic \lstinline{svi-L-BFGS-B}, but can't beat \lstinline{vi-means}. The reason for that is that the optimization problem for the \lstinline{svi} method is much harder then the one, solved by the \lstinline{vi} method. Indeed, for $m = 1000$ and squared exponential kernel we have about $5 \cdot 10^5$ optimization parameters for \lstinline{svi} methods and just $3$ parameters for the \lstinline{vi} method.

@@ -41,7 +41,7 @@ def run_methods(train_points, train_targets, test_points, test_targets,
 
     method = 'means'
     optimizer = 'L-BFGS-B'
-    max_iter = 200
+    max_iter = 50
     options = {'maxiter': max_iter, 'disp': False, 'mydisp': True}
 
     means_r2 = []

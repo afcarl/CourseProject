@@ -22,18 +22,18 @@
     		\input{../../Code/Experiments/Plots/svi_variations/medium_real.pgf}
 		}
 	}
-	\caption{Svi methods' performance on small and medium datasets}
+	\caption{\lstinline{svi} methods' performance on small and medium datasets}
 	\label{svi_results}
 \end{figure}
 In this section we compare several variations of the \lstinline{svi} method for the regression problem.
 
 The first variation is denoted by \lstinline{svi-natural}. It is the method as it was proposed in \cite{BigData}. It uses stochastic gradient descent with natural gradients for minimizing the ELBO with respect to the variational parameters, and usual gradients with respect to kernel hyper-parameters.
 
-The methods \lstinline{svi-L-BFGS-B} and \lstinline{svi-FG} use the same lower bound (\ref{svi_elbo}) and optimize it with deterministic optimization methods L-BFGS-B and gradient descent respectively. 
+The methods \lstinline{svi-L-BFGS-B} and \lstinline{svi-FG} use the same lower bound (\ref{svi_elbo}) and optimize it with deterministic optimization methods L-BFGS-B and projected gradient respectively. We use the bound-constrained optimization methods, because the hyper-parameters of the squared exponential kernel must be positive.
 
-We can not use the natural gradients in this setting, because they are not necesserily a good direction for optimization and can't be used by L-BFGS-B or gradient descent. Thus, we use usual gradients with respect to variational parameters $\mu$ and $\Sigma$ for these methods. However, the matrix $\Sigma$ has to be symmetric and positive definite and we have to ensure that our optimization updates maintain these properties. In order to avoid complex constrained optimization problems, we use Cholesky decomposition of $\Sigma$ and optimize the bound with respect to the Cholesky factor $L_\Sigma$ of $\Sigma$, which leads to a bound-constrained optimization problem.
+We can not use the natural gradients in this setting, because they are not necessarily a descent direction and can't be used by L-BFGS-B or gradient descent. Thus, we use usual gradients with respect to variational parameters $\mu$ and $\Sigma$ for these methods. However, the matrix $\Sigma$ has to be symmetric and positive definite and we have to ensure that our optimization updates maintain these properties. In order to avoid complex constrained optimization problems, we use Cholesky decomposition of $\Sigma$ and optimize the bound with respect to the Cholesky factor $L_\Sigma$ of $\Sigma$. This allows us to solve a simpler bound-constrained problem instead of a general constrained optimization problem.
 
-Finally, the \lstinline{svi-SAG} uses stochastic average gradient method to minimize the ELBO. This method also uses Cholesky factorization and usual gradients instead of natural for the same reasons.
+Finally, the \lstinline{svi-SAG} uses stochastic average gradient method to minimize the ELBO. This method also uses Cholesky factorization and usual gradients instead of natural for the same reasons. For more information about SAG method see \cite{SAG}.
 
 
 The results on small and medium datasets are shown in fig. \ref{svi_results}.

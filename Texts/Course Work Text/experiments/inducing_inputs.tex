@@ -1,48 +1,82 @@
+% \begin{figure}[!t]
+% 	\centering
+% 	\subfloat{
+% 		\scalebox{0.8}{
+% 			\input{../../Code/Experiments/plots/inducing_inputs/d1_n500.pgf}
+% 		}
+% 	}
+% 	\subfloat{
+% 		\scalebox{0.8}{
+% 			\input{../../Code/Experiments/plots/inducing_inputs/d5_n500.pgf}
+% 		}
+% 	}
+
+% 	\subfloat{
+% 		\scalebox{0.8}{
+% 			\input{../../Code/Experiments/plots/inducing_inputs/d10_n4000.pgf}
+% 		}
+% 	}
+% 	\subfloat{
+% 		\scalebox{0.8}{
+% 			\input{../../Code/Experiments/plots/inducing_inputs/abalone.pgf}
+% 		}
+% 	}
+% 	\caption{The dependence between prediction quality and the number of inducing inputs for the regression problem}
+% 	\label{ind_points_results}
+% \end{figure}
+
 \begin{figure}[!t]
 	\centering
-	\subfloat{
-		\scalebox{0.8}{
-			\input{../../Code/Experiments/plots/inducing_inputs/d1_n500.pgf}
-		}
-	}
 	\subfloat{
 		\scalebox{0.8}{
 			\input{../../Code/Experiments/plots/inducing_inputs/d5_n500.pgf}
 		}
 	}
-
 	\subfloat{
 		\scalebox{0.8}{
-			\input{../../Code/Experiments/plots/inducing_inputs/d10_n4000.pgf}
+			\input{../../Code/Experiments/plots/inducing_inputs/class_d2_n200.pgf}
 		}
 	}
-	\subfloat{
-		\scalebox{0.8}{
-			\input{../../Code/Experiments/plots/inducing_inputs/abalone.pgf}
-		}
-	}
-	\caption{The dependence between prediction quality and the number of inducinge inputs for the regression problem}
-	\label{ind_points_results}
+	\caption{The dependence between the prediction quality and the number of inducing inputs for standard and inducing point methods}
+	\label{ind_vs_std}
 \end{figure}
 
 
-We've seen above, that inducing input methods have a much smaller computational complexity then the standard methods for both GP-regression and GP-classification problems. In this section we empirically compare the prediction quality on the test data for these methods with the quality obtained by the standard methods.
+We've seen above, that inducing input methods have a much smaller computational complexity than the standard methods for both GP-regression and GP-classification problems. In this section we empirically compare the prediction quality on the test data for these methods with the quality obtained by the standard methods.
 
 We also explore the dependence between the number of inducing points used by the method and the prediction quality.
 
-For the regression problem we use two variations of the \lstinline{vi} method. The \lstinline{vi-means} method does not maximize the lower bound with respect to the positions of the inducing inputs and just uses the K-Means cluster centers as the positions of the inducing inputs. The \lstinline{vi} method on the other hand does optimize for the inducing input positions. \lstinline{full GP} method is the standard GP-regression method, described in section \ref{gp_regression}.
+For the regression problem we use two variations of the \lstinline{vi} method. \lstinline{vi-means} method does not maximize the lower bound with respect to the positions of inducing inputs and just uses the K-Means cluster centers as the positions of inducing inputs. The \lstinline{vi} method on the other hand does optimize for the inducing input positions. \lstinline{full GP} method is the standard GP-regression method, described in section \ref{gp_regression}.
 
-In the two top plots of fig. \ref{ind_points_results} the dependence between the number of inducing points and the prediction quality is shown on two small datasets.  As we can see, the optimization with respect to the positions of the inducing inputs does not dramatically increase the quality of the predictions. It does however make the optimization problem that we have to solve much harder and makes the method much slower. We will thus abandon this method and only use \lstinline{vi-means} method in other experiments.
+Fig. \ref{ind_vs_std} shows the dependence between the prediction quality and the number of inducing inputs for \lstinline{vi} methods for regression and classification problems.
 
-We can also see from these plots that for sufficient number of inducing inputs the \lstinline{vi} methods reach the predictive quality of the standard methods. 
+As we can see, optimization with respect to the positions of inducing inputs does not dramatically increase the quality of predictions in the provided experiment. It does however make the optimization problem that we have to solve much harder. In general, the optimization of inducing input positions does increase the prediction quality, but makes the method much slower. We will thus abandon this method and only use \lstinline{vi-means} in other experiments.
 
-In the bottom plots of fig. \ref{ind_points_results}, the dependence between the number of used inducing inputs and the quality of the \lstinline{vi-means} method predictions is shown for two bigger datasets. 
+% We can also see from these plots that for sufficient number of inducing inputs the \lstinline{vi} methods reach the predictive quality of the standard methods. 
+
+% In the bottom plots of fig. \ref{ind_points_results}, the dependence between the number of used inducing inputs and the quality of the \lstinline{vi-means} method predictions is shown for two bigger datasets. 
+
+% \begin{figure}[!t]
+% 	\centering
+% 	\subfloat{
+% 		\scalebox{0.8}{
+% 			\input{../../Code/Experiments/plots/inducing_inputs/class_d2_n200.pgf}
+% 		}
+% 	}
+% 	\subfloat{
+% 		\scalebox{0.8}{
+% 			\input{../../Code/Experiments/plots/inducing_inputs/class_german.pgf}
+% 		}
+% 	}
+% 	\caption{The dependence between prediction quality and the number of inducinge inputs for the classification problem}
+% 	\label{ind_inputs_class_results}
+% \end{figure}
 
 \begin{figure}[!t]
 	\centering
 	\subfloat{
 		\scalebox{0.8}{
-			\input{../../Code/Experiments/plots/inducing_inputs/class_d2_n200.pgf}
+			\input{../../Code/Experiments/plots/inducing_inputs/abalone.pgf}
 		}
 	}
 	\subfloat{
@@ -50,13 +84,15 @@ In the bottom plots of fig. \ref{ind_points_results}, the dependence between the
 			\input{../../Code/Experiments/plots/inducing_inputs/class_german.pgf}
 		}
 	}
-	\caption{The dependence between prediction quality and the number of inducinge inputs for the classification problem}
-	\label{ind_inputs_class_results}
+	\caption{The dependence between prediction quality and the number of inducing inputs for \lstinline{vi-means} and \lstinline{svi-classification} methods}
+	\label{ind_inputs_results}
 \end{figure}
 
-In fig. \ref{ind_inputs_class_results} the results of similar experiments for the classification problem are provided. Here we compare the \lstinline{Laplace} method, which was described in section \ref{gp-classification}, and the \lstinline{svi-classification} method, which was described in section \ref{svi_classification}.
+Fig. \ref{ind_inputs_results} shows the dependence between the prediction quality and the number of inducing inputs for lstinline{vi-means} and \lstinline{svi-classification} methods. As we can see, the prediction quality gets better as the number of inducing inputs grows. However, it's hard to say, how many inducing points one should use in practice. The best answer is probably the biggest amount one can afford to train. 
 
-As we can see, on the chosen dataset the \lstinline{svi-classification} method can not reach the predictive quality of the \lstinline{Laplace} method even for reasonably big values of $m$. However, the time consumption of the \lstinline{Laplace} method does not allow to use it even for moderate~problems. 
+% In fig. \ref{ind_inputs_class_results} the results of similar experiments for the classification problem are provided. Here we compare the \lstinline{Laplace} method, which was described in section \ref{gp-classification}, and the \lstinline{svi-classification} method, which was described in section \ref{svi_classification}.
+
+% As we can see, on the chosen dataset the \lstinline{svi-classification} method can not reach the predictive quality of the \lstinline{Laplace} method even for reasonably big values of $m$. However, the time consumption of the \lstinline{Laplace} method does not allow to use it even for moderate~problems. 
 
 
 

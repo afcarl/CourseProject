@@ -1,7 +1,9 @@
 \label{inducing_input_methods}
-In the previous section, we've described two methods for applying the Gaussian processes to the regression and binary classification problems. Both these methods scaled as $\bigO(n^3)$, where $n$ is the size of the training set. The computational complexity makes these methods inapplicable to big data problems, and thus approximation methods are needed.
+In the previous section we've described two methods for applying the Gaussian processes to the regression and binary classification problems. Both these methods scaled as $\bigO(n^3)$, where $n$ is the size of the training set. The computational complexity makes these methods inapplicable to big data problems, and thus approximation methods are needed.
 
-We will consider the approach, based on the concept of inducing inputs. There are several methods for both regression and classification problems, based on this approach, which we will derive and compare in the following sections.
+A number of approximate methods have been proposed in the literature. We will consider methods based on the concept of inducing inputs. These methods construct an approximation based on the values of the process at some $m < n$ points. These points are referred to as inducing points. The first methods of this kind choose the inducing points from the training set heuristically or through greedy optimization of some criterion. For a review of these methods see, for example \cite{OldSparseMethods}. Paper \cite{SparseExperiments} provides a numerical comparison of several sparse GP methods.
+
+We will consider the variational approach to selecting the inducing variables. In this approach the inducing inputs are not limited to belong to the training set and their positions as well as the process values at these points can be learned jointly with the values of kernel hyper-parameters. There are several methods for both regression and classification problems, based on this approach, which we will derive and compare in the following sections.
 
 \subsection{Evidence lower bound}
 	\input{inducing_inputs/elbo.tex}

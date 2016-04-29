@@ -1,15 +1,15 @@
-The first method we will describe was introduced in \cite{Titsias}. In the case of the regression problem we can analytically optimize the bound (\ref{main_elbo}) with respect to variational parameters. The optimal values are
-$$\hat \Sigma = (\frac 1 {\sigma_n} K_{mm}^{-1} K_{mn} K_{nm} K_{mm}^{-1} + K_{mm}^{-1})^{-1},$$
-$$\hat \mu = \frac 1 {\sigma_n} \hat \Sigma K_{mm}^{-1} K_{mn} y.$$
+The first method we will describe was introduced in \cite{Titsias}. In case of the regression problem we can analytically optimize the bound (\ref{main_elbo}) with respect to variational parameters. Differentiating the lower bound (\ref{main_elbo}) and setting the derivatives to $0$,  we obtain the optimal values of variational parameters.
+$$\hat \Sigma = \left(\frac 1 {\nu} K_{mm}^{-1} K_{mn} K_{nm} K_{mm}^{-1} + K_{mm}^{-1} \right)^{-1},$$
+$$\hat \mu = \frac 1 {\nu} \hat \Sigma K_{mm}^{-1} K_{mn} y.$$
 
 Now, substituting the optimal values of variational parmeters back into \ref{main_elbo}, we obtain a new lower bound
 \begin{equation}\label{titsias_elbo}
-	\log p(y) \ge \log \N(y|0, \sigma_n^2 I + K_{nm} K_{mm}^{-1} K_{mn}) - \frac 1 {2\sigma_n^2} \tr(\tilde K),
+	\log p(y) \ge \log \N(y|0, \nu^2 I + K_{nm} K_{mm}^{-1} K_{mn}) - \frac 1 {2\nu^2} \tr(\tilde K),
 \end{equation}
 where $\tilde K = K_{nn} - K_{nm} K_{mm}^{-1} K_{mn}$.
 
-This lower bound and it's derivatives with respect to covariance hyper-parameters can be computed in $\bigO(nm^2)$ operations. This complexity makes the method applicable to moderate and even big problems.
+This lower bound and its derivatives with respect to covariance hyper-parameters can be computed in $\bigO(nm^2) + \bigO(m^3)$ operations. As $m$ is considered to be sustantially smaller than $n$, this is equivalent to $\bigO(nm^2)$. This complexity makes the method applicable to moderate and even big problems.
 
 Note, that we can also optimize the bound with respect to the positions $Z$ of the inducing inputs.
 
-We will call this method \lstinline{vi} (variational inference) as opposed to the svi (stochastic variational inference) methods, described in the latter sections.
+We will call this method \lstinline{vi} (variational inference) as opposed to \lstinline{svi} (stochastic variational inference) methods, described in the latter sections.

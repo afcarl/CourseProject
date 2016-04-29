@@ -23,6 +23,10 @@
 	basicstyle=\ttfamily\small,
 	otherkeywords={self},                   
 }
+\hypersetup{
+    colorlinks = true,
+    urlcolor = blue
+}
 
 \begin{document}
 	
@@ -53,8 +57,12 @@
 
 \input{title_page.tex}
 \pagebreak
-\tableofcontents
+{\hypersetup{linkcolor=black}
+	\tableofcontents
+}
+% \tableofcontents
 \pagebreak
+\input{abstract.tex}
 \section{Introduction}	
 	\input{introduction/introduction.tex}
 \pagebreak
@@ -66,6 +74,8 @@
 \pagebreak
 \section{Conclusions}
 	\input{conclusions.tex}
+\section{Future work}
+	\input{future_work.tex}
 \pagebreak
 \input{bibliography.tex}
 \end{document}
