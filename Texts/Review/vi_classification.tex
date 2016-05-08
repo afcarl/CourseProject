@@ -1,0 +1,42 @@
+We've described two approaches to optimizing the lower bound (\ref{explicit_svi_elbo}) in case of the regression problem. The optimization problem, that we have to solve in the \lstinline{svi} method seems to be much harder, than the one, that we have to solve in the \lstinline{vi} method, although we can solve the former with stochastic optimization techniques. In this subsection we will devise an approach, analogues to the \lstinline{vi-means} method for the classification problem.
+
+The problem of optimizing the lower bound (\ref{explicit_svi_elbo}) with respect to the variational parameters $\mu$ and $\Sigma$ is very similar to the Bayesian logistic regression problem with Gaussian prior over the parameters. In \cite{JaakkolaJordan} a method, that implies a closed form approximation to the posterior distribution over the parameters. Applying this method, we can avoid optimization with respect to the variational parameters and use analytical formulas, similar to the ones, used in the \lstinline{vi-means} method.
+
+Article \cite{JaakkolaJordan} provides the following lower bound for the logarithm of logistic function/.
+$$\log g(x) = - \log(1 + \exp(-x)) \ge \frac x 2 - \frac \xi 2 + \log g(\xi) - \frac 1 {4 \xi} \tanh\left(\frac \xi 2 \right)(x^2 - \xi^2).$$
+This bound becomes tight, when $\xi = x$.
+We will denote $$\lambda(\xi) = \frac {\tanh\left(\frac\xi 2\right)}{4 \xi}.$$
+This implies
+$$\log g(x) \ge \frac x 2 - \frac \xi 2 + \log g(\xi) - \lambda(\xi) (x^2 - \xi^2)$$
+
+Substituting this bound back to (\ref{explicit_svi_elbo}) we obtain
+$$\log p(y) \ge \sum_{i = 1}^{n} \E_{q(f_i)} \log p(y_i | f_i) - \KL{q(u)} {p(u)} = \sum_{i = 1}^{n} \E_{q(f_i)} \log g(y_i f_i) - \KL{q(u)} {p(u)} \ge $$
+$$\ge \sum_{i = 1}^{n}\left(\E_{q(f_i)} \left [\log g(\xi_i) + \frac {y_i f_i - \xi_i} {2} - \lambda(\xi_i) (f_i^2 - \xi_i^2) \right]\right) - \KL{q(u)} {p(u)} = $$
+$$= \sum_{i = 1}^{n} \left(\log g(\xi_i) + \frac {y_i m_i - \xi_i} {2}  + \lambda(\xi_i) \xi_i^2 - \lambda(\xi_i) (m_i^2 + S_i^2) \right) - \KL{q(u)} {p(u)} = $$
+$$= \sum_{i = 1}^{n} \left(g(\xi_i) - \frac {\xi_i}{2} + \lambda(\xi_i) \xi_i^2\right) + \frac 1 2 \mu^T K_{mm}^{-1} K_{mn} y - \tr\left(\Lambda(\xi) (K_{nn} + K_{nm} K_{mm}^{-1} (\Sigma - K_{mm}) K_{mm}^{-1} K_{mn})\right) -$$
+$$- \mu^T K_{mm}^{-1} K_{mn} \Lambda(\xi) K_{nm} K_{mm}^{-1} \mu - \KL{q(u)} {p(u)} = J(\mu, \Sigma, \xi, \theta),$$
+where 
+$$\Lambda(\xi) = 
+\left(
+\begin{array}{cccc}
+	\lambda(\xi_1) & 0 & \ldots & 0 \\
+	0 & \lambda(\xi_2) & \ldots & 0 \\
+	\ldots & \ldots & \ldots & \ldots \\
+	0 & 0 & \ldots & \lambda(\xi_n) \\
+\end{array}
+\right).
+$$
+
+Differentiating $J$ with respect to $\mu$ and $\Sigma$ and setting the derivatives to zero, we obtain
+\begin{equation}\label{vi_optimal_sigma}
+	\hat \Sigma(\xi) = (2 K_{mm}^{-1} K_{mn} \Lambda(\xi) K_{nm} K_{mm}^{-1} + K_{mm}^{-1})^{-1},
+\end{equation}
+\begin{equation}\label{vi_optimal_mu}
+	\hat \mu(\xi) = \frac 1 2 \hat \Sigma(\xi) K_{mm}^{-1} K_{mn} y.
+\end{equation}
+Note, that these formulas are very similar to the corresponding optimal values in the regression problem.
+
+We now apply coordinate-wise optimization to tune both $\mu$, $\Sigma$ and $\xi$. On the first step we use formulas (\ref{vi_optimal_sigma}) and (\ref{vi_optimal_mu}) to find the optimal distribution over $f$ for the current values $\xi_{old}$ of $\xi$. On the second step we maximize $J$ with respect to $\xi$ for fixed $\mu$ and $\Sigma$. This leads to
+$$\xi_i^2 = \E_{q(f | \xi_{old})} f_i^2.$$
+Now, performing a few updates of $\mu$, $\Sigma$ and $\xi$, we obtain closed-form formulas for optimal
+$\mu$ and $\Sigma$ and can substitute them back to the ELBO.
