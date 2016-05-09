@@ -10,12 +10,12 @@ data_covariance_obj = SquaredExponential(data_params)
 model_params = np.array([2.2, 1.73, 0.2])
 model_covariance_obj = SquaredExponential(model_params)
 gp = GPC(data_covariance_obj)
-num = 200
+num = 10
 test_density = 20
 dim = 2
 seed = 21
-ind_num = 50
-method = 'svi'
+ind_num = 3
+method = 'vi'
 maxiter = 100
 
 opts = {'maxiter':maxiter, 'mydisp': True}
@@ -38,20 +38,24 @@ y_tr, y_test = gp.generate_data(x_tr, x_test, seed=seed)
 print("Data generated")
 
 new_gp = GPC(model_covariance_obj, method=method, hermgauss_deg=100)
+
 if method == 'svi':
+    new_gp.fit(x_tr, y_tr, num_inputs=ind_num, optimizer_options=opts)
+elif method == 'vi':
     new_gp.fit(x_tr, y_tr, num_inputs=ind_num, optimizer_options=opts)
 elif method == 'brute':
     new_gp.fit(x_tr, y_tr)
 else:
     raise ValueError("Unknown method")
+
 print(new_gp.covariance_obj.get_params())
 if method == 'brute':
     predicted_y_test = new_gp.predict(x_test, x_tr, y_tr)
-elif method == 'svi':
+elif method == 'svi' or method == 'vi':
     predicted_y_test = new_gp.predict(x_test)
     inducing_points, mean, cov = new_gp.inducing_inputs
+
 mistake_lst = [i for i in range(len(y_test)) if predicted_y_test[i] != y_test[i]]
-# print(np.sum(predicted_y_test != y_test))
 
 print("Mistakes: ", np.sum(predicted_y_test != y_test))
 if dim == 2:

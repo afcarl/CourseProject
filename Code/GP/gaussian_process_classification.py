@@ -24,7 +24,9 @@ class GPC(GP):
         :param method: method
             'brute' — Laplace approximation method
             'brute_alt' — A slightly different approach to maximizing the evidence in brute method
-            'svi' — inducing input method
+            'svi' — inducing input method from Scalable Variational Gaussian Process Classification article
+            'vi' — experimental inducing input method, similar to `vi` method for regression
+        :param hermgauss_deg: degree of Gussian-hermite quadrature, used for svi method only
         :return: GPR object
         """
         if not isinstance(cov_obj, CovarianceFamily):
@@ -244,10 +246,8 @@ class GPC(GP):
     def predict(self, *args, **kwargs):
         if self.method == 'brute' or self.method == 'brute_alt':
             return self._brute_predict(*args, **kwargs)
-        elif self.method == 'svi':
-            # raise ValueError("Not Implemented yet")
+        elif self.method == 'svi' or self.method == 'vi':
             return self._inducing_points_predict(*args, **kwargs)
-            # return self._inducing_points_predict(*args, **kwargs)
         else:
             raise ValueError("Unknown method")
 
@@ -258,6 +258,8 @@ class GPC(GP):
             return self._brute_alternative_fit(*args, **kwargs)
         elif self.method == 'svi':
             return self._svi_fit(*args, **kwargs)
+        elif self.method == 'vi':
+            return self._vi_fit(*args, **kwargs)
         else:
             print(self.method)
             raise ValueError("Method " + self.method + " is invalid")
@@ -438,7 +440,7 @@ class GPC(GP):
         :param inputs: inducing inputs
         :param num_inputs: number of inducing points to generate. If inducing points are provided, this parameter is
         ignored
-        :param max_iter: maximum number of iterations in stochastic gradient descent
+        :param optimizer_options: options for the optimization method
         :return:
         """
 
@@ -447,7 +449,6 @@ class GPC(GP):
             means = KMeans(n_clusters=num_inputs)
             means.fit(data_points.T)
             inputs = means.cluster_centers_.T
-            # inputs = np.load("inputs.npy")
 
         # Initializing required variables
         y = target_values
@@ -524,9 +525,9 @@ class GPC(GP):
         L_inv = np.linalg.inv(L)
         K_mm_inv = L_inv.T.dot(L_inv)
         k_i = cov_fun(inducing_inputs, x_i)
-        Lambda_i = K_mm_inv.dot(k_i.dot(k_i.T.dot(K_mm_inv))) / sigma_n**2
+        # Lambda_i = K_mm_inv.dot(k_i.dot(k_i.T.dot(K_mm_inv))) / sigma_n**2
         K_ii = cov_fun(x_i[:, :1], x_i[:, :1])
-        tilde_K_ii = l * K_ii - np.einsum('ij,ji->', k_i.T, K_mm_inv.dot(k_i))
+        # tilde_K_ii = l * K_ii - np.einsum('ij,ji->', k_i.T, K_mm_inv.dot(k_i))
 
         # Derivatives
         derivative_matrix_list = self.covariance_obj.get_derivative_function_list(params)
@@ -666,3 +667,102 @@ class GPC(GP):
         test_targets, up, low = self.sample_for_matrices(new_mean, new_cov)
         return np.sign(test_targets)
 
+    def _vi_recompute_xi(self, K_mm, K_mm_inv, K_nm, K_ii, mu, Sigma):
+        K_mn = K_nm.T
+        means = K_nm.dot(K_mm_inv.dot(mu))
+        vars = K_ii + np.einsum('ij,ji->i', K_nm, K_mm_inv.dot((Sigma - K_mm).dot(K_mm_inv.dot(K_mn))))[:, None]
+        return np.sqrt(means**2 + vars)
+        # return vars
+
+    def _vi_lambda(self, xi):
+        return np.tanh(xi / 2) / (4 * xi)
+
+    def _vi_recompute_var_parameters(self, K_mm_inv, K_nm, xi, y):
+        K_mn = K_nm.T
+        Lambda_xi = self._vi_lambda(xi)
+        Sigma = np.linalg.inv(2 * K_mm_inv.dot(K_mn.dot((Lambda_xi * K_nm).dot(K_mm_inv))) + K_mm_inv)
+        mu = Sigma.dot(K_mm_inv.dot(K_mn.dot(y))) / 2
+        return mu, Sigma
+
+    def _vi_fit(self, data_points, target_values, num_inputs=0, inputs=None, optimizer_options={}):
+        """
+        An experimental method for optimizing hyper-parameters (for fixed inducing points), based on variational
+        inference. See review.
+        :param data_points: training set objects
+        :param target_values: training set answers
+        :param inputs: inducing inputs
+        :param num_inputs: number of inducing points to generate. If inducing points are provided, this parameter is
+        ignored
+        :param optimizer_options: options for the optimization method
+        :return:
+        """
+        # if no inducing inputs are provided, we use K-Means cluster centers as inducing inputs
+        if inputs is None:
+            means = KMeans(n_clusters=num_inputs)
+            means.fit(data_points.T)
+            inputs = means.cluster_centers_.T
+
+        # Initializing required variables
+        X = data_points
+        y = target_values
+        m = inputs.shape[1]
+        n = y.size
+
+        # Initializing variational (normal) distribution parameters
+        mu = np.zeros((m, 1), dtype=float)
+        sigma_L = np.eye(m)  # Cholesky factor of sigma
+
+        theta = self.covariance_obj.get_params()
+        param_vec = self._svi_get_parameter_vector(theta, mu, sigma_L)
+
+        def fun(w):
+            fun, grad = self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=w,
+                                       indices=range(target_values.size))
+            return -fun, -grad[:, 0]
+
+        self._svi_gauss_hermite_precompute()
+        # print(fun(param_vec))
+        cov_fun = self.covariance_obj.covariance_function
+        K_nm = cov_fun(X, inputs)
+        K_mn = K_nm.T
+        K_mm = cov_fun(inputs, inputs)
+        L = np.linalg.cholesky(K_mm)
+        L_inv = np.linalg.inv(L)
+        K_mm_inv = L_inv.T.dot(L_inv)
+        K_ii = cov_fun(X[:, :1], X[:, :1])
+
+        Sigma = np.eye(m)
+        for i in range(2):
+            xi = self._vi_recompute_xi(K_mm, K_mm_inv, K_nm, K_ii, mu, Sigma)
+            mu, Sigma = self._vi_recompute_var_parameters(K_mm_inv, K_nm, xi, y)
+
+    def _vi_log_logistic_function(self, points):
+        return - np.log(1 + np.exp(-points))
+
+    
+
+    # def _vi_elbo(self, X, y, mu, sigma_L, xi, inputs):
+    #     cov_fun = self.covariance_obj.covariance_function
+    #     K_nm = cov_fun(X, inputs)
+    #     K_mn = K_nm.T
+    #     K_mm = cov_fun(inputs, inputs)
+    #     L = np.linalg.cholesky(K_mm)
+    #     L_inv = np.linalg.inv(L)
+    #     K_mm_inv = L_inv.T.dot(L_inv)
+    #     K_ii = cov_fun(X[:, :1], X[:, :1])
+    #     lambda_xi = self._vi_lambda(xi)
+    #     sigma_L = np.linalg.cholesky(Sigma)
+    #
+    #     fun = 0
+    #     fun = np.sum(self._vi_log_logistic_function(xi)) - np.sum(xi)/2 + np.sum(lambda_xi * xi**2)
+    #     fun += mu.T.dot(K_mm_inv.dot(K_mn.dot(y)))/2
+    #     fun -= np.sum(K_ii * lambda_xi)
+    #     fun -= np.trace(K_mm_inv.dot((Sigma - K_mm).dot(K_mm_inv.dot(K_mn.dot(lambda_xi * K_nm)))))
+    #     fun -= mu.T.dot(K_mm_inv.dot(K_mn.dot((lambda_xi*K_nm).dot(K_mm_inv.dot(mu)))))
+    #     #KL
+    #     fun += - np.sum(np.log(np.diag(L)))
+    #     fun += np.sum(np.log(np.diag(sigma_L)))
+    #     fun += - np.trace(Sigma.dot(K_mm_inv))/2
+    #     fun += - mu.T.dot(K_mm_inv.dot(mu))/2
+    #
+    #     return -fun

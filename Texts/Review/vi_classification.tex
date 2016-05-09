@@ -40,3 +40,20 @@ We now apply coordinate-wise optimization to tune both $\mu$, $\Sigma$ and $\xi$
 $$\xi_i^2 = \E_{q(f | \xi_{old})} f_i^2.$$
 Now, performing a few updates of $\mu$, $\Sigma$ and $\xi$, we obtain closed-form formulas for optimal
 $\mu$ and $\Sigma$ and can substitute them back to the ELBO.
+
+Note, that
+$$\hat\Sigma(\xi) = K_{mm} B^{-1} K_{mm},$$
+$$\hat\mu(\xi) = \frac 1 2 K_{mm} B^{-1} K_{mn} y,$$
+where $B = 2 K_{mm} \Lambda(\xi) K_nm + K_mm$.
+
+Maximizing our lower bound with respect to $\theta$ is equivalent to maximizing the following expression.
+$$ \hat J(\theta) =  \frac 1 2 \mu^T K_{mm}^{-1} K_{mn} y - \tr\left(\Lambda(\xi) (K_{nn} + K_{nm} K_{mm}^{-1} (\Sigma - K_{mm}) K_{mm}^{-1} K_{mn})\right) -$$
+$$ - \mu^T K_{mm}^{-1} K_{mn} \Lambda(\xi) K_{nm} K_{mm}^{-1} \mu -\frac 1 2 \left (\log \frac {|K_{mm}|} {|\Sigma|} + \tr(K_{mm}^{-1} \Sigma) + \mu^T K_{mm}^{-1} \mu \right) = $$
+$$ = \frac 1 2 \mu^T K_{mm}^{-1} K_{mn} y - \mu^T K_{mm}^{-1}\left(K_{mn} \Lambda(\xi) K_{nm} + \frac 1 2 K_{mm} \right)K_{mm}^{-1}\mu + \frac 1 2 \log \frac {|\Sigma|}{|K_{mm}|} - $$
+$$ - \tr\left(\Lambda(\xi) (K_{nn} - K_{nm} K_{mm}^{-1} K_{mn})\right) - \tr\left(K_{mm}^{-1} \Sigma K_{mm}^{-1} (K_{mn} \Lambda(\xi) K_{mn} + \frac 1 2 K_{mm})\right) = $$
+$$ = \frac 1 4 y^T K_{nm} B^{-1} K_{mn} y - \frac 1 8 y K_{nm} B^{-1} K_{mn} y + \frac 1 2 \log |K_{mm}| - \frac 1 2 \log |B| - $$
+$$ - \tr(\Lambda(\xi) \tilde K) - \frac 1 2 \tr(B^{-1} B) \propto $$
+$$\propto \frac 1 8 y^T K_{nm} B^{-1} K_{mn} y + \frac 1 2 \log |K_{mm}| - \frac 1 2 \log |B| - \tr(\Lambda(\xi) \tilde K),$$
+where $\tilde K = K_{nn} - K_{nm} K_{mm}^{-1} K_{mn}$.
+
+
