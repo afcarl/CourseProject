@@ -37,23 +37,35 @@ Differentiating $J$ with respect to $\mu$ and $\Sigma$ and setting the derivativ
 Note, that these formulas are very similar to the corresponding optimal values in the regression problem.
 
 We now apply coordinate-wise optimization to tune both $\mu$, $\Sigma$ and $\xi$. On the first step we use formulas (\ref{vi_optimal_sigma}) and (\ref{vi_optimal_mu}) to find the optimal distribution over $f$ for the current values $\xi_{old}$ of $\xi$. On the second step we maximize $J$ with respect to $\xi$ for fixed $\mu$ and $\Sigma$. This leads to
-$$\xi_i^2 = \E_{q(f | \xi_{old})} f_i^2.$$
+$$\xi_i^2 = \E_{q(f | \xi_{old})} f_i^2 = m_i^2 + S_i^2.$$
 Now, performing a few updates of $\mu$, $\Sigma$ and $\xi$, we obtain closed-form formulas for optimal
 $\mu$ and $\Sigma$ and can substitute them back to the ELBO.
 
 Note, that
 $$\hat\Sigma(\xi) = K_{mm} B^{-1} K_{mm},$$
 $$\hat\mu(\xi) = \frac 1 2 K_{mm} B^{-1} K_{mn} y,$$
-where $B = 2 K_{mm} \Lambda(\xi) K_nm + K_mm$.
+where $B = 2 K_{mn} \Lambda(\xi) K_{nm} + K_{mm}$.
 
 Maximizing our lower bound with respect to $\theta$ is equivalent to maximizing the following expression.
 $$ \hat J(\theta) =  \frac 1 2 \mu^T K_{mm}^{-1} K_{mn} y - \tr\left(\Lambda(\xi) (K_{nn} + K_{nm} K_{mm}^{-1} (\Sigma - K_{mm}) K_{mm}^{-1} K_{mn})\right) -$$
 $$ - \mu^T K_{mm}^{-1} K_{mn} \Lambda(\xi) K_{nm} K_{mm}^{-1} \mu -\frac 1 2 \left (\log \frac {|K_{mm}|} {|\Sigma|} + \tr(K_{mm}^{-1} \Sigma) + \mu^T K_{mm}^{-1} \mu \right) = $$
 $$ = \frac 1 2 \mu^T K_{mm}^{-1} K_{mn} y - \mu^T K_{mm}^{-1}\left(K_{mn} \Lambda(\xi) K_{nm} + \frac 1 2 K_{mm} \right)K_{mm}^{-1}\mu + \frac 1 2 \log \frac {|\Sigma|}{|K_{mm}|} - $$
-$$ - \tr\left(\Lambda(\xi) (K_{nn} - K_{nm} K_{mm}^{-1} K_{mn})\right) - \tr\left(K_{mm}^{-1} \Sigma K_{mm}^{-1} (K_{mn} \Lambda(\xi) K_{mn} + \frac 1 2 K_{mm})\right) = $$
+$$ - \tr\left(\Lambda(\xi) (K_{nn} - K_{nm} K_{mm}^{-1} K_{mn})\right) - \tr\left(K_{mm}^{-1} \Sigma K_{mm}^{-1} (K_{mn} \Lambda(\xi) K_{nm} + \frac 1 2 K_{mm})\right) = $$
 $$ = \frac 1 4 y^T K_{nm} B^{-1} K_{mn} y - \frac 1 8 y K_{nm} B^{-1} K_{mn} y + \frac 1 2 \log |K_{mm}| - \frac 1 2 \log |B| - $$
 $$ - \tr(\Lambda(\xi) \tilde K) - \frac 1 2 \tr(B^{-1} B) \propto $$
 $$\propto \frac 1 8 y^T K_{nm} B^{-1} K_{mn} y + \frac 1 2 \log |K_{mm}| - \frac 1 2 \log |B| - \tr(\Lambda(\xi) \tilde K),$$
 where $\tilde K = K_{nn} - K_{nm} K_{mm}^{-1} K_{mn}$.
 
+Now, let's compute the derivatives of $\hat J$ with respect to $\theta$.
 
+$$\derivative{\hat J}{\theta} = \frac 1 4 y^T \derivative{K_{nm}}{\theta} B^{-1} K_{mn} y - \frac 1 8 y^T K_{nm} B^{-1} \derivative{B}{\theta} B^{-1} K_{mn} y + $$
+$$ + \frac 1 2 \tr\left(K_{mm}^{-1} \derivative{K_{mm}}{\theta}\right) - \frac 1 2 \tr\left(B^{-1} \derivative{B} {\theta}\right) - \tr \left(\Lambda(\xi) \derivative{\tilde K}{\theta}\right),$$
+where
+$$\derivative{\tilde K}{\theta} = \derivative{K_{nn}}{\theta} - 2 \derivative{K_{nm}}{\theta} K_{mm}^{-1} K_{mn} + K_{nm} K_{mm}^{-1} \derivative{K_{mm}}{\theta} K_{mm}^{-1} K_{mn},$$
+$$\derivative{B}{\theta} = 4 \derivative{K_{mn}}{\theta} \Lambda(\xi) K_{nm} + \derivative{K_{mm}}{\theta}.$$
+
+We can now iteratively optimize $J$ with respect to both variational parameters $\mu, \Sigma$ and kernel-hyperparameters $\theta$. On each iteration we perform several steps of tuning the variational parameters $\mu$, $\Sigma$ and $\xi$. Then, we optimize the obtained model $\hat J(\theta) \propto J(\mu, \Sigma, \xi, \theta)$ for fixed $\mu$, $\Sigma$ and $\xi$ with respect to $\theta$.
+
+Recalculating $\mu$ and $\Sigma$ for fixed $\xi$ requires $\bigO(nm^2)$ operations. Updating $\xi$ for fixed $\mu$ and $\Sigma$ scales as $\bigO(nm^2)$ as well. Finally, calculating the ELBO $\hat J(\theta)$ and it's gradient requires $\bigO(nm^2)$.
+
+The derived method is similar to both the Largange GP-classification and the \lstinline{vi} method.

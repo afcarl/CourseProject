@@ -10,13 +10,14 @@ data_covariance_obj = SquaredExponential(data_params)
 model_params = np.array([2.2, 1.73, 0.2])
 model_covariance_obj = SquaredExponential(model_params)
 gp = GPC(data_covariance_obj)
-num = 10
+num = 500
 test_density = 20
 dim = 2
 seed = 21
-ind_num = 3
+ind_num = 10
 method = 'vi'
 maxiter = 100
+max_out_iter = 20
 
 opts = {'maxiter':maxiter, 'mydisp': True}
 
@@ -42,7 +43,7 @@ new_gp = GPC(model_covariance_obj, method=method, hermgauss_deg=100)
 if method == 'svi':
     new_gp.fit(x_tr, y_tr, num_inputs=ind_num, optimizer_options=opts)
 elif method == 'vi':
-    new_gp.fit(x_tr, y_tr, num_inputs=ind_num, optimizer_options=opts)
+    new_gp.fit(x_tr, y_tr, num_inputs=ind_num, max_out_iter=max_out_iter, optimizer_options=opts)
 elif method == 'brute':
     new_gp.fit(x_tr, y_tr)
 else:

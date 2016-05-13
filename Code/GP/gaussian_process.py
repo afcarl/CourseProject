@@ -72,3 +72,11 @@ class GP:
         mat = np.zeros((k, k))
         mat[indices] = vec.reshape(-1)
         return mat
+
+    @staticmethod
+    def _get_inv_logdet_cholesky(mat):
+        L = np.linalg.cholesky(mat)
+        L_inv = np.linalg.inv(L)
+        mat_inv = L_inv.T.dot(L_inv)
+        mat_logdet = np.sum(np.log(np.diag(L))) * 2
+        return mat_inv, mat_logdet
