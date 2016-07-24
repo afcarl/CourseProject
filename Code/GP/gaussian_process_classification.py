@@ -5,12 +5,15 @@ import numpy as np
 import scipy as sp
 import scipy.optimize as op
 from sklearn.cluster import KMeans
+from sklearn.metrics import f1_score
 from numpy.polynomial.hermite import hermgauss
+from copy import deepcopy
+from scipy.special import expit
 
 from GP.covariance_functions import CovarianceFamily, sigmoid
 from GP.gaussian_process import GP
-from GP.optimization import check_gradient, minimize_wrapper
-
+from GP.optimization import check_gradient, minimize_wrapper, stochastic_gradient_descent
+from GP.gp_res import GPRes
 
 class GPC(GP):
     """
@@ -465,26 +468,62 @@ class GPC(GP):
 
         bnds = self._svi_get_bounds(m)
 
-        def fun(w):
-            # print(w.shape)
+        def fun(w, i=None):
+            full = False
+            if i is None:
+                full = True
+                i = range(target_values.size)
             fun, grad = self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=w,
-                                       indices=range(target_values.size))
-            return -fun, -grad[:, 0]
+                                       indices=i)
+            if full:
+                return -fun, -grad[:, 0]
+            else:
+                return -grad[:, 0]
+
         mydisp = False
+        mode = 'full'
+
         opts = copy.deepcopy(optimizer_options)
         if not optimizer_options is None:
             if 'mydisp' in opts.keys():
                 mydisp = opts['mydisp']
                 del opts['mydisp']
-        res, w_list, time_list = minimize_wrapper(fun, param_vec, method='L-BFGS-B', mydisp=mydisp,
-                                                          bounds=bnds, jac=True, options=opts)
+            if 'mode' in opts.keys():
+                mode = opts['mode']
+                del opts['mode']
 
-        res = res['x']
+        if mode == 'full':
+            res, w_list, time_list = minimize_wrapper(fun, param_vec, method='L-BFGS-B', mydisp=mydisp,
+                                                      bounds=bnds, jac=True, options=opts)
+            res = res['x']
+        elif mode == 'batch':
+            res, w_list, time_list = stochastic_gradient_descent(oracle=fun, n=n, point=param_vec, bounds=bnds,
+                                                                 options=optimizer_options)
+
         theta, mu, sigma_L = self._svi_get_parameters(res)
         sigma = sigma_L.dot(sigma_L.T)
 
         self.inducing_inputs = (inputs, mu, sigma)
+        return GPRes(param_lst=w_list, time_lst=time_list)
 
+    def _svi_get_prediction_quality(self, params, test_points, test_targets):
+        """
+        Returns prediction quality on the test set for the given kernel (and inducing points) parameters for the means
+        method
+        :param params: parameters
+        :param test_points: test set points
+        :param test_targets: test set target values
+        :return: prediction MSE
+        """
+        new_gp = deepcopy(self)
+        theta, mu, Sigma_L = new_gp._svi_get_parameters(params)
+        Sigma = Sigma_L.dot(Sigma_L.T)
+        # theta = params[:len(new_gp.covariance_obj.get_params())]
+        new_gp.covariance_obj.set_params(theta)
+        new_gp.inducing_inputs = (new_gp.inducing_inputs[0], mu, Sigma)
+        predicted_y_test = new_gp.predict(test_points)
+        return 1 - np.sum(test_targets != predicted_y_test) / test_targets.size
+        # return f1_score(test_targets, predicted_y_test)
 
     def _svi_elbo_batch_approx_oracle(self, data_points, target_values, inducing_inputs, parameter_vec,
                                        indices):
@@ -520,8 +559,14 @@ class GPC(GP):
         sigma_n = parameter_vec[len(self.covariance_obj.get_params())-1]
 
         # Covariance matrices
+
         K_mm = cov_fun(inducing_inputs, inducing_inputs)
-        L = np.linalg.cholesky(K_mm)
+        try:
+            L = np.linalg.cholesky(K_mm)
+        except:
+            print(params)
+            exit(0)
+
         L_inv = np.linalg.inv(L)
         K_mm_inv = L_inv.T.dot(L_inv)
         k_i = cov_fun(inducing_inputs, x_i)
@@ -621,9 +666,13 @@ class GPC(GP):
         points = points[None, :]
         weights = weights[None, :]
         mat = - (np.sqrt(2) * points * stds + means) * targets
-        mat = np.exp(mat)
-        mat += 1
-        mat = -np.log(mat)
+        # mat = np.exp(mat)
+        # mat += 1
+        # mat = -np.log(mat)
+        # print(np.min(mat))
+        # print(np.max(mat))
+        mat = np.log(expit(np.abs(mat))) - mat * (np.sign(mat) == 1)
+        # mat = np.log(expit(mat)) - mat
         mat *= weights
         return np.sum(mat) / np.sqrt(np.pi)
 
@@ -631,7 +680,9 @@ class GPC(GP):
         points, weights = self.gauss_hermite
         points = points[None, :]
         weights = weights[None, :]
-        mat = targets / (1 + np.exp(targets * (np.sqrt(2) * points * stds + means)))
+        # mat = targets / (1 + np.exp(targets * (np.sqrt(2) * points * stds + means)))
+        mat = targets * (np.sqrt(2) * points * stds + means)
+        mat = expit(-mat) * targets
         mat *= weights
         return (np.sum(mat, axis=1) / np.sqrt(np.pi))[None, :]
 
@@ -639,8 +690,10 @@ class GPC(GP):
         points, weights = self.gauss_hermite
         points = points[None, :]
         weights = weights[None, :]
-        anc_mat = np.exp(targets * (np.sqrt(2) * points * stds + means))
-        mat = -targets**2 * anc_mat / (1 + anc_mat)**2
+        # anc_mat = np.exp(targets * (np.sqrt(2) * points * stds + means))
+        # mat = -targets**2 * anc_mat / (1 + anc_mat)**2
+        anc_mat = targets * (np.sqrt(2) * points * stds + means)
+        mat = -targets**2 * expit(anc_mat) * expit(-anc_mat)
         mat *= weights
         return (np.sum(mat, axis=1) / np.sqrt(np.pi))[None, :]
 
@@ -716,23 +769,30 @@ class GPC(GP):
 
         bnds = self.covariance_obj.get_bounds()
         params = self.covariance_obj.get_params()
+        w_list, time_list = [(params, mu, Sigma)], [0]
+        start = time.time()
         for iteration in range(max_out_iter):
-            xi, mu, Sigma = self.update_xi(params, data_points, target_values, inputs, mu, Sigma, n_iter=10)
+            num_updates = optimizer_options['maxiter']
+            xi, mu, Sigma = self.update_xi(params, data_points, target_values, inputs, mu, Sigma, n_iter=num_updates)
             mydisp = False
             options = copy.deepcopy(optimizer_options)
             if not optimizer_options is None:
                 if 'mydisp' in optimizer_options.keys():
                     mydisp = optimizer_options['mydisp']
                     del options['mydisp']
-            res, w_list, time_list = minimize_wrapper(oracle, params, method='L-BFGS-B', mydisp=False, bounds=bnds,
-                                                      options=options)
-            params = res['x']
 
+            it_res, it_w_list, it_time_list = minimize_wrapper(oracle, params, method='L-BFGS-B', mydisp=False, bounds=bnds,
+                                                      options=options)
+
+            params = it_res['x']
+
+            w_list.append((params, np.copy(mu), np.copy(Sigma)))
+            time_list.append(time.time() - start)
             if mydisp:
-                print('Hyper-parameters at outter iteration', iteration, ':', params)
+                print('\tHyper-parameters at outter iteration', iteration, ':', params)
         self.inducing_inputs = inputs, mu, Sigma
         self.covariance_obj.set_params(params)
-        # return
+        return GPRes(param_lst=w_list, time_lst=time_list)
 
     def update_xi(self, params, data_points, target_values, inputs, mu, Sigma, n_iter=5):
         cov_obj = copy.deepcopy(self.covariance_obj)
@@ -757,7 +817,6 @@ class GPC(GP):
         :param xi: variational parameters xi
         :return: the value and the gradient of the lower bound
         """
-
         y = targets
         n = points.shape[1]
         m = ind_points.shape[1]
@@ -766,7 +825,6 @@ class GPC(GP):
         cov_obj.set_params(params)
         cov_fun = cov_obj.covariance_function
         lambda_xi = self._vi_lambda(xi)
-
         K_mm = cov_fun(ind_points, ind_points)
         K_mm_inv, K_mm_log_det = self._get_inv_logdet_cholesky(K_mm)
         K_nm = cov_fun(points, ind_points)
@@ -775,10 +833,13 @@ class GPC(GP):
         K_ii = cov_fun(points[:, :1], points[:, :1])
 
         B = 2 * K_mnLambdaK_nm + K_mm
+        # print(np.linalg.slogdet(K_mm))
+        # print(params)
+        # print(np.linalg.slogdet(B))
         B_inv, B_log_det = self._get_inv_logdet_cholesky(B)
 
         fun = ((y.T.dot(K_nm.dot(B_inv.dot(K_mn.dot(y))))/8)[0, 0] + K_mm_log_det/2 - B_log_det/2
-               - np.sum(K_ii * lambda_xi) + np.einsum('ij,ji->', K_mm_inv, K_mnLambdaK_nm) )
+               - np.sum(K_ii * lambda_xi) + np.einsum('ij,ji->', K_mm_inv, K_mnLambdaK_nm))
 
         gradient = []
         derivative_matrix_list = cov_obj.get_derivative_function_list(params)
@@ -809,3 +870,30 @@ class GPC(GP):
                                    K_mm_inv.dot(dK_mm.dot(K_mm_inv.dot(K_mnLambdaK_nm))))
             gradient.append(derivative[0, 0])
         return fun, np.array(gradient)
+
+    def _vi_get_prediction_quality(self, params, test_points, test_targets):
+        """
+        Returns prediction quality on the test set for the given kernel (and inducing points) parameters for the means
+        method
+        :param params: parameters
+        :param test_points: test set points
+        :param test_targets: test set target values
+        :return: prediction MSE
+        """
+        new_gp = deepcopy(self)
+        theta, mu, Sigma = params
+        new_gp.covariance_obj.set_params(theta)
+        new_gp.inducing_inputs = (new_gp.inducing_inputs[0], mu, Sigma)
+        predicted_y_test = new_gp.predict(test_points)
+        # return f1_score(test_targets, predicted_y_test)
+        return 1 - np.sum(test_targets != predicted_y_test) / test_targets.size
+
+    def get_prediction_quality(self, *args, **kwargs):
+
+        if self.method == 'vi':
+            # raise ValueError('Not implemented yet')
+            return self._vi_get_prediction_quality(*args, **kwargs)
+        elif self.method == 'svi':
+            return self._svi_get_prediction_quality(*args, **kwargs)
+        else:
+            raise ValueError('Wrong method')

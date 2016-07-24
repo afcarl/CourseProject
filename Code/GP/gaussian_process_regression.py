@@ -9,7 +9,7 @@ from sklearn.metrics import r2_score
 
 from GP.covariance_functions import CovarianceFamily
 from GP.gaussian_process import GP
-from GP.gpr_res import GPRRes
+from GP.gp_res import GPRes
 from GP.optimization import gradient_descent, stochastic_gradient_descent, stochastic_average_gradient,\
                          minimize_wrapper, projected_newton, _eig_val_correction
 
@@ -142,7 +142,7 @@ class GPR(GP):
                                                                options={'gtol': 1e-8, 'ftol': 0, 'maxiter': max_iter})
         optimal_params = res.x
         self.covariance_obj.set_params(optimal_params)
-        return GPRRes(deepcopy(w_list), time_lst=deepcopy(time_list))
+        return GPRes(deepcopy(w_list), time_lst=deepcopy(time_list))
 
     def _brute_predict(self, test_points, training_points, training_targets):
         """
@@ -263,7 +263,7 @@ class GPR(GP):
 
         mu, Sigma = self._vi_get_optimal_meancov(optimal_params, inducing_points, data_points, target_values)
         self.inducing_inputs = (inducing_points, mu, Sigma)
-        return GPRRes(deepcopy(w_list), time_lst=deepcopy(time_list))
+        return GPRes(deepcopy(w_list), time_lst=deepcopy(time_list))
 
     def _vi_means_oracle(self, points, targets, params, ind_points):
         """
@@ -609,7 +609,7 @@ class GPR(GP):
 
         self.covariance_obj.set_params(theta)
         self.inducing_inputs = (inputs, mu, sigma)
-        return GPRRes(deepcopy(w_list), time_lst=deepcopy(time_list))
+        return GPRes(deepcopy(w_list), time_lst=deepcopy(time_list))
 
     def _svi_get_loss(self, params, data_points, target_values):
         new_gp = deepcopy(self)

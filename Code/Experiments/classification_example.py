@@ -14,12 +14,13 @@ num = 500
 test_density = 20
 dim = 2
 seed = 21
-ind_num = 10
-method = 'vi'
-maxiter = 100
+ind_num = 20
+method = 'svi'
+maxiter = 500
 max_out_iter = 20
 
-opts = {'maxiter':maxiter, 'mydisp': True}
+opts = {'mode': 'batch', 'batch_size': 200, 'maxiter': maxiter, 'verbose': True, 'step0':0.007}
+# opts = {'mode': 'full', 'maxiter': maxiter, 'mydisp': True}
 
 np.random.seed(seed)
 x_tr = np.random.rand(dim, num)

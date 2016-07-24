@@ -12,7 +12,6 @@ In this section the results of the numerical experiments are provided. All of th
 		The methods \lstinline{svi-L-BFGS-B} and \lstinline{svi-FG} use the full (non-stochastic) ELBO from the same article \cite{BigData} and minimize it with L-BFGS-B and gradient descent respectively. These methods use Cholesky factorization (see \ref{svi}) for the variational parameters.
 
 		Finally, the \lstinline{svi-SAG} method to minimize the ELBO. This method also uses Cholesky factorization.
-
 		We will compare the methods on datasets, generated from some gaussian process and on real data. 
 
 		% The generated dataset consisted of $500$ train points with $2$ features. $100$ inducing inputs were used 
@@ -138,3 +137,6 @@ In this section the results of the numerical experiments are provided. All of th
 		\label{vi_big}
 		\caption{Method's performance on a bigger dataset}
 	\end{figure}
+
+\subsection{\lstinline{vi-classification} and \lstinline{svi-classification} methods for classification}
+	In this section we compare \lstinline{vi-means} and \lstinline{svi} approaches to the classification problem
