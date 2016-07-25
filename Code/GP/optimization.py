@@ -1,8 +1,9 @@
 import numpy as np
 import time
 import scipy.optimize as op
+import climin
 import cvxopt
-
+from climin.util import iter_minibatches
 
 def project_into_bounds(point, bounds):
     """
@@ -515,6 +516,42 @@ def projected_newton(oracle, point, bounds=None, options=None):
             print(x)
 
     return x, x_lst, time_lst
+
+
+def climin_adadelta_wrapper(oracle, w0, train_points, train_targets, options):
+    default_options = {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'g_tol': 1e-5,
+                       'batch_size': 10, 'step_rate': 0.1}
+    if not options is None:
+        default_options.update(options)
+        if 'print_freq' in options.keys():
+            default_options['verbose'] = True
+    options = default_options
+
+    w = w0.copy()
+    print(train_points.shape)
+    print(train_targets.shape)
+    data = ((i, {}) for i in iter_minibatches([train_points, train_targets], options['batch_size'], [1, 0]))
+    opt = climin.Adadelta(wrt=w, fprime=oracle, args=data, step_rate=options['step_rate'])
+
+    w_lst = [w.copy()]
+    time_lst = [0.]
+    start = time.time()
+
+    for info in opt:
+        i = info['n_iter']
+        if i > options['maxiter']:
+            break
+        if not (i % options['print_freq']) and options['verbose']:
+            grad = info['gradient']
+            print("Iteration ", i, ":")
+            print("\tGradient norm", np.linalg.norm(grad))
+
+        w_lst.append(w.copy())
+        time_lst.append(time.time() - start)
+
+    return w.copy(), w_lst, time_lst
+
+
 
 if __name__ == '__main__':
     A = np.array([[2, -1, 0], [-1, 2, -1], [0, -1, 2]])

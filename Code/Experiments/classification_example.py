@@ -19,8 +19,9 @@ method = 'svi'
 maxiter = 500
 max_out_iter = 20
 
-opts = {'mode': 'batch', 'batch_size': 200, 'maxiter': maxiter, 'verbose': True, 'step0':0.007}
+# opts = {'mode': 'batch', 'batch_size': 200, 'maxiter': maxiter, 'verbose': True, 'step0':0.007}
 # opts = {'mode': 'full', 'maxiter': maxiter, 'mydisp': True}
+opts = {'mode': 'adadelta', 'maxiter': maxiter, 'verbose': True, 'batch_size':20, 'step_rate': 0.7, 'decay': 0.8}
 
 np.random.seed(seed)
 x_tr = np.random.rand(dim, num)

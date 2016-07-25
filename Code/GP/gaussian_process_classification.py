@@ -12,7 +12,7 @@ from scipy.special import expit
 
 from GP.covariance_functions import CovarianceFamily, sigmoid
 from GP.gaussian_process import GP
-from GP.optimization import check_gradient, minimize_wrapper, stochastic_gradient_descent
+from GP.optimization import check_gradient, minimize_wrapper, stochastic_gradient_descent, climin_adadelta_wrapper
 from GP.gp_res import GPRes
 
 class GPC(GP):
@@ -480,6 +480,11 @@ class GPC(GP):
             else:
                 return -grad[:, 0]
 
+        def adadelta_fun(w, train_points, train_targets):
+            _, grad = self._svi_elbo_batch_approx_oracle(train_points, train_targets, inputs, parameter_vec=w,
+                                       indices=range(train_targets.size))
+            return -grad[:, 0]
+
         mydisp = False
         mode = 'full'
 
@@ -498,7 +503,10 @@ class GPC(GP):
             res = res['x']
         elif mode == 'batch':
             res, w_list, time_list = stochastic_gradient_descent(oracle=fun, n=n, point=param_vec, bounds=bnds,
-                                                                 options=optimizer_options)
+                                                                 options=opts)
+        elif mode == 'adadelta':
+            res, w_list, time_list = climin_adadelta_wrapper(oracle=adadelta_fun, w0=param_vec, train_points=data_points,
+                                                             train_targets=target_values, options=opts)
 
         theta, mu, sigma_L = self._svi_get_parameters(res)
         sigma = sigma_L.dot(sigma_L.T)
