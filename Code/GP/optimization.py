@@ -519,7 +519,7 @@ def projected_newton(oracle, point, bounds=None, options=None):
 
 
 def climin_adadelta_wrapper(oracle, w0, train_points, train_targets, options):
-    default_options = {'maxiter': 1000, 'print_freq':10, 'verbose': False, 'g_tol': 1e-5,
+    default_options = {'maxiter': 1000, 'print_freq':1, 'verbose': False, 'g_tol': 1e-5,
                        'batch_size': 10, 'step_rate': 0.1}
     if not options is None:
         default_options.update(options)
@@ -536,18 +536,21 @@ def climin_adadelta_wrapper(oracle, w0, train_points, train_targets, options):
     w_lst = [w.copy()]
     time_lst = [0.]
     start = time.time()
-
+    n_epochs = options['maxiter']
+    n_iterations = int(n_epochs * train_targets.size / options['batch_size'])
+    print_freq = int(options['print_freq'] * train_targets.size / options['batch_size'])
+    print(print_freq)
     for info in opt:
         i = info['n_iter']
-        if i > options['maxiter']:
+        if i > n_iterations:
             break
-        if not (i % options['print_freq']) and options['verbose']:
+        if not (i % print_freq) and options['verbose']:
             grad = info['gradient']
             print("Iteration ", i, ":")
             print("\tGradient norm", np.linalg.norm(grad))
 
-        w_lst.append(w.copy())
-        time_lst.append(time.time() - start)
+            w_lst.append(w.copy())
+            time_lst.append(time.time() - start)
 
     return w.copy(), w_lst, time_lst
 

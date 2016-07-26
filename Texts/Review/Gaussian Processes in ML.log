@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.10.4)  22 MAY 2016 17:11
+This is pdfTeX, Version 3.14159265-2.6-1.40.16 (TeX Live 2015) (preloaded format=pdflatex 2015.10.4)  25 JUL 2016 21:09
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1824,7 +1824,7 @@ Package babel Info: Redefining russian shorthand "~
 (babel)             in language  on input line 7.
 
 
-Package caption Warning: \label without proper \caption on input line 53.
+Package caption Warning: \label without proper \caption on input line 52.
 See the caption package documentation for explanation.
 
 
@@ -1908,7 +1908,7 @@ Package babel Info: Redefining russian shorthand "~
 (babel)             in language  on input line 104.
 [23]
 
-Package caption Warning: \label without proper \caption on input line 123.
+Package caption Warning: \label without proper \caption on input line 122.
 See the caption package documentation for explanation.
 
 
@@ -1978,29 +1978,20 @@ Package atveryend Info: Empty hook `AfterLastShipout' on input line 136.
  (./Gaussian Processes in ML.aux)
 Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 136.
 Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 136.
+Package rerunfilecheck Info: File `"Gaussian Processes in ML".out' has not chan
+ged.
+(rerunfilecheck)             Checksum: E466E43F9FF787D7D6DCC5F9E5EA3F08;4393.
 
-
-Package rerunfilecheck Warning: File `"Gaussian Processes in ML".out' has chang
-ed.
-(rerunfilecheck)                Rerun to get outlines right
-(rerunfilecheck)                or use package `bookmark'.
-
-Package rerunfilecheck Info: Checksums for `"Gaussian Processes in ML".out':
-(rerunfilecheck)             Before: 2D08368E0523DC0BF7EDD6889F6BC0AD;3985
-(rerunfilecheck)             After:  E466E43F9FF787D7D6DCC5F9E5EA3F08;4393.
 
 LaTeX Warning: There were undefined references.
-
-
-LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
 
 Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 136.
  ) 
 Here is how much of TeX's memory you used:
- 32924 strings out of 493089
- 707153 string characters out of 6134842
+ 32925 strings out of 493089
+ 707169 string characters out of 6134842
  1146605 words of memory out of 5000000
- 35726 multiletter control sequences out of 15000+600000
+ 35727 multiletter control sequences out of 15000+600000
  22155 words of font info for 65 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  62i,13n,77p,739b,1176s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -2027,10 +2018,10 @@ mf-dist/fonts/type1/public/cm-super/sfrm1200.pfb></usr/local/texlive/2015/texmf
 -dist/fonts/type1/public/cm-super/sfrm1728.pfb></usr/local/texlive/2015/texmf-d
 ist/fonts/type1/public/cm-super/sfti1200.pfb></usr/local/texlive/2015/texmf-dis
 t/fonts/type1/public/cm-super/sftt1095.pfb>
-Output written on "Gaussian Processes in ML.pdf" (26 pages, 421348 bytes).
+Output written on "Gaussian Processes in ML.pdf" (26 pages, 421418 bytes).
 PDF statistics:
- 394 PDF objects out of 1000 (max. 8388607)
- 340 compressed objects within 4 object streams
+ 397 PDF objects out of 1000 (max. 8388607)
+ 343 compressed objects within 4 object streams
  93 named destinations out of 1000 (max. 500000)
- 165 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 173 words of extra memory for PDF output out of 10000 (max. 10000000)
 
