@@ -43,7 +43,7 @@ def run_methods(train_points, train_targets, test_points, test_targets,
                 adadelta=True, vi=True, svi=True):
 
     print('Finding means...')
-    means = KMeans(n_clusters=ind_num, n_init=1, max_iter=40)
+    means = KMeans(n_clusters=ind_num, n_init=3, max_iter=50)
     means.fit(train_points.T)
     inputs = means.cluster_centers_.T
     print('...found')
@@ -60,8 +60,16 @@ def run_methods(train_points, train_targets, test_points, test_targets,
         res = new_gp.fit(train_points, train_targets, inputs=inputs, optimizer_options=opts)
 
         metric = lambda w: new_gp.get_prediction_quality(w, test_points, test_targets)
-        x_lst, y_lst = res.plot_performance(metric, 't', freq=1)
+        # np.save('params.npy', np.array(res.params))
+        # np.save('means.npy', inputs)
+        x_lst, y_lst = res.plot_performance(metric, 't', freq=10)
         plt.plot(x_lst, y_lst, color, label=name)
+        np.save(file_name + '_svi_x_lst.npy', x_lst)
+        np.save(file_name + '_svi_y_lst.npy', y_lst)
+        #
+        print(y_lst[-1])
+        # np.save('mnist_svi_x_lst.npy', x_lst)
+        # np.save('mnist_svi_y_lst.npy', y_lst)
 
     if vi:
         #vi-means-c method
@@ -77,6 +85,8 @@ def run_methods(train_points, train_targets, test_points, test_targets,
         metric = lambda w: new_gp.get_prediction_quality(w, test_points, test_targets)
         x_lst, y_lst = res.plot_performance(metric, time_it, freq=1)
         plt.plot(x_lst, y_lst, color, label=name)
+        np.save(file_name + '_vi_x_lst.npy', x_lst)
+        np.save(file_name + '_vi_y_lst.npy', y_lst)
 
     if adadelta:
         #svi-AdaDelta-c method

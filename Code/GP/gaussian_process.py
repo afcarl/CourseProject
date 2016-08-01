@@ -1,5 +1,6 @@
 import numpy as np
 from abc import ABCMeta, abstractmethod
+from GP.optimization import _eig_val_correction
 
 class GP:
     """
@@ -69,13 +70,16 @@ class GP:
         if k != int(k):
             raise ValueError("Vec has an invalid size")
         indices = np.tril_indices(k)
-        mat = np.zeros((k, k))
+        mat = np.zeros((int(k), int(k)))
         mat[indices] = vec.reshape(-1)
         return mat
 
     @staticmethod
     def _get_inv_logdet_cholesky(mat):
-        L = np.linalg.cholesky(mat)
+        try:
+            L = np.linalg.cholesky(mat)
+        except:
+            L = np.linalg.cholesky(_eig_val_correction(mat, eps=1e-2))
         L_inv = np.linalg.inv(L)
         mat_inv = L_inv.T.dot(L_inv)
         mat_logdet = np.sum(np.log(np.diag(L))) * 2

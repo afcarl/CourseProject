@@ -39,12 +39,6 @@ y_tr = y_tr[:, None]
 y_test = y_test[:, None]
 y_tr[y_tr == 0] = -1
 y_test[y_test == 0] = -1
-# print(y_tr[-10:])
-# exit(0)
-# x_test = x_tr[:, int(x_tr.shape[1] * 0.8):]
-# y_test = y_tr[int(x_tr.shape[1] * 0.8):, :]
-# y_tr = y_tr[:int(x_tr.shape[1] * 0.8), :]
-# x_tr = x_tr[:, : int(x_tr.shape[1] * 0.8)]
 dim, num = x_tr.shape
 print(num, dim)
 

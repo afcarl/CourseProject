@@ -12,7 +12,8 @@ from scipy.special import expit
 
 from GP.covariance_functions import CovarianceFamily, sigmoid
 from GP.gaussian_process import GP
-from GP.optimization import check_gradient, minimize_wrapper, stochastic_gradient_descent, climin_adadelta_wrapper
+from GP.optimization import check_gradient, minimize_wrapper, stochastic_gradient_descent, climin_adadelta_wrapper, \
+    gradient_descent
 from GP.gp_res import GPRes
 
 class GPC(GP):
@@ -789,9 +790,13 @@ class GPC(GP):
                     mydisp = optimizer_options['mydisp']
                     del options['mydisp']
 
-            it_res, it_w_list, it_time_list = minimize_wrapper(oracle, params, method='L-BFGS-B', mydisp=False, bounds=bnds,
-                                                      options=options)
+            it_res, it_w_list, it_time_list = minimize_wrapper(oracle, params, method='L-BFGS-B', mydisp=mydisp, bounds=bnds,
+                                                               options=options)
+            # it_res, it_w_list, it_time_list = minimize_wrapper(oracle, params, method='BFGS', mydisp=True,
+            #                                                    options=options)
 
+            # print('here')
+            # params, _, _ = gradient_descent(oracle, params, bounds=bnds, options=options)
             params = it_res['x']
 
             w_list.append((params, np.copy(mu), np.copy(Sigma)))
@@ -841,10 +846,10 @@ class GPC(GP):
         K_ii = cov_fun(points[:, :1], points[:, :1])
 
         B = 2 * K_mnLambdaK_nm + K_mm
-        # print(np.linalg.slogdet(K_mm))
-        # print(params)
-        # print(np.linalg.slogdet(B))
+
         B_inv, B_log_det = self._get_inv_logdet_cholesky(B)
+
+
 
         fun = ((y.T.dot(K_nm.dot(B_inv.dot(K_mn.dot(y))))/8)[0, 0] + K_mm_log_det/2 - B_log_det/2
                - np.sum(K_ii * lambda_xi) + np.einsum('ij,ji->', K_mm_inv, K_mnLambdaK_nm))

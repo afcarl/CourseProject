@@ -358,6 +358,8 @@ def minimize_wrapper(func, x0, mydisp=False, jac=True, **kwargs):
         w_list.append(np.copy(w))
         aux['it'] += 1
         aux['start'] = time.time()
+        # if aux['it'] == kwargs['options']['maxiter']:
+        #     return np.copy(w), w_list, time_list
     w_list = []
     time_list = []
     callback(x0)
@@ -404,7 +406,7 @@ def _generate_constraint_matrix(bounds, x_old=None):
     return G, h
 
 
-def _eig_val_correction(mat, eps=1e-5):
+def _eig_val_correction(mat, eps=1e-2):
     """
     Corrects the matrix, so that it becomes simmetric positive-definite, based on eigenvalue decomposition.
     :param mat: matrix to be corrected
@@ -413,9 +415,7 @@ def _eig_val_correction(mat, eps=1e-5):
     """
     mat = (mat + mat.T)/2
     w, v = np.linalg.eigh(mat)
-    for j in range(w.size):
-        if w[j] < eps:
-            w[j] = eps
+    w[w < eps] = eps
     new_mat = v.dot(np.diag(w).dot(np.linalg.inv(v)))
     return (new_mat + new_mat.T)/2
 
@@ -528,8 +528,6 @@ def climin_adadelta_wrapper(oracle, w0, train_points, train_targets, options):
     options = default_options
 
     w = w0.copy()
-    print(train_points.shape)
-    print(train_targets.shape)
     data = ((i, {}) for i in iter_minibatches([train_points, train_targets], options['batch_size'], [1, 0]))
     opt = climin.Adadelta(wrt=w, fprime=oracle, args=data, step_rate=options['step_rate'])
 
@@ -539,7 +537,6 @@ def climin_adadelta_wrapper(oracle, w0, train_points, train_targets, options):
     n_epochs = options['maxiter']
     n_iterations = int(n_epochs * train_targets.size / options['batch_size'])
     print_freq = int(options['print_freq'] * train_targets.size / options['batch_size'])
-    print(print_freq)
     for info in opt:
         i = info['n_iter']
         if i > n_iterations:
@@ -548,7 +545,7 @@ def climin_adadelta_wrapper(oracle, w0, train_points, train_targets, options):
             grad = info['gradient']
             print("Iteration ", i, ":")
             print("\tGradient norm", np.linalg.norm(grad))
-
+        if not i % int(train_targets.size / options['batch_size']):
             w_lst.append(w.copy())
             time_lst.append(time.time() - start)
 

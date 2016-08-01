@@ -24,7 +24,6 @@ x_tr = x_tr.T
 x_tr = x_tr.toarray()
 scaler = StandardScaler()
 x_tr = scaler.fit_transform(x_tr)
-# y_g = y_g.toarray()
 
 
 x_tr = (x_tr + 1) / 2
