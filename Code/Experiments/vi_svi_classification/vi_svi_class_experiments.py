@@ -43,7 +43,7 @@ def run_methods(train_points, train_targets, test_points, test_targets,
                 adadelta=True, vi=True, svi=True):
 
     print('Finding means...')
-    means = KMeans(n_clusters=ind_num, n_init=3, max_iter=50)
+    means = KMeans(n_clusters=ind_num, n_init=3, max_iter=100, random_state=241)
     means.fit(train_points.T)
     inputs = means.cluster_centers_.T
     print('...found')

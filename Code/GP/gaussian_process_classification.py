@@ -483,7 +483,7 @@ class GPC(GP):
 
         def adadelta_fun(w, train_points, train_targets):
             _, grad = self._svi_elbo_batch_approx_oracle(train_points, train_targets, inputs, parameter_vec=w,
-                                       indices=range(train_targets.size))
+                                       indices=range(train_targets.size), N=n)
             return -grad[:, 0]
 
         mydisp = False
@@ -535,7 +535,7 @@ class GPC(GP):
         # return f1_score(test_targets, predicted_y_test)
 
     def _svi_elbo_batch_approx_oracle(self, data_points, target_values, inducing_inputs, parameter_vec,
-                                       indices):
+                                       indices, N=None):
         """
         The approximation of Evidence Lower Bound (L3 from the article 'Scalable Variational Gaussian Process
         Classification') and it's derivative wrt kernel hyper-parameters and variational parameters.
@@ -549,8 +549,8 @@ class GPC(GP):
         :param indices: a list of indices of the data points in the mini-batch
         :return: ELBO and it's gradient approximation in a tuple
         """
-
-        N = target_values.size
+        if N is None:
+            N = target_values.size
         m = inducing_inputs.shape[1]
         theta, mu, sigma_L = self._svi_get_parameters(parameter_vec)
         sigma = sigma_L.dot(sigma_L.T)

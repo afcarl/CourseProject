@@ -12,7 +12,7 @@ model_covariance_obj = SquaredExponential(model_params)
 maxiter = 50
 max_out_iter = 5
 max_inner_iter = 3
-num_inputs = 35
+num_inputs = 50
 batch_size = 50
 
 x_tr, y_tr = load_svmlight_file('../../../../Programming/DataSets/Classification/german_numer(1000,24).txt')
@@ -37,10 +37,9 @@ print(num, dim)
 title = data_name + ' dataset, n = ' + str(num) + ', d = ' + str(dim)
 
 opts = [{'mode': 'full', 'maxiter':maxiter, 'mydisp': True}, {'maxiter':max_inner_iter, 'mydisp': True},
-        {'mode': 'adadelta', 'maxiter': 20,
-         'verbose': True, 'batch_size': batch_size,
-         'step_rate': 0.1}]
+        {'mode': 'adadelta', 'maxiter': 500, 'verbose': True, 'batch_size': 50, 'step_rate': 0.05,
+       'decay': 0.5, 'print_freq':50}]
 
 run_methods(x_tr, y_tr, x_test, y_test, model_params, opts, max_out_iter, file_name, num_inputs, title, True,
-            adadelta=True, vi=True, svi=True)
+            adadelta=True, vi=False, svi=False)
 
