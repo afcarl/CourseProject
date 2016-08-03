@@ -543,7 +543,7 @@ def climin_adadelta_wrapper(oracle, w0, train_points, train_targets, options):
             break
         if not (i % print_freq) and options['verbose']:
             grad = info['gradient']
-            print("Iteration ", i, ":")
+            print("Iteration ", int(i * options['batch_size'] / train_targets.size), ":")
             print("\tGradient norm", np.linalg.norm(grad))
         if not i % int(train_targets.size / options['batch_size']):
             w_lst.append(w.copy())

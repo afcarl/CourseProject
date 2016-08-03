@@ -780,8 +780,11 @@ class GPC(GP):
         params = self.covariance_obj.get_params()
         w_list, time_list = [(params, mu, Sigma)], [0]
         start = time.time()
+        num_updates = 3
+        if 'num_updates' in optimizer_options.keys():
+            num_updates = optimizer_options['num_updates']
+            del optimizer_options['num_updates']
         for iteration in range(max_out_iter):
-            num_updates = optimizer_options['maxiter']
             xi, mu, Sigma = self.update_xi(params, data_points, target_values, inputs, mu, Sigma, n_iter=num_updates)
             mydisp = False
             options = copy.deepcopy(optimizer_options)
