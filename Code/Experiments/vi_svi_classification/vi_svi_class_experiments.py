@@ -34,7 +34,6 @@ from matplotlib import pyplot as plt
 
 from GP.covariance_functions import SquaredExponential
 from GP.gaussian_process_classification import GPC
-
 from sklearn.cluster import KMeans
 
 

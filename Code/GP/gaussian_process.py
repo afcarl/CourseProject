@@ -79,7 +79,7 @@ class GP:
         try:
             L = np.linalg.cholesky(mat)
         except:
-            L = np.linalg.cholesky(_eig_val_correction(mat, eps=1e-2))
+            L = np.linalg.cholesky(_eig_val_correction(mat, eps=1e-1))
         L_inv = np.linalg.inv(L)
         mat_inv = L_inv.T.dot(L_inv)
         mat_logdet = np.sum(np.log(np.diag(L))) * 2
