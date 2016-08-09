@@ -6,6 +6,7 @@ import scipy as sp
 import scipy.optimize as op
 from sklearn.cluster import KMeans
 from sklearn.metrics import f1_score
+from warnings import warn
 from numpy.polynomial.hermite import hermgauss
 from copy import deepcopy
 from scipy.special import expit
@@ -263,7 +264,21 @@ class GPC(GP):
         elif self.method == 'svi':
             return self._svi_fit(*args, **kwargs)
         elif self.method == 'vi':
-            return self._vi_fit(*args, **kwargs)
+            options = kwargs ['optimizer_options']
+            if 'bound' in options.keys():
+                if options['bound'] == 'JJ':
+                    del options['bound']
+                    return self._vi_jj_fit(*args, **kwargs)
+                elif options['bound'] == 'Taylor':
+                    del options['bound']
+                    return self._vi_taylor_fit(*args, **kwargs)
+                else:
+                    del options['bound']
+                    warn('Unknown bound for vi method')
+                    return self._vi_jj_fit(*args, **kwargs)
+            else:
+                return self._vi_jj_fit(*args, **kwargs)
+
         else:
             print(self.method)
             raise ValueError("Method " + self.method + " is invalid")
@@ -729,27 +744,26 @@ class GPC(GP):
         test_targets, up, low = self.sample_for_matrices(new_mean, new_cov)
         return np.sign(test_targets)
 
-    def _vi_recompute_xi(self, K_mm, K_mm_inv, K_nm, K_ii, mu, Sigma):
+    def _vi_jj_recompute_xi(self, K_mm, K_mm_inv, K_nm, K_ii, mu, Sigma):
         K_mn = K_nm.T
         means = K_nm.dot(K_mm_inv.dot(mu))
         vars = K_ii + np.einsum('ij,ji->i', K_nm, K_mm_inv.dot((Sigma - K_mm).dot(K_mm_inv.dot(K_mn))))[:, None]
         return np.sqrt(means**2 + vars)
-        # return vars
 
-    def _vi_lambda(self, xi):
+    def _vi_jj_lambda(self, xi):
         return np.tanh(xi / 2) / (4 * xi)
 
-    def _vi_recompute_var_parameters(self, K_mm_inv, K_nm, xi, y):
+    def _vi_jj_recompute_var_parameters(self, K_mm_inv, K_nm, xi, y):
         K_mn = K_nm.T
-        Lambda_xi = self._vi_lambda(xi)
+        Lambda_xi = self._vi_jj_lambda(xi)
         Sigma = np.linalg.inv(2 * K_mm_inv.dot(K_mn.dot((Lambda_xi * K_nm).dot(K_mm_inv))) + K_mm_inv)
         mu = Sigma.dot(K_mm_inv.dot(K_mn.dot(y))) / 2
         return mu, Sigma
 
-    def _vi_fit(self, data_points, target_values, num_inputs=0, inputs=None, max_out_iter=20, optimizer_options={}):
+    def _vi_jj_fit(self, data_points, target_values, num_inputs=0, inputs=None, max_out_iter=20, optimizer_options={}):
         """
         An experimental method for optimizing hyper-parameters (for fixed inducing points), based on variational
-        inference. See review.
+        inference and Jaakkola-Jordan lower bound for logistic function. See review.
         :param data_points: training set objects
         :param target_values: training set answers
         :param inputs: inducing inputs
@@ -773,7 +787,7 @@ class GPC(GP):
         Sigma = np.eye(m)
 
         def oracle(x):
-            fun, grad = self._vi_elbo(data_points, target_values, x, inputs, xi)
+            fun, grad = self._vi_jj_elbo(data_points, target_values, x, inputs, xi)
             return -fun, -grad
 
         bnds = self.covariance_obj.get_bounds()
@@ -784,22 +798,21 @@ class GPC(GP):
         if 'num_updates' in optimizer_options.keys():
             num_updates = optimizer_options['num_updates']
             del optimizer_options['num_updates']
+
+        mydisp = False
+        options = copy.deepcopy(optimizer_options)
+        if not optimizer_options is None:
+            if 'mydisp' in optimizer_options.keys():
+                mydisp = optimizer_options['mydisp']
+                del options['mydisp']
+
         for iteration in range(max_out_iter):
-            xi, mu, Sigma = self.update_xi(params, data_points, target_values, inputs, mu, Sigma, n_iter=num_updates)
-            mydisp = False
-            options = copy.deepcopy(optimizer_options)
-            if not optimizer_options is None:
-                if 'mydisp' in optimizer_options.keys():
-                    mydisp = optimizer_options['mydisp']
-                    del options['mydisp']
+            xi, mu, Sigma = self._vi_jj_update_xi(params, data_points, target_values, inputs, mu, Sigma,
+                                                  n_iter=num_updates)
 
-            it_res, it_w_list, it_time_list = minimize_wrapper(oracle, params, method='L-BFGS-B', mydisp=mydisp, bounds=bnds,
-                                                               options=options)
-            # it_res, it_w_list, it_time_list = minimize_wrapper(oracle, params, method='BFGS', mydisp=True,
-            #                                                    options=options)
+            it_res, it_w_list, it_time_list = minimize_wrapper(oracle, params, method='L-BFGS-B', mydisp=mydisp,
+                                                               bounds=bnds, options=options)
 
-            # print('here')
-            # params, _, _ = gradient_descent(oracle, params, bounds=bnds, options=options)
             params = it_res['x']
 
             w_list.append((params, np.copy(mu), np.copy(Sigma)))
@@ -810,7 +823,7 @@ class GPC(GP):
         self.covariance_obj.set_params(params)
         return GPRes(param_lst=w_list, time_lst=time_list)
 
-    def update_xi(self, params, data_points, target_values, inputs, mu, Sigma, n_iter=5):
+    def _vi_jj_update_xi(self, params, data_points, target_values, inputs, mu, Sigma, n_iter=5):
         cov_obj = copy.deepcopy(self.covariance_obj)
         cov_obj.set_params(params)
         cov_fun = cov_obj.covariance_function
@@ -819,11 +832,11 @@ class GPC(GP):
         K_mm_inv, K_log_det = self._get_inv_logdet_cholesky(K_mm)
         K_ii = cov_fun(data_points[:, :1], data_points[:, :1])
         for i in range(n_iter):
-            xi = self._vi_recompute_xi(K_mm, K_mm_inv, K_nm, K_ii, mu, Sigma)
-            mu, Sigma = self._vi_recompute_var_parameters(K_mm_inv, K_nm, xi, target_values)
+            xi = self._vi_jj_recompute_xi(K_mm, K_mm_inv, K_nm, K_ii, mu, Sigma)
+            mu, Sigma = self._vi_jj_recompute_var_parameters(K_mm_inv, K_nm, xi, target_values)
         return xi, mu, Sigma
 
-    def _vi_elbo(self, points, targets, params, ind_points, xi):
+    def _vi_jj_elbo(self, points, targets, params, ind_points, xi):
         """
         The evidence lower bound, used in the vi method.
         :param points: data points
@@ -840,7 +853,7 @@ class GPC(GP):
         cov_obj = copy.deepcopy(self.covariance_obj)
         cov_obj.set_params(params)
         cov_fun = cov_obj.covariance_function
-        lambda_xi = self._vi_lambda(xi)
+        lambda_xi = self._vi_jj_lambda(xi)
         K_mm = cov_fun(ind_points, ind_points)
         K_mm_inv, K_mm_log_det = self._get_inv_logdet_cholesky(K_mm)
         K_nm = cov_fun(points, ind_points)
@@ -864,7 +877,7 @@ class GPC(GP):
             if param != len(params) - 1:
                 func = derivative_matrix_list[param]
             else:
-                func = lambda x, y: self.covariance_obj.get_noise_derivative(points_num=1)
+                func = lambda x, y: cov_obj.get_noise_derivative(points_num=1)
             if param != len(params) - 1:
                 dK_mm = func(ind_points, ind_points)
                 dK_nm = func(points, ind_points)
@@ -887,7 +900,7 @@ class GPC(GP):
             gradient.append(derivative[0, 0])
         return fun, np.array(gradient)
 
-    def _vi_get_prediction_quality(self, params, test_points, test_targets):
+    def _vi_jj_get_prediction_quality(self, params, test_points, test_targets):
         """
         Returns prediction quality on the test set for the given kernel (and inducing points) parameters for the means
         method
@@ -908,8 +921,197 @@ class GPC(GP):
 
         if self.method == 'vi':
             # raise ValueError('Not implemented yet')
-            return self._vi_get_prediction_quality(*args, **kwargs)
+            return self._vi_jj_get_prediction_quality(*args, **kwargs)
         elif self.method == 'svi':
             return self._svi_get_prediction_quality(*args, **kwargs)
         else:
             raise ValueError('Wrong method')
+
+    #### VI Taylor
+    def _vi_taylor_phi(self, xi, y):
+        return y * expit(-y * xi)
+        # return y / (1 + np.exp(y * xi))
+
+    def _vi_taylor_psi(self, xi, y):
+        return expit(y * xi) * expit(-y * xi)
+        # return (1 / (1 + np.exp(y * xi))) / (1 + np.exp(-y * xi))
+
+    def _vi_taylor_v(self, xi, y):
+        return self._vi_taylor_phi(xi, y) + 2 * self._vi_taylor_psi(xi, y) * xi
+
+    def _vi_taylor_update_xi(self, params, data_points, target_values, inputs, mu, Sigma, n_iter=5):
+
+        y = target_values
+        cov_obj = copy.deepcopy(self.covariance_obj)
+        cov_obj.set_params(params)
+        cov_fun = cov_obj.covariance_function
+        K_nm = cov_fun(data_points, inputs)
+        K_mn = K_nm.T
+        K_mm = cov_fun(inputs, inputs)
+        K_mm_inv, K_log_det = self._get_inv_logdet_cholesky(K_mm)
+        xi = 0
+
+        for i in range(n_iter):
+            xi = K_nm.dot(K_mm_inv.dot(mu))
+            K_mnPsiK_nm = K_mn.dot(self._vi_taylor_psi(xi, y) * K_nm)
+            K_mnPsiK_nm_inv, _ = self._get_inv_logdet_cholesky(K_mnPsiK_nm)
+            B, _ = self._get_inv_logdet_cholesky(np.linalg.inv(K_mnPsiK_nm_inv) + 2 * K_mm_inv)
+            Sigma = K_mm - 2 * B
+            mu = Sigma.dot(K_mm_inv.dot(K_mn.dot(self._vi_taylor_v(xi, y))))
+
+        return xi, mu, Sigma
+
+    def _vi_taylor_fit(self, data_points, target_values, num_inputs=0, inputs=None, max_out_iter=20,
+                       optimizer_options={}):
+        """
+        An experimental method for optimizing hyper-parameters (for fixed inducing points), based on variational
+        inference and Second order Taylor approximation to the logistic function. See the review.
+        :param data_points: training set objects
+        :param target_values: training set answers
+        :param inputs: inducing inputs
+        :param num_inputs: number of inducing points to generate. If inducing points are provided, this parameter is
+        ignored
+        :param optimizer_options: options for the optimization method
+        :return:
+        """
+        # if no inducing inputs are provided, we use K-Means cluster centers as inducing inputs
+        if inputs is None:
+            means = KMeans(n_clusters=num_inputs)
+            means.fit(data_points.T)
+            inputs = means.cluster_centers_.T
+
+        # Initializing required variables
+        m = inputs.shape[1]
+
+        # Initializing variational (normal) distribution parameters
+        mu = np.zeros((m, 1), dtype=float)
+        Sigma = np.eye(m)
+
+        def oracle(x):
+            fun, grad = self._vi_taylor_elbo(data_points, target_values, x, inputs, xi)
+            return -fun, -grad
+
+        bnds = self.covariance_obj.get_bounds()
+        params = self.covariance_obj.get_params()
+        w_list, time_list = [(params, mu, Sigma)], [0]
+        start = time.time()
+
+        num_updates = 3
+        if 'num_updates' in optimizer_options.keys():
+            num_updates = optimizer_options['num_updates']
+            del optimizer_options['num_updates']
+
+        mydisp = False
+        options = copy.deepcopy(optimizer_options)
+        if not optimizer_options is None:
+            if 'mydisp' in optimizer_options.keys():
+                mydisp = optimizer_options['mydisp']
+                del options['mydisp']
+
+            params = np.load('params.npy')
+            mu = np.load('mu.npy')
+            Sigma = np.load('sigma.npy')
+            xi = np.load('xi.npy')
+            print(params)
+            print(check_gradient(oracle, params, print_diff=True))
+            exit(0)
+        for iteration in range(max_out_iter):
+            xi, mu, Sigma = self._vi_taylor_update_xi(params, data_points, target_values, inputs, mu, Sigma,
+                                                      n_iter=num_updates)
+
+            it_res, it_w_list, it_time_list = minimize_wrapper(oracle, params, method='L-BFGS-B', mydisp=mydisp, bounds=bnds,
+                                                               options=options)
+
+            params = it_res['x']
+
+
+            w_list.append((params, np.copy(mu), np.copy(Sigma)))
+            time_list.append(time.time() - start)
+            if mydisp:
+                print('\tHyper-parameters at outter iteration', iteration, ':', params)
+        self.inducing_inputs = inputs, mu, Sigma
+        self.covariance_obj.set_params(params)
+        return GPRes(param_lst=w_list, time_lst=time_list)
+
+    def _vi_taylor_elbo(self, points, targets, params, ind_points, xi):
+        """
+        The evidence lower bound, used in the vi method.
+        :param points: data points
+        :param targets: target values
+        :param params: hernel hyper-parameters
+        :param ind_points: inducing input positions
+        :param xi: variational parameters xi
+        :return: the value and the gradient of the lower bound
+        """
+        y = targets
+        m = ind_points.shape[1]
+        cov_obj = copy.deepcopy(self.covariance_obj)
+        cov_obj.set_params(params)
+        cov_fun = cov_obj.covariance_function
+        Psi_xi = self._vi_taylor_psi(xi, y)
+
+        K_mm = cov_fun(ind_points, ind_points)
+        K_mm_inv, K_mm_log_det = self._get_inv_logdet_cholesky(K_mm)
+        K_nm = cov_fun(points, ind_points)
+        K_mn = K_nm.T
+        K_ii = cov_fun(points[:, :1], points[:, :1])
+
+        K_mnPsiK_nm = K_mn.dot(Psi_xi*K_nm)
+        K_mnPsiK_nm_inv, K_mnPsiK_nm_logdet = self._get_inv_logdet_cholesky(K_mnPsiK_nm)
+
+        B_inv = K_mnPsiK_nm_inv + 2 * K_mm_inv
+        B, B_log_det = self._get_inv_logdet_cholesky(B_inv)
+        B_log_det *= -1
+
+        v_xi = self._vi_taylor_v(xi, y)
+
+        fun = 0
+        fun += v_xi.T.dot(K_nm.dot(K_mm_inv.dot(K_mn.dot(v_xi)))) / 2
+        fun += - v_xi.T.dot(K_nm.dot(K_mm_inv.dot(B.dot(K_mm_inv.dot(K_mn.dot(v_xi))))))
+        fun += B_log_det / 2
+        fun += - K_mnPsiK_nm_logdet / 2
+        fun += - np.sum(Psi_xi) * K_ii
+        fun += np.trace(K_mm_inv.dot(K_mnPsiK_nm))
+
+        gradient = []
+        derivative_matrix_list = cov_obj.get_derivative_function_list(params)
+        # for func in derivative_matrix_list:
+        for param in range(len(params)):
+            if param != len(params) - 1:
+                func = derivative_matrix_list[param]
+            else:
+                func = lambda x, y: cov_obj.get_noise_derivative(points_num=1)
+            if param != len(params) - 1:
+                dK_mm = func(ind_points, ind_points)
+                dK_nm = func(points, ind_points)
+                dK_mn = dK_nm.T
+                d_K_mnPsiK_nm = 2 * dK_mn.dot(Psi_xi * K_nm)
+                dB = (B.dot(K_mnPsiK_nm_inv.dot(d_K_mnPsiK_nm.dot(K_mnPsiK_nm_inv.dot(B)))) +
+                          2 * B.dot(K_mm_inv.dot(dK_mm.dot(K_mm_inv.dot(B)))))
+            else:
+                dK_mm = np.eye(m) * func(ind_points, ind_points)
+                dK_mn = np.zeros_like(K_mn)
+                dK_nm = dK_mn.T
+                d_K_mnPsiK_nm = np.zeros_like(K_mm)
+                dB = 2 * B.dot(K_mm_inv.dot(dK_mm.dot(K_mm_inv.dot(B))))
+            dK_nn = func(np.array([[0]]), np.array([[0]]))
+
+            derivative = np.array([[0]], dtype=float)
+
+            if param != len(params) - 1:
+                derivative += v_xi.T.dot(dK_nm.dot(K_mm_inv.dot(K_mn.dot(v_xi))))
+
+            derivative += - v_xi.T.dot(K_nm.dot(K_mm_inv.dot(dK_mm.dot(K_mm_inv.dot(K_mn.dot(v_xi)))))) / 2
+            derivative += - (2 * v_xi.T.dot(dK_nm.dot(K_mm_inv.dot(B.dot(K_mm_inv.dot(K_mn.dot(v_xi)))))) -
+                             2 * v_xi.T.dot(K_nm.dot(K_mm_inv.dot(dK_mm.dot(K_mm_inv.dot(B.dot(
+                                                                        K_mm_inv.dot(K_mn.dot(v_xi)))))))) +
+                             v_xi.T.dot(K_nm.dot(K_mm_inv.dot(dB.dot(K_mm_inv.dot(K_mn.dot(v_xi))))))
+                             )
+            derivative += np.trace(B_inv.dot(dB)) / 2
+            if param != len(params) - 1:
+                derivative += - np.trace(K_mnPsiK_nm_inv.dot(d_K_mnPsiK_nm)) / 2
+            derivative += - np.sum(Psi_xi) * dK_nn
+            derivative += (- np.trace(K_mm_inv.dot(dK_mm.dot(K_mm_inv.dot(K_mnPsiK_nm)))) +
+                           np.trace(K_mm_inv.dot(d_K_mnPsiK_nm)))
+            gradient.append(derivative[0, 0])
+        return fun, np.array(gradient)

@@ -7,7 +7,7 @@ from GP.plotting import plot_class_data
 
 data_params = np.array([1.0, 0.25, 0.05])
 data_covariance_obj = SquaredExponential(data_params)
-model_params = np.array([2.2, 1.73, 0.2])
+model_params = np.array([.7, .6, 0.2])
 model_covariance_obj = SquaredExponential(model_params)
 gp = GPC(data_covariance_obj)
 num = 500
@@ -15,13 +15,15 @@ test_density = 20
 dim = 2
 seed = 21
 ind_num = 20
-method = 'svi'
-maxiter = 500
-max_out_iter = 20
+method = 'vi'
+maxiter = 100
+max_out_iter = 5
 
 # opts = {'mode': 'batch', 'batch_size': 200, 'maxiter': maxiter, 'verbose': True, 'step0':0.007}
 # opts = {'mode': 'full', 'maxiter': maxiter, 'mydisp': True}
-opts = {'mode': 'adadelta', 'maxiter': maxiter, 'verbose': True, 'batch_size':20, 'step_rate': 0.7, 'decay': 0.8}
+# opts = {'mode': 'adadelta', 'maxiter': maxiter, 'verbose': True, 'batch_size':20, 'step_rate': 0.7, 'decay': 0.8,
+#         'print_freq': 10}
+opts = {'bound': 'JJ', 'maxfun': 20, 'num_updates': 10, 'mydisp': True}
 
 np.random.seed(seed)
 x_tr = np.random.rand(dim, num)
