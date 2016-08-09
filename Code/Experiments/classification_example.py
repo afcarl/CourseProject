@@ -23,7 +23,7 @@ max_out_iter = 5
 # opts = {'mode': 'full', 'maxiter': maxiter, 'mydisp': True}
 # opts = {'mode': 'adadelta', 'maxiter': maxiter, 'verbose': True, 'batch_size':20, 'step_rate': 0.7, 'decay': 0.8,
 #         'print_freq': 10}
-opts = {'bound': 'JJ', 'maxfun': 20, 'num_updates': 10, 'mydisp': True}
+opts = {'bound': 'Taylor', 'maxfun': 20, 'num_updates': 10, 'mydisp': True}
 
 np.random.seed(seed)
 x_tr = np.random.rand(dim, num)

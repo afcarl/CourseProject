@@ -1008,13 +1008,13 @@ class GPC(GP):
                 mydisp = optimizer_options['mydisp']
                 del options['mydisp']
 
-            params = np.load('params.npy')
-            mu = np.load('mu.npy')
-            Sigma = np.load('sigma.npy')
-            xi = np.load('xi.npy')
-            print(params)
-            print(check_gradient(oracle, params, print_diff=True))
-            exit(0)
+            # params = np.load('params.npy')
+            # mu = np.load('mu.npy')
+            # Sigma = np.load('sigma.npy')
+            # xi = np.load('xi.npy')
+            # print(params)
+            # print(check_gradient(oracle, params, print_diff=True))
+            # exit(0)
         for iteration in range(max_out_iter):
             xi, mu, Sigma = self._vi_taylor_update_xi(params, data_points, target_values, inputs, mu, Sigma,
                                                       n_iter=num_updates)
@@ -1023,6 +1023,7 @@ class GPC(GP):
                                                                options=options)
 
             params = it_res['x']
+            # print(check_gradient(oracle, params, print_diff=True))
 
 
             w_list.append((params, np.copy(mu), np.copy(Sigma)))
@@ -1075,7 +1076,6 @@ class GPC(GP):
 
         gradient = []
         derivative_matrix_list = cov_obj.get_derivative_function_list(params)
-        # for func in derivative_matrix_list:
         for param in range(len(params)):
             if param != len(params) - 1:
                 func = derivative_matrix_list[param]
