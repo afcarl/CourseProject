@@ -953,11 +953,10 @@ class GPC(GP):
 
         for i in range(n_iter):
             xi = K_nm.dot(K_mm_inv.dot(mu))
-            K_mnPsiK_nm = K_mn.dot(self._vi_taylor_psi(xi, y) * K_nm)
-            K_mnPsiK_nm_inv, _ = self._get_inv_logdet_cholesky(K_mnPsiK_nm)
-            B, _ = self._get_inv_logdet_cholesky(np.linalg.inv(K_mnPsiK_nm_inv) + 2 * K_mm_inv)
-            Sigma = K_mm - 2 * B
-            mu = Sigma.dot(K_mm_inv.dot(K_mn.dot(self._vi_taylor_v(xi, y))))
+            B = 2 * K_mn.dot(self._vi_taylor_psi(xi, y) * K_nm) + K_mm
+            B_inv, _ = self._get_inv_logdet_cholesky(B)
+            Sigma = K_mm.dot(B_inv.dot(K_mm))
+            mu = K_mm.dot(B_inv.dot(K_mn.dot(self._vi_taylor_v(xi, y))))
 
         return xi, mu, Sigma
 
@@ -1008,13 +1007,13 @@ class GPC(GP):
                 mydisp = optimizer_options['mydisp']
                 del options['mydisp']
 
-            # params = np.load('params.npy')
-            # mu = np.load('mu.npy')
-            # Sigma = np.load('sigma.npy')
-            # xi = np.load('xi.npy')
-            # print(params)
-            # print(check_gradient(oracle, params, print_diff=True))
-            # exit(0)
+        # params = np.load('params.npy')
+        # mu = np.load('mu.npy')
+        # Sigma = np.load('sigma.npy')
+        # xi = np.load('xi.npy')
+        # print(params)
+        # print(check_gradient(oracle, params, print_diff=True))
+        # exit(0)
         for iteration in range(max_out_iter):
             xi, mu, Sigma = self._vi_taylor_update_xi(params, data_points, target_values, inputs, mu, Sigma,
                                                       n_iter=num_updates)
@@ -1057,22 +1056,17 @@ class GPC(GP):
         K_mn = K_nm.T
         K_ii = cov_fun(points[:, :1], points[:, :1])
 
-        K_mnPsiK_nm = K_mn.dot(Psi_xi*K_nm)
-        K_mnPsiK_nm_inv, K_mnPsiK_nm_logdet = self._get_inv_logdet_cholesky(K_mnPsiK_nm)
-
-        B_inv = K_mnPsiK_nm_inv + 2 * K_mm_inv
-        B, B_log_det = self._get_inv_logdet_cholesky(B_inv)
-        B_log_det *= -1
-
         v_xi = self._vi_taylor_v(xi, y)
 
-        fun = 0
-        fun += v_xi.T.dot(K_nm.dot(K_mm_inv.dot(K_mn.dot(v_xi)))) / 2
-        fun += - v_xi.T.dot(K_nm.dot(K_mm_inv.dot(B.dot(K_mm_inv.dot(K_mn.dot(v_xi))))))
-        fun += B_log_det / 2
-        fun += - K_mnPsiK_nm_logdet / 2
-        fun += - np.sum(Psi_xi) * K_ii
-        fun += np.trace(K_mm_inv.dot(K_mnPsiK_nm))
+        K_mnPsiK_nm = K_mn.dot(Psi_xi*K_nm)
+
+        B = 2 * K_mnPsiK_nm + K_mm
+
+        B_inv, B_log_det = self._get_inv_logdet_cholesky(B)
+
+        fun = ((v_xi.T.dot(K_nm.dot(B_inv.dot(K_mn.dot(v_xi))))/2) +
+               K_mm_log_det/2 - B_log_det/2
+               - np.sum(K_ii * Psi_xi) + np.einsum('ij,ji->', K_mm_inv, K_mnPsiK_nm))
 
         gradient = []
         derivative_matrix_list = cov_obj.get_derivative_function_list(params)
@@ -1085,33 +1079,22 @@ class GPC(GP):
                 dK_mm = func(ind_points, ind_points)
                 dK_nm = func(points, ind_points)
                 dK_mn = dK_nm.T
-                d_K_mnPsiK_nm = 2 * dK_mn.dot(Psi_xi * K_nm)
-                dB = (B.dot(K_mnPsiK_nm_inv.dot(d_K_mnPsiK_nm.dot(K_mnPsiK_nm_inv.dot(B)))) +
-                          2 * B.dot(K_mm_inv.dot(dK_mm.dot(K_mm_inv.dot(B)))))
+                dB = 4 * dK_mn.dot(Psi_xi*K_nm) + dK_mm
             else:
                 dK_mm = np.eye(m) * func(ind_points, ind_points)
                 dK_mn = np.zeros_like(K_mn)
                 dK_nm = dK_mn.T
-                d_K_mnPsiK_nm = np.zeros_like(K_mm)
-                dB = 2 * B.dot(K_mm_inv.dot(dK_mm.dot(K_mm_inv.dot(B))))
+                dB = dK_mm
             dK_nn = func(np.array([[0]]), np.array([[0]]))
-
             derivative = np.array([[0]], dtype=float)
 
-            if param != len(params) - 1:
-                derivative += v_xi.T.dot(dK_nm.dot(K_mm_inv.dot(K_mn.dot(v_xi))))
+            derivative += v_xi.T.dot(dK_nm.dot(B_inv.dot(K_mn.dot(v_xi))))
+            derivative += - v_xi.T.dot(K_nm.dot(B_inv.dot(dB.dot(B_inv.dot(K_mn.dot(v_xi))))))/2
 
-            derivative += - v_xi.T.dot(K_nm.dot(K_mm_inv.dot(dK_mm.dot(K_mm_inv.dot(K_mn.dot(v_xi)))))) / 2
-            derivative += - (2 * v_xi.T.dot(dK_nm.dot(K_mm_inv.dot(B.dot(K_mm_inv.dot(K_mn.dot(v_xi)))))) -
-                             2 * v_xi.T.dot(K_nm.dot(K_mm_inv.dot(dK_mm.dot(K_mm_inv.dot(B.dot(
-                                                                        K_mm_inv.dot(K_mn.dot(v_xi)))))))) +
-                             v_xi.T.dot(K_nm.dot(K_mm_inv.dot(dB.dot(K_mm_inv.dot(K_mn.dot(v_xi))))))
-                             )
-            derivative += np.trace(B_inv.dot(dB)) / 2
-            if param != len(params) - 1:
-                derivative += - np.trace(K_mnPsiK_nm_inv.dot(d_K_mnPsiK_nm)) / 2
-            derivative += - np.sum(Psi_xi) * dK_nn
-            derivative += (- np.trace(K_mm_inv.dot(dK_mm.dot(K_mm_inv.dot(K_mnPsiK_nm)))) +
-                           np.trace(K_mm_inv.dot(d_K_mnPsiK_nm)))
+            derivative += np.trace(K_mm_inv.dot(dK_mm))/2
+            derivative -= np.trace(B_inv.dot(dB))/2
+            derivative -= np.sum(Psi_xi * dK_nn)
+            derivative += np.trace(2 * K_mm_inv.dot(K_mn.dot(Psi_xi*dK_nm)) -
+                                   K_mm_inv.dot(dK_mm.dot(K_mm_inv.dot(K_mnPsiK_nm))))
             gradient.append(derivative[0, 0])
         return fun, np.array(gradient)
