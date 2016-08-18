@@ -551,8 +551,6 @@ def climin_adadelta_wrapper(oracle, w0, train_points, train_targets, options):
 
     return w.copy(), w_lst, time_lst
 
-
-
 if __name__ == '__main__':
     A = np.array([[2, -1, 0], [-1, 2, -1], [0, -1, 2]])
     b = np.array([[1], [0], [2]])

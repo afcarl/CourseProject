@@ -11,7 +11,8 @@ from GP.covariance_functions import CovarianceFamily
 from GP.gaussian_process import GP
 from GP.gp_res import GPRes
 from GP.optimization import gradient_descent, stochastic_gradient_descent, stochastic_average_gradient,\
-                         minimize_wrapper, projected_newton, _eig_val_correction
+                            minimize_wrapper, projected_newton, _eig_val_correction, check_gradient, \
+                            climin_adadelta_wrapper
 
 
 class GPR(GP):
@@ -36,7 +37,7 @@ class GPR(GP):
         :param optimizer: The optimization method, used to optimize the ELBO. Used only in the svi method,
         ignored otherwise.
             L-BFGS-B – the corresponding method from scipy
-            SAG — Stochastic Average Gradient method
+            AdaDelta — climin implementation
             FG — Gradient descent
         :return: GPR object
         """
@@ -48,7 +49,7 @@ class GPR(GP):
             raise ValueError("Invalid method name")
         if not parametrization in ['natural', 'cholesky']:
             raise ValueError("Invalid parametrization name")
-        if not optimizer in ['SAG', 'L-BFGS-B', 'FG', 'Projected Newton', 'SG']:
+        if not optimizer in ['AdaDelta', 'L-BFGS-B', 'FG', 'Projected Newton', 'SG']:
             raise ValueError("Invalid optimizer name")
 
         self.covariance_fun = cov_obj.covariance_function
@@ -438,7 +439,7 @@ class GPR(GP):
         :return: a lower-triangular matrix
         """
         m = len(vec)
-        k = (-1 + np.sqrt(1 + 8 * m)) / 2
+        k = int((-1 + np.sqrt(1 + 8 * m)) / 2)
         if k != int(k):
             raise ValueError("Vec has an invalid size")
         indices = np.tril_indices(k)
@@ -528,10 +529,6 @@ class GPR(GP):
 
         theta = self.covariance_obj.get_params()
         if self.parametrization == 'natural':
-            # sigma_inv = np.eye(m)
-
-            ######################################################
-            # Experimental
             cov_fun = self.covariance_obj.covariance_function
             K_mn = cov_fun(inputs, data_points)
             K_mm = cov_fun(inputs, inputs)
@@ -539,7 +536,6 @@ class GPR(GP):
             sigma_inv = K_mm_inv.dot(K_mn.dot(K_mn.T.dot(K_mm_inv)))/sigma_n**2 + K_mm_inv
             sigma = np.linalg.inv(sigma_inv)
             mu = sigma.dot(K_mm_inv.dot((K_mn.dot(y)))) / sigma_n**2
-            #######################################################
 
             # Canonical parameters initialization
             eta_1 = sigma_inv.dot(mu)
@@ -547,33 +543,54 @@ class GPR(GP):
             param_vec = self._svi_get_parameter_vector(theta, eta_1, eta_2)
 
         elif self.parametrization == 'cholesky':
+            # sigma_L = np.eye(m)
+            # mu = np.random.multivariate_normal(mean=np.zeros_like(mu)[:,0], cov=np.eye(mu.size)*5)
             # sigma_L = np.eye(m)  # Cholesky factor of sigma
 
-            ######################################################
-            # Experimental
             cov_fun = self.covariance_obj.covariance_function
             K_mn = cov_fun(inputs, data_points)
             K_mm = cov_fun(inputs, inputs)
             K_mm_inv = np.linalg.inv(K_mm)
             sigma = np.linalg.inv(K_mm_inv.dot(K_mn.dot(K_mn.T.dot(K_mm_inv)))/sigma_n**2 + K_mm_inv)
             mu = sigma.dot(K_mm_inv.dot((K_mn.dot(y)))) / sigma_n**2
-            #######################################################
 
             # p = np.random.normal(size=(m, 1))
             # sigma = p.dot(p.T) + np.eye(m) * 1e-4
+
             sigma_L = np.linalg.cholesky(sigma)
             param_vec = self._svi_get_parameter_vector(theta, mu, sigma_L)
 
         bnds = self._svi_get_bounds(m)
 
         if self.parametrization == 'natural':
+            N = target_values.size
+            def sg_fun(x, train_points, train_targets):
+                fun, grad = self._svi_elbo_batch_approx_oracle(train_points, train_targets, inputs, parameter_vec=x,
+                                                               indices=range(train_targets.size), N=N)
+                return -grad
 
+            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
             def stoch_fun(x, i):
                 return -self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
-                                                           indices=i)[1]
+                                                           indices=i)[1] * N
 
+            # indices = list(range(20))
+            #
+            # beta_1 = mu
+            # beta_2 = mu.dot(mu.T) + sigma
+            # param_vec = self._svi_get_parameter_vector(theta, beta_1, beta_2)
+            #
+            # def test_fun(x):
+            #     fun, grad = self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
+            #                                                indices=indices)
+            #     return -fun, -grad
+            # check_gradient(test_fun, param_vec, print_diff=True)
+            # exit(0)
+
+            #
             res, w_list, time_list = stochastic_gradient_descent(oracle=stoch_fun, n=n, point=param_vec, bounds=bnds,
                                                                  options=optimizer_options)
+
 
             theta, eta_1, eta_2 = self._svi_get_parameters(res)
             sigma_inv = - 2 * eta_2
@@ -586,14 +603,19 @@ class GPR(GP):
                                                      indices=list(range(n)))
                 return -fun, -grad
 
-            def sag_oracle(x, i):
-                fun, grad = self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
-                                                               indices=i)
-                return -fun, -grad
+            # def sag_oracle(x, i):
+            #     fun, grad = self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
+            #                                                    indices=i)
+            #     return -fun, -grad
 
-            if self.optimizer == 'SAG':
-                res, w_list, time_list = stochastic_average_gradient(oracle=sag_oracle, n=n, point=param_vec,
-                                                                     bounds=bnds, options=optimizer_options)
+            def adadelta_fun(x, train_points, train_targets):
+                fun, grad = self._svi_elbo_batch_approx_oracle(train_points, train_targets, inputs, parameter_vec=x,
+                                                               indices=range(train_targets.size), N=n)
+                return -grad
+
+            if self.optimizer == 'AdaDelta':
+                res, w_list, time_list = climin_adadelta_wrapper(oracle=adadelta_fun, w0=param_vec, train_points=data_points,
+                                                                 train_targets=target_values, options=optimizer_options)
             elif self.optimizer == 'FG':
                 res, w_list, time_list = gradient_descent(oracle=fun, point=param_vec, bounds=bnds,
                                                           options=optimizer_options)
@@ -622,7 +644,7 @@ class GPR(GP):
 
 
     def _svi_elbo_batch_approx_oracle(self, data_points, target_values, inducing_inputs, parameter_vec,
-                                       indices):
+                                       indices, N=None):
         """
         The approximation of Evidence Lower Bound (L3 from the article 'Gaussian process for big data') and it's derivative wrt
         kernel hyper-parameters and variational parameters. The approximation is found using a mini-batch.
@@ -636,7 +658,8 @@ class GPR(GP):
         :return: ELBO and it's gradient approximation in a tuple
         """
 
-        N = target_values.size
+        if N is None:
+            N = target_values.size
         m = inducing_inputs.shape[1]
 
         if self.parametrization == 'natural':
@@ -645,6 +668,14 @@ class GPR(GP):
             sigma = np.linalg.inv(sigma_inv)
             sigma_L = np.linalg.cholesky(sigma)
             mu = sigma.dot(eta_1)
+            # theta, beta_1, beta_2 = self._svi_get_parameters(parameter_vec)
+            # mu = beta_1
+            # sigma = beta_2 - mu.dot(mu.T)
+            # sigma = (sigma + sigma.T) / 2
+            # sigma_L = np.linalg.cholesky(sigma)
+            # sigma_inv = np.linalg.inv(sigma)
+            # eta_1 = sigma_inv.dot(mu)
+            # eta_2 = - sigma_inv / 2
         elif self.parametrization == 'cholesky':
             theta, mu, sigma_L = self._svi_get_parameters(parameter_vec)
             sigma = sigma_L.dot(sigma_L.T)
@@ -685,13 +716,16 @@ class GPR(GP):
         d_k_i__d_theta_lst.append(d_k_i__d_sigma_n)
 
         # Variational Lower Bound, estimated by a mini-batch
-        loss = -np.log(sigma_n) * l - np.linalg.norm(y_i - k_i.T.dot(K_mm_inv.dot(mu)))**2 / (2 * sigma_n**2)
+        loss = 0
+        loss += -np.log(sigma_n) * l - np.linalg.norm(y_i - k_i.T.dot(K_mm_inv.dot(mu)))**2 / (2 * sigma_n**2)
         loss += - tilde_K_ii / (2 * sigma_n**2)
         loss += - np.trace(sigma.dot(Lambda_i))/2
-        loss += - np.sum(np.log(np.diag(L))) * l / N
-        loss += np.sum(np.log(np.diag(sigma_L))) * l / N
-        loss += - np.trace(sigma.dot(K_mm_inv)) * l / (2*N)
-        loss += - mu.T.dot(K_mm_inv.dot(mu)) * l / (2*N)
+        loss /= l
+        loss += - np.sum(np.log(np.diag(L))) / N
+        loss += np.sum(np.log(np.diag(sigma_L))) / N
+        loss += - np.trace(sigma.dot(K_mm_inv))/(2 * N)
+        loss += - mu.T.dot(K_mm_inv.dot(mu))/ (2 * N)
+
 
         # Gradient
         grad = np.zeros((len(theta,)))
@@ -713,29 +747,32 @@ class GPR(GP):
                 K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv.dot(k_i.dot(k_i.T.dot(K_mm_inv))))) -
                 K_mm_inv.dot(d_k_i__d_theta.dot(k_i.T.dot(K_mm_inv)))
             )) / sigma_n**2
-            grad[param] += - np.trace(K_mm_inv.dot(d_K_mm__d_theta)) * l / (2*N)
-            grad[param] += np.trace(sigma.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv)))) * l / (2*N)
-            grad[param] += mu.T.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv.dot(mu)))) * l / (2*N)
+            grad[param] /= l
+
+
+            grad[param] += - np.trace(K_mm_inv.dot(d_K_mm__d_theta)) / (2*N)
+            grad[param] += np.trace(sigma.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv)))) / (2*N)
+            grad[param] += mu.T.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv.dot(mu)))) / (2*N)
 
         grad[-1] += (
             tilde_K_ii / (sigma_n**3) -
             l / (sigma_n) +
             np.linalg.norm(y_i - k_i.T.dot(K_mm_inv.dot(mu)))**2 / (sigma_n**3) +
-            np.trace(sigma.dot(Lambda_i)) / sigma_n)
+            np.trace(sigma.dot(Lambda_i)) / sigma_n) / l
 
         grad = grad[:, None]
 
         if self.parametrization == 'natural':
 
-            dL_dbeta1 = - (K_mm_inv.dot(k_i)).dot(y_i) / sigma_n**2 + eta_1 * l / N
-            dL_dbeta2 = ((-Lambda_i - K_mm_inv * l / N) / 2 - eta_2 * l / N) * 2 # Don't quite get this *2
-            grad = np.vstack((grad, -dL_dbeta1.reshape(-1)[:, None]))
+            dL_dbeta1 = - eta_1 / N + (K_mm_inv.dot(k_i)).dot(y_i) / (sigma_n**2 * l)
+            dL_dbeta2 = - eta_2 / N - K_mm_inv / (2 * N)  - Lambda_i / (2 * l) # * 2 # Don't quite get this *2
+            grad = np.vstack((grad, dL_dbeta1.reshape(-1)[:, None]))
             grad = np.vstack((grad, dL_dbeta2.reshape(-1)[:, None]))
 
         elif self.parametrization == 'cholesky':
-            dL_dsigma_L = -Lambda_i.dot(sigma_L) + np.eye(m) * l / (N * np.diag(sigma_L)) - (K_mm_inv.dot(sigma_L)) * l / N
+            dL_dsigma_L = -Lambda_i.dot(sigma_L)/l + np.eye(m) / (N * np.diag(sigma_L)) - (K_mm_inv.dot(sigma_L)) / N
             dL_dsigma_L = self._svi_lower_triang_mat_to_vec(dL_dsigma_L)
-            dL_dmu = -(K_mm_inv.dot(k_i)).dot(y_i) /sigma_n**2 + (Lambda_i + K_mm_inv *l/N).dot(mu)
+            dL_dmu = -(K_mm_inv.dot(k_i)).dot(y_i) / (sigma_n**2 * l) + (Lambda_i / l + K_mm_inv / N).dot(mu)
             grad = np.vstack((grad, -dL_dmu.reshape(-1)[:, None]))
             grad = np.vstack((grad, dL_dsigma_L.reshape(-1)[:, None]))
 

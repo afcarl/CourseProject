@@ -78,6 +78,6 @@ def run_methods(train_points, train_targets, test_points, test_targets,
 
     plt.legend()
     plt.title(title)
-    plt.savefig('../Plots/vi_vs_svi/'+file_name + '.pgf')
+    # plt.savefig('../Plots/vi_vs_svi/'+file_name + '.pgf')
     if show:
         plt.show()

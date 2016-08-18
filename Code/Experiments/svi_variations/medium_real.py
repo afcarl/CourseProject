@@ -35,7 +35,7 @@ x_tr = x_tr[:, : int(x_tr.shape[1] * 0.8)]
 sag_options = {'maxiter':max_iter, 'batch_size': batch_size, 'verbose':False}
 fg_options = {'maxiter':max_iter, 'verbose':False}
 lbfgsb_options = {'maxiter': max_iter, 'disp': False}
-sg_options = {'maxiter':max_iter, 'batch_size': batch_size, 'verbose':False, 'step0': 3e-3, 'gamma': 0.55}
+sg_options = {'maxiter':max_iter, 'batch_size': batch_size, 'verbose':True, 'step0': 3e-3, 'gamma': 0.55, 'print_freq': 10}
 
 optimizer_options = [sag_options, fg_options, lbfgsb_options, sg_options]
 

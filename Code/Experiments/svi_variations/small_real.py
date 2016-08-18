@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib as mpl
-mpl.use('pgf')
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.datasets import load_svmlight_file

@@ -49,8 +49,7 @@ class GPC(GP):
         # A tuple: weights and points for Gauss-Hermite quadrature
         self.gauss_hermite = None
         self.hermgauss_degree = hermgauss_deg
-        if self.method == 'svi':
-            self._svi_gauss_hermite_precompute()
+        self._svi_gauss_hermite_precompute()
 
     def generate_data(self, tr_points, test_points, seed=None):
         """
@@ -569,7 +568,6 @@ class GPC(GP):
         m = inducing_inputs.shape[1]
         theta, mu, sigma_L = self._svi_get_parameters(parameter_vec)
         sigma = sigma_L.dot(sigma_L.T)
-        old_params = self.covariance_obj.get_params()
         self.covariance_obj.set_params(theta)
 
         l = len(indices)
@@ -580,7 +578,6 @@ class GPC(GP):
         # Covariance function and it's parameters
         cov_fun = self.covariance_fun
         params = self.covariance_obj.get_params()
-        sigma_n = parameter_vec[len(self.covariance_obj.get_params())-1]
 
         # Covariance matrices
 
@@ -594,9 +591,7 @@ class GPC(GP):
         L_inv = np.linalg.inv(L)
         K_mm_inv = L_inv.T.dot(L_inv)
         k_i = cov_fun(inducing_inputs, x_i)
-        # Lambda_i = K_mm_inv.dot(k_i.dot(k_i.T.dot(K_mm_inv))) / sigma_n**2
         K_ii = cov_fun(x_i[:, :1], x_i[:, :1])
-        # tilde_K_ii = l * K_ii - np.einsum('ij,ji->', k_i.T, K_mm_inv.dot(k_i))
 
         # Derivatives
         derivative_matrix_list = self.covariance_obj.get_derivative_function_list(params)
@@ -608,7 +603,6 @@ class GPC(GP):
         d_k_i__d_theta_lst.append(d_k_i__d_sigma_n)
 
 
-        #NEW STUFF
         #f_i marginal distribution parameters
 
         m_i = k_i.T.dot(K_mm_inv.dot(mu))
@@ -981,6 +975,7 @@ class GPC(GP):
 
         # Initializing required variables
         m = inputs.shape[1]
+        n = target_values.size
 
         # Initializing variational (normal) distribution parameters
         mu = np.zeros((m, 1), dtype=float)
@@ -989,6 +984,11 @@ class GPC(GP):
         def oracle(x):
             fun, grad = self._vi_taylor_elbo(data_points, target_values, x, inputs, xi)
             return -fun, -grad
+
+        def adadelta_fun(w, train_points, train_targets):
+            grad = self._vi_elbo_batch_approx_oracle(train_points, train_targets, inputs, parameter_vec=w, mu=mu,
+                                                        sigma=Sigma, indices=range(train_targets.size), N=n)
+            return -grad[:, 0]
 
         bnds = self.covariance_obj.get_bounds()
         params = self.covariance_obj.get_params()
@@ -1002,24 +1002,36 @@ class GPC(GP):
 
         mydisp = False
         options = copy.deepcopy(optimizer_options)
+        mode = 'full'
         if not optimizer_options is None:
-            if 'mydisp' in optimizer_options.keys():
-                mydisp = optimizer_options['mydisp']
+            if 'mydisp' in options.keys():
+                mydisp = options['mydisp']
                 del options['mydisp']
+            if 'mode' in options.keys():
+                mode = options['mode']
+                del options['mode']
 
         for iteration in range(max_out_iter):
             xi, mu, Sigma = self._vi_taylor_update_xi(params, data_points, target_values, inputs, mu, Sigma,
                                                       n_iter=num_updates)
 
-            it_res, it_w_list, it_time_list = minimize_wrapper(oracle, params, method='L-BFGS-B', mydisp=mydisp, bounds=bnds,
+            # it_res, it_w_list, it_time_list = minimize_wrapper(oracle, params, method='L-BFGS-B', mydisp=mydisp, bounds=bnds,
+            #                                                    options=options)
+
+            if mode == 'full':
+                res, _, _ = minimize_wrapper(oracle, params, method='L-BFGS-B', mydisp=mydisp, bounds=bnds,
                                                                options=options)
+                res = res['x']
+            elif mode == 'adadelta':
+                res, _, _ = climin_adadelta_wrapper(oracle=adadelta_fun, w0=params, train_points=data_points,
+                                                                 train_targets=target_values, options=options)
 
-            params = it_res['x']
-
+            params = res
             w_list.append((params, np.copy(mu), np.copy(Sigma)))
             time_list.append(time.time() - start)
             if mydisp:
                 print('\tHyper-parameters at outter iteration', iteration, ':', params)
+
         self.inducing_inputs = inputs, mu, Sigma
         self.covariance_obj.set_params(params)
         return GPRes(param_lst=w_list, time_lst=time_list)
@@ -1089,3 +1101,105 @@ class GPC(GP):
                                    K_mm_inv.dot(dK_mm.dot(K_mm_inv.dot(K_mnPsiK_nm))))
             gradient.append(derivative[0, 0])
         return fun, np.array(gradient)
+
+    # EXPERIMENTAL
+    def _vi_elbo_batch_approx_oracle(self, data_points, target_values, inducing_inputs, parameter_vec, mu, sigma,
+                                       indices, N=None):
+        """
+        The approximation of Evidence Lower Bound (L3 from the article 'Scalable Variational Gaussian Process
+        Classification') and it's derivative wrt kernel hyper-parameters and variational parameters.
+        The approximation is found using a mini-batch.
+        :param data_points: the array of data points
+        :param target_values: the target values at these points
+        :param inducing_inputs: an array of inducing inputs
+        :param mu: the current mean of the process at the inducing points
+        :param sigma: the current covariance of the process at the inducing points
+        :param theta: a vector of hyper-parameters and variational parameters, the point of evaluation
+        :param indices: a list of indices of the data points in the mini-batch
+        :return: ELBO and it's gradient approximation in a tuple
+        """
+        if N is None:
+            N = target_values.size
+        m = inducing_inputs.shape[1]
+        theta = parameter_vec
+
+        self.covariance_obj.set_params(theta)
+
+        l = len(indices)
+        i = indices
+        y_i = target_values[i]
+        x_i = data_points[:, i]
+
+        # Covariance function and it's parameters
+        cov_fun = self.covariance_fun
+        params = self.covariance_obj.get_params()
+
+        # Covariance matrices
+
+        K_mm = cov_fun(inducing_inputs, inducing_inputs)
+        try:
+            L = np.linalg.cholesky(K_mm)
+        except:
+            print(params)
+            exit(0)
+
+        L_inv = np.linalg.inv(L)
+        K_mm_inv = L_inv.T.dot(L_inv)
+        k_i = cov_fun(inducing_inputs, x_i)
+        K_ii = cov_fun(x_i[:, :1], x_i[:, :1])
+
+        # Derivatives
+        derivative_matrix_list = self.covariance_obj.get_derivative_function_list(params)
+        d_K_mm__d_theta_lst = [fun(inducing_inputs, inducing_inputs) for fun in derivative_matrix_list]
+        d_k_i__d_theta_lst = [fun(inducing_inputs, data_points[:, i]) for fun in derivative_matrix_list]
+        d_K_mm__d_sigma_n = self.covariance_obj.get_noise_derivative(points_num=m)
+        d_k_i__d_sigma_n = np.zeros((m, l))
+        d_K_mm__d_theta_lst.append(d_K_mm__d_sigma_n)
+        d_k_i__d_theta_lst.append(d_k_i__d_sigma_n)
+
+
+        #f_i marginal distribution parameters
+
+        m_i = k_i.T.dot(K_mm_inv.dot(mu))
+        S_i = np.sqrt((K_ii + np.einsum('ij,ji->i', k_i.T, K_mm_inv.dot((sigma - K_mm).dot(K_mm_inv.dot(k_i))))).T)
+
+        # Variational Lower Bound, estimated by the mini-batch
+        # loss = 0
+        # loss = self._svi_compute_log_likelihood_expectation(m_i, S_i, y_i)
+        # loss += - np.sum(np.log(np.diag(L))) * l / N
+        # loss += np.sum(np.log(np.diag(sigma_L))) * l / N
+        # loss += - np.trace(sigma.dot(K_mm_inv)) * l / (2*N)
+        # loss += - mu.T.dot(K_mm_inv.dot(mu)) * l / (2*N)
+
+
+        # Gradient
+        grad = np.zeros((len(theta,)))
+        mu_expectations = self._svi_compute_mu_grad_expectation(m_i, S_i, y_i)
+        sigma_expectations = self._svi_compute_sigma_l_grad_expectation(m_i, S_i, y_i)
+
+        for param in range(len(theta)):
+            if param != len(theta) - 1:
+                cov_derivative = derivative_matrix_list[param]
+            else:
+                cov_derivative = lambda x, y: self.covariance_obj.get_noise_derivative(points_num=1)
+
+            d_K_mm__d_theta = d_K_mm__d_theta_lst[param]
+            d_k_i__d_theta = d_k_i__d_theta_lst[param]
+            grad[param] += np.einsum('ij,ji->', (d_k_i__d_theta * mu_expectations).T, K_mm_inv.dot(mu))
+            grad[param] += - np.einsum('ij,ji->', (k_i * mu_expectations).T, K_mm_inv.dot(d_K_mm__d_theta.
+                                                                                        dot(K_mm_inv.dot(mu))))
+            grad[param] += cov_derivative(x_i[:, :1], x_i[:, :1]) * np.sum(sigma_expectations) / 2
+
+            grad[param] += np.einsum('ij,ji->', d_k_i__d_theta.T, K_mm_inv.dot(sigma - K_mm).dot(
+                K_mm_inv.dot(k_i * sigma_expectations)))
+            grad[param] += - np.einsum('ij,ji->', k_i.T, K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv.dot(
+                (sigma - K_mm).dot(K_mm_inv.dot(k_i * sigma_expectations))))))
+            grad[param] += - 1/2 * np.einsum('ij,ji->', k_i.T, K_mm_inv.dot(d_K_mm__d_theta.dot(
+                K_mm_inv.dot(k_i * sigma_expectations))))
+            grad[param] += - np.trace(K_mm_inv.dot(d_K_mm__d_theta)) * l / (2*N)
+            grad[param] += np.trace(sigma.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv)))) * l / (2*N)
+            grad[param] += mu.T.dot(K_mm_inv.dot(d_K_mm__d_theta.dot(K_mm_inv.dot(mu)))) * l / (2*N)
+
+        grad = grad[:, None]
+
+        return grad
