@@ -61,8 +61,8 @@ max_iter = 200
 batch_size = 50
 
 method = 'svi'  # possible methods: 'brute', 'vi', 'means', 'svi'
-parametrization = 'cholesky'  # possible parametrizations for svi method: cholesky, natural
-optimizer = 'AdaDelta'
+parametrization = 'natural'  # possible parametrizations for svi method: cholesky, natural
+optimizer = 'SG'
 # possible optimizers: 'AdaDelta', 'FG', 'L-BFGS-B' for cholesky-svi;
 # 'L-BFGS' and 'Projected Newton' for 'means' and 'vi'
 

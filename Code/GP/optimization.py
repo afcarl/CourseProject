@@ -184,7 +184,7 @@ def stochastic_gradient_descent(oracle, point, n, bounds=None, options=None):
     return x, x_lst, time_lst
 
 
-def check_gradient(oracle, point, hess=False, print_diff=False):
+def check_gradient(oracle, point, hess=False, print_diff=False, delta=1e-6, indices=None):
     """
     Prints the gradient, calculated with the provided function
     and approximated via a finite difference.
@@ -195,15 +195,17 @@ def check_gradient(oracle, point, hess=False, print_diff=False):
     gradients
     :return:
     """
+    if not indices:
+        indices = range(point.size)
     fun, grad = oracle(point)[:2]
     app_grad = np.zeros(grad.shape)
     if print_diff:
         print('Gradient')
         print('Approx.\t\t\t\t Calculated')
-    for i in range(point.size):
+    for i in indices:
         point_eps = np.copy(point)
-        point_eps[i] += 1e-6
-        app_grad[i] = (oracle(point_eps)[0] - fun) * 1e6
+        point_eps[i] += delta
+        app_grad[i] = (oracle(point_eps)[0] - fun) / delta
         if print_diff:
             print(app_grad[i], '\t', grad[i])
     print('\nDifference between calculated and approximated gradients')
