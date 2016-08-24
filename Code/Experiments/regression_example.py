@@ -61,10 +61,10 @@ max_iter = 200
 batch_size = 50
 
 method = 'svi'  # possible methods: 'brute', 'vi', 'means', 'svi'
-parametrization = 'natural'  # possible parametrizations for svi method: cholesky, natural
-optimizer = 'SG'
+parametrization = 'cholesky'  # possible parametrizations for svi method: cholesky, natural
+optimizer = 'L-BFGS-B'
 # possible optimizers: 'AdaDelta', 'FG', 'L-BFGS-B' for cholesky-svi;
-# 'L-BFGS' and 'Projected Newton' for 'means' and 'vi'
+# 'L-BFGS-B' and 'Projected Newton' for 'means' and 'vi'
 
 
 
@@ -72,7 +72,7 @@ optimizer = 'SG'
 sag_options = {'mydisp': False, 'print_freq': 1, 'step_rate': 0.5,
                 'maxiter': 5, 'batch_size':20}
 fg_options = {'maxiter':max_iter, 'print_freq': 100}
-lbfgsb_options = {'maxiter': max_iter, 'disp': False, 'mydisp': True}
+lbfgsb_options = {'maxiter': max_iter, 'disp': False, 'mydisp': True, 'print_freq': 10}
 sg_options = {'maxiter':max_iter, 'batch_size': batch_size, 'print_freq': 100, 'step0': 1e-4, 'gamma': 0.55}
 # sg_options = {'mydisp': False, 'print_freq': 1, 'step_rate': 1e-2,
 #                 'maxiter': 50, 'batch_size':20}
@@ -100,7 +100,7 @@ elif method == 'means' or method == 'vi':
     res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num,  optimizer_options=lbfgsb_options)
     # res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num,  optimizer_options=projected_newton_options)
     inducing_points, mean, cov = new_gp.inducing_inputs
-    predicted_y_test, high, low = new_gp.predict(x_test)
+    predicted_y_test, high, low = new_gp.predict(x_test, return_confidence_region=True)
 
 elif method == 'svi':
     model_covariance_obj = SquaredExponential(model_params)
@@ -116,7 +116,7 @@ elif method == 'svi':
     new_gp = GPR(model_covariance_obj, method=method, parametrization=parametrization, optimizer=optimizer)
     res = new_gp.fit(x_tr, y_tr, num_inputs=ind_inputs_num, optimizer_options=opts)
     inducing_points, mean, cov = new_gp.inducing_inputs
-    predicted_y_test, high, low = new_gp.predict(x_test)
+    predicted_y_test, high, low = new_gp.predict(x_test, return_confidence_region=True)
 
 print(new_gp.covariance_obj.get_params())
 print(r2_score(y_test, predicted_y_test))

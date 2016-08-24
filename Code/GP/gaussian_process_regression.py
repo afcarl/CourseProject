@@ -12,7 +12,7 @@ from GP.gaussian_process import GP
 from GP.gp_res import GPRes
 from GP.optimization import gradient_descent, stochastic_gradient_descent, stochastic_average_gradient,\
                             minimize_wrapper, projected_newton, _eig_val_correction, check_gradient, \
-                            climin_adadelta_wrapper
+                            climin_wrapper
 
 
 class GPR(GP):
@@ -49,7 +49,7 @@ class GPR(GP):
             raise ValueError("Invalid method name")
         if not parametrization in ['natural', 'cholesky']:
             raise ValueError("Invalid parametrization name")
-        if not optimizer in ['AdaDelta', 'L-BFGS-B', 'FG', 'Projected Newton', 'SG']:
+        if not optimizer in ['AdaDelta', 'L-BFGS-B', 'FG', 'Projected Newton', 'SG', 'climinSG']:
             raise ValueError("Invalid optimizer name")
 
         self.covariance_fun = cov_obj.covariance_function
@@ -402,7 +402,7 @@ class GPR(GP):
         new_gp.covariance_obj.set_params(params)
         mu, Sigma = new_gp._vi_get_optimal_meancov(params, new_gp.inducing_inputs[0], data_points, data_targets)
         new_gp.inducing_inputs = (new_gp.inducing_inputs[0], mu, Sigma)
-        predicted_y_test, _, _ = new_gp.predict(test_points)
+        predicted_y_test = new_gp.predict(test_points)
         return r2_score(test_targets, predicted_y_test)
         # return np.linalg.norm(predicted_y_test - test_targets)**2/test_targets.size
 
@@ -565,16 +565,26 @@ class GPR(GP):
         bnds = self._svi_get_bounds(m)
 
         if self.parametrization == 'natural':
-            # N = target_values.size
-            # def sg_fun(x, train_points, train_targets):
-            #     fun, grad = self._svi_elbo_batch_approx_oracle(train_points, train_targets, inputs, parameter_vec=x,
-            #                                                    indices=range(train_targets.size), N=N)
-            #     return -grad
 
-            #!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+            nat_mult = 1.
+            if not optimizer_options is None:
+                if 'nat_mult' in optimizer_options.keys():
+                    nat_mult = optimizer_options['nat_mult']
+                    del optimizer_options['nat_mult']
+
+            print(nat_mult)
+
             def stoch_fun(x, i):
-                return -self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
+                grad = -self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
                                                            indices=i)[1]
+                grad[self.covariance_obj.get_params().size:] *= nat_mult
+                return grad
+
+            def adadelta_fun(x, train_points, train_targets):
+                _, grad = self._svi_elbo_batch_approx_oracle(train_points, train_targets, inputs, parameter_vec=x,
+                                                               indices=range(train_targets.size), N=n)
+                grad[self.covariance_obj.get_params().size:] *= nat_mult
+                return -grad
 
             # indices = list(range(20))
             #
@@ -590,8 +600,19 @@ class GPR(GP):
             # check_gradient(test_fun, param_vec, print_diff=True, delta=1e-9)#, indices=[3,4,5,6,7])
             # exit(0)
             #
-            res, w_list, time_list = stochastic_gradient_descent(oracle=stoch_fun, n=n, point=param_vec, bounds=bnds,
+            if self.optimizer == 'SG':
+                res, w_list, time_list = stochastic_gradient_descent(oracle=stoch_fun, n=n, point=param_vec, bounds=bnds,
                                                                  options=optimizer_options)
+            elif self.optimizer == 'AdaDelta':
+                res, w_list, time_list = climin_wrapper(oracle=adadelta_fun, w0=param_vec, train_points=data_points,
+                                                        train_targets=target_values, options=optimizer_options,
+                                                        method='AdaDelta')
+            elif self.optimizer == 'climinSG':
+                res, w_list, time_list = climin_wrapper(oracle=adadelta_fun, w0=param_vec, train_points=data_points,
+                                                        train_targets=target_values, options=optimizer_options,
+                                                        method='SG')
+            else:
+                raise ValueError('Unknown optimizer')
 
 
             theta, eta_1, eta_2 = self._svi_get_parameters(res)
@@ -620,8 +641,14 @@ class GPR(GP):
                                                            indices=i)[1]
 
             if self.optimizer == 'AdaDelta':
-                res, w_list, time_list = climin_adadelta_wrapper(oracle=adadelta_fun, w0=param_vec, train_points=data_points,
-                                                                 train_targets=target_values, options=optimizer_options)
+                res, w_list, time_list = climin_wrapper(oracle=adadelta_fun, w0=param_vec, train_points=data_points,
+                                                        train_targets=target_values, options=optimizer_options,
+                                                        method='AdaDelta')
+            elif self.optimizer == 'climinSG':
+                res, w_list, time_list = climin_wrapper(oracle=adadelta_fun, w0=param_vec, train_points=data_points,
+                                                        train_targets=target_values, options=optimizer_options,
+                                                        method='SG')
+
             elif self.optimizer == 'SG':
                 res, w_list, time_list = stochastic_gradient_descent(oracle=stoch_fun, n=n, point=param_vec, bounds=bnds,
                                                                  options=optimizer_options)
@@ -633,8 +660,18 @@ class GPR(GP):
                 res, w_list, time_list = gradient_descent(oracle=fun, point=param_vec, bounds=bnds,
                                                           options=optimizer_options)
             elif self.optimizer == 'L-BFGS-B':
-                res, w_list, time_list = minimize_wrapper(fun, param_vec, method='L-BFGS-B', mydisp=False,
-                                                           bounds=bnds, jac=True, options=optimizer_options)
+                mydisp = False
+                print_freq=1
+                if not optimizer_options is None:
+                    if 'mydisp' in optimizer_options.keys():
+                        mydisp = optimizer_options['mydisp']
+                        del optimizer_options['mydisp']
+                    if 'print_freq' in optimizer_options.keys():
+                        print_freq = optimizer_options['print_freq']
+                        del optimizer_options['print_freq']
+                res, w_list, time_list = minimize_wrapper(fun, param_vec, method='L-BFGS-B', mydisp=mydisp,
+                                                          print_freq=print_freq, bounds=bnds, jac=True,
+                                                          options=optimizer_options)
                 res = res['x']
             else:
                 raise ValueError('Wrong optimizer for svi method' + self.optimizer)
@@ -819,11 +856,11 @@ class GPR(GP):
         theta = params[:len(new_gp.covariance_obj.get_params())]
         new_gp.covariance_obj.set_params(theta)
         new_gp.inducing_inputs = (new_gp.inducing_inputs[0], mu, Sigma)
-        predicted_y_test, _, _ = new_gp.predict(test_points)
+        predicted_y_test = new_gp.predict(test_points)
         return r2_score(test_targets, predicted_y_test)
         # return np.linalg.norm(predicted_y_test - test_targets)**2/test_targets.size
 
-    def _inducing_points_predict(self, test_points):
+    def _inducing_points_predict(self, test_points, return_confidence_region=False):
         """
         Predict new values given inducing points
         :param ind_points: inducing points
@@ -835,16 +872,22 @@ class GPR(GP):
         ind_points, expectation, covariance = self.inducing_inputs
         cov_fun = self.covariance_obj.covariance_function
         K_xm = cov_fun(test_points, ind_points)
-        K_mx = K_xm.T
         K_mm = cov_fun(ind_points, ind_points)
-        K_xx = cov_fun(test_points, test_points)
         K_mm_inv = np.linalg.inv(K_mm)
 
-        new_mean = K_xm.dot(K_mm_inv).dot(expectation)
-        new_cov = K_xx - K_xm.dot(K_mm_inv).dot(K_mx) + K_xm.dot(K_mm_inv).dot(covariance).dot(K_mm_inv).dot(K_mx)
+        # Temporarily removed variance prediction to conduct the experiments faster
 
-        test_targets, up, low = self.sample_for_matrices(new_mean, new_cov)
-        return test_targets, up, low
+        if return_confidence_region:
+            K_xx = cov_fun(test_points, test_points)
+            K_xm_K_mm_inv = K_xm.dot(K_mm_inv)
+            new_mean = K_xm_K_mm_inv.dot(expectation)
+            new_cov = K_xx - K_xm_K_mm_inv.dot(K_xm.T) + K_xm_K_mm_inv.dot(covariance.dot(K_xm_K_mm_inv.T))
+            test_targets, up, low = self.sample_for_matrices(new_mean, new_cov)
+            return test_targets, up, low
+
+        new_mean = K_xm.dot(K_mm_inv.dot(expectation))
+
+        return new_mean
 
     # General functions
 

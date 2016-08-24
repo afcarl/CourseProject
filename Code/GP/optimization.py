@@ -346,13 +346,13 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
     return x, x_lst, time_lst
 
 
-def minimize_wrapper(func, x0, mydisp=False, jac=True, **kwargs):
+def minimize_wrapper(func, x0, mydisp=False, print_freq=1, jac=True, **kwargs):
 
     aux = {'start': time.time(), 'total': 0., 'it': 0}
 
     def callback(w):
         aux['total'] += time.time() - aux['start']
-        if mydisp:
+        if mydisp and not (aux['it'] % print_freq):
             print("Hyper-parameters at iteration", aux['it'], ":", w.reshape(-1)[:5])
             # if w.size > 5:
             #     print('...')
@@ -520,7 +520,7 @@ def projected_newton(oracle, point, bounds=None, options=None):
     return x, x_lst, time_lst
 
 
-def climin_adadelta_wrapper(oracle, w0, train_points, train_targets, options):
+def climin_wrapper(oracle, w0, train_points, train_targets, options, method='AdaDelta'):
     default_options = {'maxiter': 1000, 'print_freq':1, 'verbose': False, 'g_tol': 1e-5,
                        'batch_size': 10, 'step_rate': 0.1}
     if not options is None:
@@ -531,7 +531,13 @@ def climin_adadelta_wrapper(oracle, w0, train_points, train_targets, options):
 
     w = w0.copy()
     data = ((i, {}) for i in iter_minibatches([train_points, train_targets], options['batch_size'], [1, 0]))
-    opt = climin.Adadelta(wrt=w, fprime=oracle, args=data, step_rate=options['step_rate'])
+
+    if method == 'AdaDelta':
+        opt = climin.Adadelta(wrt=w, fprime=oracle, args=data, step_rate=options['step_rate'])
+    elif method == 'SG':
+        opt = climin.GradientDescent(wrt=w, fprime=oracle, args=data, step_rate=options['step_rate'])
+    else:
+        raise ValueError('Unknown optimizer')
 
     w_lst = [w.copy()]
     time_lst = [0.]
@@ -539,6 +545,9 @@ def climin_adadelta_wrapper(oracle, w0, train_points, train_targets, options):
     n_epochs = options['maxiter']
     n_iterations = int(n_epochs * train_targets.size / options['batch_size'])
     print_freq = int(options['print_freq'] * train_targets.size / options['batch_size'])
+
+    if options['verbose']:
+        print('Using ' + method + ' optimizer')
     for info in opt:
         i = info['n_iter']
         if i > n_iterations:
