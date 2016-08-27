@@ -875,8 +875,6 @@ class GPR(GP):
         K_mm = cov_fun(ind_points, ind_points)
         K_mm_inv = np.linalg.inv(K_mm)
 
-        # Temporarily removed variance prediction to conduct the experiments faster
-
         if return_confidence_region:
             K_xx = cov_fun(test_points, test_points)
             K_xm_K_mm_inv = K_xm.dot(K_mm_inv)

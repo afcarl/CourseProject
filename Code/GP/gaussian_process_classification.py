@@ -13,7 +13,7 @@ from scipy.special import expit
 
 from GP.covariance_functions import CovarianceFamily, sigmoid
 from GP.gaussian_process import GP
-from GP.optimization import check_gradient, minimize_wrapper, stochastic_gradient_descent, climin_adadelta_wrapper, \
+from GP.optimization import check_gradient, minimize_wrapper, stochastic_gradient_descent, climin_wrapper, \
     gradient_descent
 from GP.gp_res import GPRes
 
@@ -520,8 +520,8 @@ class GPC(GP):
             res, w_list, time_list = stochastic_gradient_descent(oracle=fun, n=n, point=param_vec, bounds=bnds,
                                                                  options=opts)
         elif mode == 'adadelta':
-            res, w_list, time_list = climin_adadelta_wrapper(oracle=adadelta_fun, w0=param_vec, train_points=data_points,
-                                                             train_targets=target_values, options=opts)
+            res, w_list, time_list = climin_wrapper(oracle=adadelta_fun, w0=param_vec, train_points=data_points,
+                                                    train_targets=target_values, options=opts, method='AdaDelta')
 
         theta, mu, sigma_L = self._svi_get_parameters(res)
         sigma = sigma_L.dot(sigma_L.T)
@@ -727,16 +727,13 @@ class GPC(GP):
         ind_points, expectation, covariance = self.inducing_inputs
         cov_fun = self.covariance_obj.covariance_function
         K_xm = cov_fun(test_points, ind_points)
-        K_mx = K_xm.T
         K_mm = cov_fun(ind_points, ind_points)
-        K_xx = cov_fun(test_points, test_points)
         K_mm_inv = np.linalg.inv(K_mm)
 
-        new_mean = K_xm.dot(K_mm_inv).dot(expectation)
-        new_cov = K_xx - K_xm.dot(K_mm_inv).dot(K_mx) + K_xm.dot(K_mm_inv).dot(covariance).dot(K_mm_inv).dot(K_mx)
 
-        test_targets, up, low = self.sample_for_matrices(new_mean, new_cov)
-        return np.sign(test_targets)
+        new_mean = K_xm.dot(K_mm_inv.dot(expectation))
+
+        return np.sign(new_mean)
 
     def _vi_jj_recompute_xi(self, K_mm, K_mm_inv, K_nm, K_ii, mu, Sigma):
         K_mn = K_nm.T
@@ -1023,8 +1020,8 @@ class GPC(GP):
                                                                options=options)
                 res = res['x']
             elif mode == 'adadelta':
-                res, _, _ = climin_adadelta_wrapper(oracle=adadelta_fun, w0=params, train_points=data_points,
-                                                                 train_targets=target_values, options=options)
+                res, _, _ = climin_wrapper(oracle=adadelta_fun, w0=params, train_points=data_points,
+                                           train_targets=target_values, options=options, method='AdaDelta')
 
             params = res
             w_list.append((params, np.copy(mu), np.copy(Sigma)))
