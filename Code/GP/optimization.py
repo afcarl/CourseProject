@@ -335,7 +335,7 @@ def stochastic_average_gradient(oracle, point, n, bounds=None, options=None):
             direction = batch_oracle.update_gradients(grad)
             if l == 0:
                 return x
-            x -= direction /(16 * l)
+            x -= direction / l#(16 * l)
             x = project_into_bounds(x, bounds)
         x_lst.append(np.copy(x))
         time_lst.append(time.time() - start)

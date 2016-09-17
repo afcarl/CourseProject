@@ -24,8 +24,9 @@ max_out_iter = 5
 # opts = {'mode': 'adadelta', 'maxiter': maxiter, 'verbose': True, 'batch_size':20, 'step_rate': 0.7, 'decay': 0.8,
 #         'print_freq': 10}
 # opts = {'bound': 'JJ', 'maxfun': 5, 'num_updates': 5, 'mydisp': True}
-opts = {'bound': 'Taylor', 'mode': 'adadelta', 'num_updates': 5, 'mydisp': False, 'print_freq': 1, 'step_rate': 0.5,
-        'maxiter': 5, 'batch_size':20}
+# opts = {'bound': 'Taylor', 'mode': 'adadelta', 'num_updates': 5, 'mydisp': False, 'print_freq': 1, 'step_rate': 0.5,
+#         'maxiter': 5, 'batch_size':20}
+opts = {'bound': 'JJfull', 'mydisp': False, 'maxiter': 100}
 
 np.random.seed(seed)
 x_tr = np.random.rand(dim, num)

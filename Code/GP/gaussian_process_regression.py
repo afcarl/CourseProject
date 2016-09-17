@@ -49,7 +49,7 @@ class GPR(GP):
             raise ValueError("Invalid method name")
         if not parametrization in ['natural', 'cholesky']:
             raise ValueError("Invalid parametrization name")
-        if not optimizer in ['AdaDelta', 'L-BFGS-B', 'FG', 'Projected Newton', 'SG', 'climinSG']:
+        if not optimizer in ['AdaDelta', 'L-BFGS-B', 'FG', 'Projected Newton', 'SG', 'climinSG', 'SAG']:
             raise ValueError("Invalid optimizer name")
 
         self.covariance_fun = cov_obj.covariance_function
@@ -626,10 +626,10 @@ class GPR(GP):
                                                      indices=list(range(n)))
                 return -fun, -grad
 
-            # def sag_oracle(x, i):
-            #     fun, grad = self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
-            #                                                    indices=i)
-            #     return -fun, -grad
+            def sag_oracle(x, i):
+                fun, grad = self._svi_elbo_batch_approx_oracle(data_points, target_values, inputs, parameter_vec=x,
+                                                               indices=i)
+                return -fun, -grad
 
             def adadelta_fun(x, train_points, train_targets):
                 fun, grad = self._svi_elbo_batch_approx_oracle(train_points, train_targets, inputs, parameter_vec=x,
@@ -653,8 +653,9 @@ class GPR(GP):
                 res, w_list, time_list = stochastic_gradient_descent(oracle=stoch_fun, n=n, point=param_vec, bounds=bnds,
                                                                  options=optimizer_options)
 
-                    # climin_adadelta_wrapper(oracle=adadelta_fun, w0=param_vec, train_points=data_points,
-                    #                                              train_targets=target_values, options=optimizer_options)
+            elif self.optimizer == 'SAG':
+                res, w_list, time_list = stochastic_average_gradient(oracle=sag_oracle, n=n, point=param_vec, bounds=bnds,
+                                                                 options=optimizer_options)
 
             elif self.optimizer == 'FG':
                 res, w_list, time_list = gradient_descent(oracle=fun, point=param_vec, bounds=bnds,
