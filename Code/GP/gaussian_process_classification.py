@@ -31,6 +31,7 @@ class GPC(GP):
             'brute_alt' — A slightly different approach to maximizing the evidence in brute method
             'svi' — inducing input method from Scalable Variational Gaussian Process Classification article
             'vi' — experimental inducing input method, similar to `vi` method for regression
+            'vi_full' — another experimental inducing input method, similar to `vi` method for regression
         :param hermgauss_deg: degree of Gussian-hermite quadrature, used for svi method only
         :return: GPR object
         """
@@ -43,6 +44,7 @@ class GPC(GP):
         self.covariance_obj = cov_obj
         self.mean_fun = mean_function
         self.method = method
+        # self.bound = None
 
         # A tuple: inducing inputs, and parameters of gaussian distribution at these points (mean and covariance)
         self.inducing_inputs = None
@@ -250,7 +252,9 @@ class GPC(GP):
     def predict(self, *args, **kwargs):
         if self.method == 'brute' or self.method == 'brute_alt':
             return self._brute_predict(*args, **kwargs)
-        elif self.method == 'svi' or self.method == 'vi':
+        # elif self.method == 'vi_full':
+        #     return self._vi_full_predict(*args, **kwargs)
+        elif self.method == 'svi' or self.method == 'vi' or self.method == 'vi_full':
             return self._inducing_points_predict(*args, **kwargs)
         else:
             raise ValueError("Unknown method")
@@ -262,18 +266,21 @@ class GPC(GP):
             return self._brute_alternative_fit(*args, **kwargs)
         elif self.method == 'svi':
             return self._svi_fit(*args, **kwargs)
+        elif self.method == 'vi_full':
+            return self._vi_jj_full_fit(*args, **kwargs)
         elif self.method == 'vi':
             options = kwargs ['optimizer_options']
             if 'bound' in options.keys():
+                # self.bound = options['bound']
                 if options['bound'] == 'JJ':
                     del options['bound']
                     return self._vi_jj_fit(*args, **kwargs)
                 elif options['bound'] == 'Taylor':
                     del options['bound']
                     return self._vi_taylor_fit(*args, **kwargs)
-                elif options['bound'] == 'JJfull':
-                    del options['bound']
-                    return self._vi_jj_full_fit(*args, **kwargs)
+                # elif options['bound'] == 'JJfull':
+                #     del options['bound']
+                #     return self._vi_jj_full_fit(*args, **kwargs)
                 else:
                     del options['bound']
                     warn('Unknown bound for vi method')
@@ -913,8 +920,9 @@ class GPC(GP):
 
     def get_prediction_quality(self, *args, **kwargs):
 
-        if self.method == 'vi':
-            # raise ValueError('Not implemented yet')
+        if self.method == 'vi_full':
+            return self._vi_full_get_prediction_quality(*args, **kwargs)
+        elif self.method == 'vi':
             return self._vi_get_prediction_quality(*args, **kwargs)
         elif self.method == 'svi':
             return self._svi_get_prediction_quality(*args, **kwargs)
@@ -1208,7 +1216,7 @@ class GPC(GP):
         return (xi - np.sinh(xi)) / (4 * xi**2 * (np.cosh(xi) + 1))
         # return np.tanh(xi / 2) / (4 * xi)
 
-    def _vi_jj_full_fit(self, data_points, target_values, num_inputs=0, inputs=None, max_out_iter=20,
+    def _vi_jj_full_fit(self, data_points, target_values, num_inputs=0, inputs=None,
                        optimizer_options={}):
         """
         An experimental method for optimizing hyper-parameters (for fixed inducing points), based on variational
@@ -1239,8 +1247,7 @@ class GPC(GP):
         params = self.covariance_obj.get_params()
 
         xi = np.ones(n)
-        w_list, time_list = [(params, xi)], [0]
-        start = time.time()
+        # w_list, time_list = [(params, xi)], [0]
 
         vec = np.vstack([params.reshape(-1)[:, None], xi.reshape(-1)[:, None]]).reshape(-1)
         bnds = np.array(list(bnds)+ [(1e-3, np.inf)] * xi.size)
@@ -1257,13 +1264,12 @@ class GPC(GP):
                 del options['mydisp']
 
 
-        res, _, _ = minimize_wrapper(oracle, vec, method='L-BFGS-B', mydisp=mydisp, bounds=bnds,
+        res, w_list, time_list = minimize_wrapper(oracle, vec, method='L-BFGS-B', mydisp=mydisp, bounds=bnds,
                                                        options=options)
         res = res['x']
 
         params = res[:params.size]
         xi = res[params.size:][:, None]
-
 
         cov_obj = copy.deepcopy(self.covariance_obj)
         cov_obj.set_params(params)
@@ -1292,16 +1298,14 @@ class GPC(GP):
         :param xi: variational parameters xi
         :return: the value and the gradient of the lower bound
         """
-
+        start = time.time()
         params_num = self.covariance_obj.get_params().size
         params = params_vec[:params_num]
         xi = params_vec[params_num:][:, None]
-        # print(params)
 
         y = targets
         n = points.shape[1]
         m = ind_points.shape[1]
-        # sigma = params[-1]
         cov_obj = copy.deepcopy(self.covariance_obj)
         cov_obj.set_params(params)
         cov_fun = cov_obj.covariance_function
@@ -1354,10 +1358,15 @@ class GPC(GP):
 
         xi_gradient = np.zeros((n, 1))
         dlambdaxi_dxi = self._vi_jj_dlambda_dxi(xi)
-        dB_dxi = 2 * np.einsum('ij,jk->jik', K_mn, dlambdaxi_dxi*K_nm)
+        # dB_dxi = 2 * np.einsum('ij,jk->jik', K_mn, dlambdaxi_dxi*K_nm)
         anc_vec = B_inv.dot(K_mn.dot(y))
-        xi_gradient += - anc_vec.T.dot(dB_dxi.dot(anc_vec)).reshape(-1)[:, None] / 8
-        xi_gradient += - np.trace(dB_dxi.dot(B_inv), axis1=1, axis2=2)[:, None] / 2
+        # xi_gradient += - anc_vec.T.dot(dB_dxi.dot(anc_vec)).reshape(-1)[:, None] / 8
+        xi_gradient += - 2 * np.einsum('ij,jk->jik', anc_vec.T.dot(K_mn), dlambdaxi_dxi*K_nm.dot(anc_vec)).reshape(-1)[:, None] / 8
+        # xi_gradient += - np.trace(dB_dxi.dot(B_inv), axis1=1, axis2=2)[:, None] / 2
+
+
+        xi_gradient += - np.einsum('ij,ji->j', B_inv.dot(K_mn), dlambdaxi_dxi*K_nm)[:, None]
+
         xi_gradient += - K_ii * dlambdaxi_dxi
         xi_gradient += (np.einsum('ij,ji->i', K_nm, K_mm_inv.dot(K_mn))[:, None] * dlambdaxi_dxi)
         xi_gradient += -1/2
@@ -1367,3 +1376,28 @@ class GPC(GP):
         gradient = gradient + xi_gradient.reshape(-1).tolist()
 
         return fun, np.array(gradient)
+
+    def _vi_full_get_prediction_quality(self, params, train_points, train_targets, test_points, test_targets):
+        """
+        Returns prediction quality on the test set for the given kernel (and inducing points) parameters for the means
+        method
+        :param params: parameters
+        :param test_points: test set points
+        :param test_targets: test set target values
+        :return: prediction MSE
+        """
+        new_gp = deepcopy(self)
+        num_params = self.covariance_obj.get_params().size
+        theta, xi = params[:num_params], params[num_params:][:, None]
+        new_gp.covariance_obj.set_params(theta)
+        cov_fun = new_gp.covariance_obj.covariance_function
+        inputs = self.inducing_inputs[0]
+        K_mm = cov_fun(inputs, inputs)
+        K_nm = cov_fun(train_points, inputs)
+
+        K_mm_inv, _ = self._get_inv_logdet_cholesky(K_mm)
+        mu, Sigma = self._vi_jj_recompute_var_parameters(K_mm_inv, K_nm, xi, train_targets)
+
+        new_gp.inducing_inputs = (new_gp.inducing_inputs[0], mu, Sigma)
+        predicted_y_test = new_gp.predict(test_points)
+        return 1 - np.sum(test_targets != predicted_y_test) / test_targets.size

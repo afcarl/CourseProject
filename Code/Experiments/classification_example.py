@@ -15,7 +15,7 @@ test_density = 20
 dim = 2
 seed = 21
 ind_num = 20
-method = 'vi'
+method = 'vi_full'
 maxiter = 100
 max_out_iter = 5
 
@@ -26,7 +26,7 @@ max_out_iter = 5
 # opts = {'bound': 'JJ', 'maxfun': 5, 'num_updates': 5, 'mydisp': True}
 # opts = {'bound': 'Taylor', 'mode': 'adadelta', 'num_updates': 5, 'mydisp': False, 'print_freq': 1, 'step_rate': 0.5,
 #         'maxiter': 5, 'batch_size':20}
-opts = {'bound': 'JJfull', 'mydisp': False, 'maxiter': 100}
+opts = {'mydisp': False, 'maxiter': 100}
 
 np.random.seed(seed)
 x_tr = np.random.rand(dim, num)
@@ -51,6 +51,8 @@ if method == 'svi':
     new_gp.fit(x_tr, y_tr, num_inputs=ind_num, optimizer_options=opts)
 elif method == 'vi':
     new_gp.fit(x_tr, y_tr, num_inputs=ind_num, max_out_iter=max_out_iter, optimizer_options=opts)
+elif method == 'vi_full':
+    new_gp.fit(x_tr, y_tr, num_inputs=ind_num, optimizer_options=opts)
 elif method == 'brute':
     new_gp.fit(x_tr, y_tr)
 else:
@@ -59,7 +61,7 @@ else:
 print(new_gp.covariance_obj.get_params())
 if method == 'brute':
     predicted_y_test = new_gp.predict(x_test, x_tr, y_tr)
-elif method == 'svi' or method == 'vi':
+elif method == 'svi' or method == 'vi' or method == 'vi_full':
     predicted_y_test = new_gp.predict(x_test)
     inducing_points, mean, cov = new_gp.inducing_inputs
 
