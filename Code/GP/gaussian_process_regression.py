@@ -2,6 +2,7 @@ import copy
 import math
 import time
 from copy import deepcopy
+import numbers
 
 import numpy as np
 from sklearn.cluster import KMeans
@@ -145,7 +146,7 @@ class GPR(GP):
         self.covariance_obj.set_params(optimal_params)
         return GPRes(deepcopy(w_list), time_lst=deepcopy(time_list))
 
-    def _brute_predict(self, test_points, training_points, training_targets):
+    def _brute_predict(self, test_points, training_points, training_targets, n_samples=None):
         """
         :param test_points: array of test points
         :param training_points: training set array
@@ -162,7 +163,11 @@ class GPR(GP):
         new_cov = k_test - np.dot(np.dot(k_test_x, k_x_inv), k_test_x.T)
 
         test_targets, up, low = self.sample_for_matrices(new_mean, new_cov)
-
+        if isinstance(n_samples, numbers.Integral):
+            samples = []
+            for i in range(n_samples):
+                samples.append(self.sample_for_matrices(new_mean, new_cov, rnd=i))
+            return test_targets, low, up, samples
         return test_targets, low, up
 
     def _brute_get_prediction_quality(self, params, data_points, data_targets, test_points, test_targets):

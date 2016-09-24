@@ -850,7 +850,6 @@ class GPC(GP):
         y = targets
         n = points.shape[1]
         m = ind_points.shape[1]
-        sigma = params[-1]
         cov_obj = copy.deepcopy(self.covariance_obj)
         cov_obj.set_params(params)
         cov_fun = cov_obj.covariance_function
@@ -1247,42 +1246,136 @@ class GPC(GP):
         params = self.covariance_obj.get_params()
 
         xi = np.ones(n)
-        # w_list, time_list = [(params, xi)], [0]
 
-        vec = np.vstack([params.reshape(-1)[:, None], xi.reshape(-1)[:, None]]).reshape(-1)
+        # vec = np.vstack([params.reshape(-1)[:, None], xi.reshape(-1)[:, None]]).reshape(-1)
         bnds = np.array(list(bnds)+ [(1e-3, np.inf)] * xi.size)
-        # print(bnds)
-
-        # check_gradient(oracle, point=vec, print_diff=False)
-        # exit(0)
 
         mydisp = False
+        hybrid = False
+        maxiter = 1000
+        maxoutiter = 1000
+        num_updates = 3
+        freq_updates = 5
+        maxfun = 5
         options = copy.deepcopy(optimizer_options)
         if not optimizer_options is None:
             if 'mydisp' in options.keys():
                 mydisp = options['mydisp']
                 del options['mydisp']
+            if 'hybrid' in options.keys():
+                hybrid = options['hybrid']
+                del options['hybrid']
+            if hybrid:
+                if 'maxiter' in options.keys():
+                    maxiter = options['maxiter']
+                    del options['maxiter']
+                if not 'maxfun' in options.keys():
+                    options['maxfun'] = maxfun
+                if 'maxoutiter' in options.keys():
+                    maxoutiter = options['maxoutiter']
+                    del options['maxoutiter']
+                if 'num_updates' in options.keys():
+                    num_updates = options['num_updates']
+                    del options['num_updates']
+                # if 'freq_updates' in options.keys():
+                #     freq_updates = options['freq_updates']
+                #     del options['freq_updates']
+
+        if hybrid:
+            if mydisp:
+                print('Hybrid mode'+#\n\tAnalytic updates frequency:'+str(freq_updates)+
+                      '\n\tAnalytic updates number:'+str(num_updates))
+            sum_iter = 0
+            out_iter = 0
+            w_list, t_list = [], []
+            start = time.time()
+            while sum_iter < maxiter and out_iter < maxoutiter:
+                if mydisp:
+                    print('Outter iteration '+str(out_iter))
+                vec = np.vstack([params.reshape(-1)[:, None], xi.reshape(-1)[:, None]]).reshape(-1)
+                iter_time = time.time() - start
+                res, it_w_list, it_t_list = minimize_wrapper(oracle, vec, method='L-BFGS-B', mydisp=mydisp, bounds=bnds,
+                                                           options=options)
+
+                w_list += it_w_list
+                t_list += [t + iter_time for t in it_t_list]
+                point = res['x']
+                params = point[:params.size]
+                xi = point[params.size:][:, None]
+                sum_iter += res['nit']
+                out_iter += 1
+
+                cov_obj = copy.deepcopy(self.covariance_obj)
+                cov_obj.set_params(params)
+                cov_fun = cov_obj.covariance_function
+                K_mm = cov_fun(inputs, inputs)
+                K_nm = cov_fun(data_points, inputs)
+
+                K_mm_inv, _ = self._get_inv_logdet_cholesky(K_mm)
+                mu, Sigma = self._vi_jj_recompute_var_parameters(K_mm_inv, K_nm, xi, target_values)
+
+                num_updates = 3
+                xi, _, _ = self._vi_jj_update_xi(params, data_points, target_values, inputs, mu, Sigma,
+                                                      n_iter=num_updates)
 
 
-        res, w_list, time_list = minimize_wrapper(oracle, vec, method='L-BFGS-B', mydisp=mydisp, bounds=bnds,
-                                                       options=options)
-        res = res['x']
+        else:
+            if mydisp:
+                print('Standard mode')
+            vec = np.vstack([params.reshape(-1)[:, None], xi.reshape(-1)[:, None]]).reshape(-1)
+            res, w_list, t_list = minimize_wrapper(oracle, vec, method='L-BFGS-B', mydisp=mydisp, bounds=bnds,
+                                                           options=options)
+            point = res['x']
+            params = point[:params.size]
+            xi = point[params.size:][:, None]
+            cov_obj = copy.deepcopy(self.covariance_obj)
+            cov_obj.set_params(params)
+            cov_fun = cov_obj.covariance_function
+            K_mm = cov_fun(inputs, inputs)
+            K_nm = cov_fun(data_points, inputs)
 
-        params = res[:params.size]
-        xi = res[params.size:][:, None]
+            K_mm_inv, _ = self._get_inv_logdet_cholesky(K_mm)
+            mu, Sigma = self._vi_jj_recompute_var_parameters(K_mm_inv, K_nm, xi, target_values)
 
-        cov_obj = copy.deepcopy(self.covariance_obj)
-        cov_obj.set_params(params)
-        cov_fun = cov_obj.covariance_function
-        K_mm = cov_fun(inputs, inputs)
-        K_nm = cov_fun(data_points, inputs)
-
-        K_mm_inv, _ = self._get_inv_logdet_cholesky(K_mm)
-        mu, Sigma = self._vi_jj_recompute_var_parameters(K_mm_inv, K_nm, xi, target_values)
+        # sum_iter = 0
+        # freq = 5
+        # maxiter = options['maxiter']
+        # new_options = deepcopy(options)
+        # del new_options['maxiter']
+        # new_options['maxfun'] = freq
+        # print(maxiter)
+        # w_lst, t_lst = [], []
+        #
+        # while sum_iter < maxiter:
+        #
+        #     vec = np.vstack([params.reshape(-1)[:, None], xi.reshape(-1)[:, None]]).reshape(-1)
+        #     iter_time = time.time() - start
+        #     res, w_list, time_list = minimize_wrapper(oracle, vec, method='L-BFGS-B', mydisp=mydisp, bounds=bnds,
+        #                                                    options=new_options)
+        #     w_lst += w_list
+        #     t_lst += [t + iter_time for t in time_list]
+        #     res = res['x']
+        #     params = res[:params.size]
+        #     xi = res[params.size:][:, None]
+        #     sum_iter += freq
+        #
+        #     cov_obj = copy.deepcopy(self.covariance_obj)
+        #     cov_obj.set_params(params)
+        #     cov_fun = cov_obj.covariance_function
+        #     K_mm = cov_fun(inputs, inputs)
+        #     K_nm = cov_fun(data_points, inputs)
+        #
+        #     K_mm_inv, _ = self._get_inv_logdet_cholesky(K_mm)
+        #     mu, Sigma = self._vi_jj_recompute_var_parameters(K_mm_inv, K_nm, xi, target_values)
+        #
+        #     num_updates = 3
+        #     xi, _, _ = self._vi_jj_update_xi(params, data_points, target_values, inputs, mu, Sigma,
+        #                                           n_iter=num_updates)
 
         self.inducing_inputs = inputs, mu, Sigma
         self.covariance_obj.set_params(params)
-        return GPRes(param_lst=w_list, time_lst=time_list)
+        # return GPRes(param_lst=w_list, time_lst=time_list)
+        return GPRes(param_lst=w_list, time_lst=t_list)
 
     @classmethod
     def _vi_jj_log_g(self, xi):

@@ -39,7 +39,6 @@ from GP.gaussian_process_regression import GPR
 from GP.plotting import plot_reg_data, plot_predictive
 from GP.covariance_functions import SquaredExponential, Matern, GammaExponential
 from matplotlib.mlab import griddata
-from matplotlib2tikz import save
 
 data_params = np.array([1.0, 0.15, 0.1])
 data_covariance_obj = SquaredExponential(data_params)
@@ -92,7 +91,9 @@ y_tr, y_test = gp.generate_data(x_tr, x_test, seed=seed)
 if method == 'brute':
     new_gp = GPR(model_covariance_obj)
     # res = new_gp.fit(x_tr, y_tr, max_iter=max_iter)
-    predicted_y_test, high, low = new_gp.predict(x_test, x_tr, y_tr)
+    predicted_y_test, high, low, samples = new_gp.predict(x_test, x_tr, y_tr, n_samples=3)
+    print(len(samples))
+    print(samples[0].shape)
 
 elif method == 'means' or method == 'vi':
     model_covariance_obj = SquaredExponential(model_params)
@@ -128,6 +129,12 @@ if dim == 1:
     if method != 'brute':
         plot_reg_data(inducing_points, mean, 'ro', markersize=8)
     plt.title("1-dimensional Gaussian process")
+    colors = ['-r', '-g', '-y']
+    for sample, color in list(zip(samples, colors)):
+        plt.plot(x_test.reshape(-1), sample.reshape(-1), color)
+
+    # targets = new_gp.sample_for_matrices(predicted_y_test, new_gp.covariance_fun(x_test, x_test), rnd=17)
+    # plt.plot(x_test.reshape(-1), targets.reshape(-1), '--b')
     # plt.title("Matern covariance function, $\\nu = 1$")
     # plt.savefig('pictures/')
     plt.show()

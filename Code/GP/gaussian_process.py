@@ -1,6 +1,7 @@
 import numpy as np
 from abc import ABCMeta, abstractmethod
 from GP.optimization import _eig_val_correction
+import numbers
 
 class GP:
     """
@@ -32,7 +33,7 @@ class GP:
         return res
 
     @staticmethod
-    def sample_for_matrices(mean_vec, cov_mat):
+    def sample_for_matrices(mean_vec, cov_mat, rnd=None):
         """
         :param mean_vec: mean vector
         :param cov_mat: cavariance matrix
@@ -41,11 +42,15 @@ class GP:
         if not (isinstance(mean_vec, np.ndarray) and
                 isinstance(cov_mat, np.ndarray)):
             raise TypeError("points must be a numpy array")
-        # y = np.random.multivariate_normal(mean_vec.reshape((mean_vec.size,)), cov_mat)
-        # print(np.diagonal(cov_mat).reshape(mean_vec.shape))
-        upper_bound = mean_vec + 3 * np.sqrt(np.diagonal(cov_mat).reshape(mean_vec.shape))
-        lower_bound = mean_vec - 3 * np.sqrt(np.diagonal(cov_mat).reshape(mean_vec.shape))
-        return mean_vec, upper_bound, lower_bound
+        if rnd is None or (isinstance(rnd, bool) and rnd == False):
+            upper_bound = mean_vec + 3 * np.sqrt(np.diagonal(cov_mat).reshape(mean_vec.shape))
+            lower_bound = mean_vec - 3 * np.sqrt(np.diagonal(cov_mat).reshape(mean_vec.shape))
+            return mean_vec, upper_bound, lower_bound
+        else:
+            if isinstance(rnd, numbers.Number):
+                np.random.seed(rnd)
+            y = np.random.multivariate_normal(mean_vec.reshape(-1), cov_mat)
+            return y
 
     @staticmethod
     def _svi_lower_triang_mat_to_vec(mat):

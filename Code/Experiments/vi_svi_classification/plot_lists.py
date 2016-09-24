@@ -32,11 +32,11 @@ mpl.rcParams.update(pgf_with_latex)
 
 from matplotlib import pyplot as plt
 
-# data_name, max_time, lims = 'german', 5, [.65, .8]
+data_name, max_time, lims = 'german', 5, [.65, .8]
 # data_name, max_time, lims = 'ijcnn', 200, [.8, .95]
 # data_name, max_time, lims = 'magic telescope', 45, [.7, .9]
 # data_name, max_time, lims = 'svmguide', 2, [.85, 1.]
-data_name, max_time, lims = 'cod-rna', 1200, [.93, .97]
+# data_name, max_time, lims = 'cod-rna', 1200, [.93, .97]
 # data_name, max_time, lims = 'skin_nonskin', 200, [.95, 1.]
 
 with open('../plots/vi_vs_svi_class/'+ data_name +'_title.txt') as f:
